@@ -7,7 +7,7 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
 ## What it does
 
 - **Planning Center:** run of show, songs, keys, item lengths and everyone scheduled, with names and roles. Refreshes every few minutes.
-- **Slack:** profile photos for the face cards. Hand-cropped starter photos ship with the app, and admins can upload and frame replacements.
+- **Photos for the face cards**, in this order: a photo an admin uploaded, the hand-cropped starter photos that ship with the app, Slack (optional, only if a Slack app can be added), then the person's Planning Center profile photo. Anyone with none shows first and last initials. Admins can upload and frame replacements in **Admin → People**.
 - **ProPresenter (7.9+ network API):**
   - The **auditorium** machine tracks where we are in the Encounter.
   - The **broadcast** machine feeds the graphics status box.
