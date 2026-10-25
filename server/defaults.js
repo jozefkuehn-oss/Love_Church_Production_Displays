@@ -23,7 +23,7 @@ const configDefaults = {
   slack: { botToken: '', refreshHours: 12 },
   propresenter: {
     auditorium: { host: '', port: 50001, enabled: false },
-    broadcast: { host: '', port: 50001, enabled: false },
+    broadcast: { host: '192.168.10.237', port: 65181, enabled: true }, // broadcast ProPresenter machine
     pollMs: 1000,
   },
   wireless: { mode: 'sample' },
@@ -41,8 +41,7 @@ function w(id, type, x, y, wd, h, opts = {}) {
 const profiles = {
   broadcast: {
     name: 'Broadcast Control',
-    mode: 'live', // 'huddle' or 'live'
-    autoMode: true, // huddle before schedule.huddleUntil, live after
+    modeSetting: 'auto', // 'auto' (pre-encounter, then live during each Encounter), 'pre' or 'live'
     style: {},
     layouts: {
       live: {
@@ -62,17 +61,17 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
-      huddle: {
+      pre: {
         widgets: [
           w('t', 'title', 0, 0, 12, 2, { kicker: 'BROADCAST CONTROL · HUDDLE', title: '{date} · Full-Day Brief', sub: 'encounters' }),
           w('c', 'clock', 12, 0, 4, 2, { seconds: true }),
-          w('pos', 'countdown', 16, 0, 4, 2, { target: 'positions', label: 'POSITIONS IN' }),
-          w('fs', 'countdown', 20, 0, 4, 2, { target: 'firstStream', label: 'FIRST STREAM IN', accent: true }),
+          w('pos', 'countdown', 16, 0, 4, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
+          w('fs', 'countdown', 20, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN', accent: true }),
           w('st', 'faces', 0, 2, 9, 6, { group: 'stage', label: 'WHO YOU’LL SEE ON STAGE' }),
           w('cm', 'faces', 0, 8, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
           w('wd', 'worshipDirection', 9, 2, 10, 9, {}),
           w('ros', 'runOfShowDay', 19, 2, 5, 9, {}),
-          w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Huddle · switches to Live automatically, or from the admin page' }),
+          w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Pre-encounter · switches to Live automatically before each Encounter' }),
         ],
       },
     },
@@ -80,7 +79,7 @@ const profiles = {
   dock: {
     name: 'The Dock',
     mode: 'live',
-    autoMode: false,
+    modeSetting: 'auto',
     style: { collage: true },
     layouts: {
       live: {
@@ -94,19 +93,41 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, { legend: true }),
         ],
       },
+      pre: {
+        widgets: [
+          w('t', 'title', 0, 0, 5, 1, { kicker: 'THE DOCK', title: 'Who’s Serving Today', compact: true }),
+          w('et', 'encountersToday', 5, 0, 11, 1, { compact: true }),
+          w('c', 'clock', 16, 0, 3, 1, { compact: true }),
+          w('ns', 'countdown', 19, 0, 5, 1, { target: 'nextStart', label: '{next} STARTS IN', accent: true, compact: true }),
+          w('ld', 'faces', 0, 1, 24, 6, { group: 'leadership', collage: true, roleColor: '#FF4FA8', columns: 6 }),
+          w('cr', 'faces', 0, 7, 24, 4, { group: 'stage+communicators', collage: true, columns: 8 }),
+          w('mb', 'messageBar', 0, 11, 24, 1, { legend: true }),
+        ],
+      },
     },
   },
   greenroom: {
     name: 'Greenroom',
-    mode: 'live',
-    autoMode: false,
+    modeSetting: 'auto',
     style: {},
     layouts: {
+      pre: {
+        widgets: [
+          w('t', 'title', 0, 0, 5, 2, { kicker: 'GREENROOM · PRE-ENCOUNTER', title: '{next} Encounter', sub: 'date' }),
+          w('c', 'clock', 5, 0, 5, 2, { seconds: true }),
+          w('bs', 'countdown', 10, 0, 5, 2, { target: 'nextBandToStage', label: 'BAND TO STAGE IN', accent: true }),
+          w('es', 'countdown', 15, 0, 4, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN' }),
+          w('ss', 'countdown', 19, 0, 5, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
+          w('wm', 'worshipMics', 0, 2, 17, 9, {}),
+          w('gt', 'goto', 17, 2, 7, 9, {}),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
       live: {
         widgets: [
           w('t', 'title', 0, 0, 5, 2, { kicker: 'GREENROOM', title: '{encounter} Encounter', sub: 'date' }),
           w('c', 'clock', 5, 0, 5, 2, { seconds: true }),
-          w('bs', 'countdown', 10, 0, 5, 2, { target: 'bandToStage', label: 'BAND TO STAGE IN', accent: true }),
+          w('ir', 'itemRemaining', 10, 0, 5, 2, { accent: true }),
           w('es', 'countdown', 15, 0, 4, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }),
           w('se', 'countdown', 19, 0, 5, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
           w('wm', 'worshipMics', 0, 2, 17, 9, {}),
@@ -119,7 +140,7 @@ const profiles = {
   foh: {
     name: 'FOH',
     mode: 'live',
-    autoMode: false,
+    modeSetting: 'auto',
     style: {},
     layouts: {
       live: {
@@ -137,12 +158,26 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
+      pre: {
+        widgets: [
+          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH · PRE-ENCOUNTER', title: '{next} Encounter' }),
+          w('c', 'clock', 4, 0, 5, 2, { seconds: true }),
+          w('bs', 'countdown', 9, 0, 5, 2, { target: 'nextBandToStage', label: 'BAND TO STAGE IN' }),
+          w('ns', 'countdown', 14, 0, 5, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN', accent: true }),
+          w('ss', 'countdown', 19, 0, 5, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
+          w('ky', 'keys', 6, 2, 11, 2, {}),
+          w('wd', 'worshipDirection', 6, 4, 11, 7, { compact: true }),
+          w('wl', 'wirelessList', 17, 2, 7, 9, {}),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
     },
   },
   stage: {
     name: 'Stage Confidence',
     mode: 'live',
-    autoMode: false,
+    modeSetting: 'auto',
     style: { black: true },
     layouts: {
       live: {
@@ -152,6 +187,15 @@ const profiles = {
           w('c', 'clock', 20, 0, 4, 1, { compact: true }),
           w('sc', 'slide', 0, 1, 24, 7, { which: 'current', source: 'auditorium' }),
           w('sx', 'slide', 0, 8, 24, 2, { which: 'next', source: 'auditorium' }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+        ],
+      },
+      pre: {
+        widgets: [
+          w('et', 'encountersToday', 0, 0, 18, 1, { compact: true }),
+          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
+          w('ns', 'countdown', 0, 1, 24, 6, { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true }),
+          w('fu', 'firstUp', 0, 7, 24, 3, {}),
           w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
         ],
       },
@@ -179,8 +223,12 @@ const dbDefaults = {
       { label: '10:00', start: '10:00', streamStart: '09:55', streamEnd: '11:15' },
       { label: '11:45', start: '11:45', streamStart: '11:40', streamEnd: '13:00' },
     ],
-    positions: '08:15', // "Positions in" countdown on the huddle
-    huddleUntil: '08:25', // profiles with autoMode show huddle before this, live after
+    positions: '08:15', // "Positions in" countdown (optional widget)
+    // Displays set to Automatic switch to their Live layout this many minutes
+    // before each Encounter starts, and back to Pre-Encounter this many minutes
+    // after that Encounter's stream ends.
+    liveLeadMinutes: 5,
+    liveTailMinutes: 5,
     bandToStageMinutes: 4, // greenroom "band to stage" = this many minutes before each Encounter
     overrides: {}, // { 'YYYY-MM-DD': { encounters: [...] } } for special Sundays
   },

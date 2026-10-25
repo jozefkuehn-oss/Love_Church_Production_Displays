@@ -29,6 +29,40 @@ const auth = makeAuth(db);
 const clock = makeClock(config);
 const engine = makeEngine({ config, db, clock, log });
 
+// Bring profiles saved by older versions up to date: every room has a
+// Pre-Encounter and a Live layout, and one mode setting (auto / pre / live).
+(function migrateProfiles() {
+  let changed = false;
+  for (const [id, p] of Object.entries(db.data.profiles)) {
+    if (p.layouts.huddle && !p.layouts.pre) {
+      p.layouts.pre = p.layouts.huddle;
+      changed = true;
+    }
+    if (p.layouts.huddle) {
+      delete p.layouts.huddle;
+      changed = true;
+    }
+    if (!p.layouts.pre) {
+      p.layouts.pre = structuredClone((dbDefaults.profiles[id] && dbDefaults.profiles[id].layouts.pre) || p.layouts.live);
+      changed = true;
+    }
+    if (!p.modeSetting) {
+      p.modeSetting = p.autoMode || !p.mode ? 'auto' : p.mode === 'huddle' ? 'pre' : p.mode;
+      changed = true;
+    }
+    if ('autoMode' in p || 'mode' in p) {
+      delete p.autoMode;
+      delete p.mode;
+      changed = true;
+    }
+  }
+  if (!db.data.devices) {
+    db.data.devices = {};
+    changed = true;
+  }
+  if (changed) db.saveNow();
+})();
+
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '15mb' }));
@@ -49,6 +83,17 @@ const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 // ---------- public ----------
 app.get('/api/displays', (req, res) => {
   ok(res, Object.entries(db.data.profiles).map(([id, p]) => ({ id, name: p.name })));
+});
+
+// A screen picked its room on the picker page.
+app.post('/api/devices/:id/choose', (req, res) => {
+  const id = req.params.id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
+  const profile = (req.body || {}).profile;
+  if (!id || !db.data.profiles[profile]) return bad(res, 'Unknown room.');
+  const cur = db.data.devices[id] || {};
+  db.data.devices[id] = { ...cur, name: cur.name || 'Screen ' + id.slice(0, 4).toUpperCase(), profile, lastSeen: Date.now() };
+  db.save();
+  ok(res);
 });
 
 app.get('/api/setup-needed', (req, res) => ok(res, { needed: db.data.accounts.length === 0 }));
@@ -160,7 +205,31 @@ app.post('/api/messages/clear-all', auth.requireLeader, (req, res) => {
 
 app.get('/api/live', auth.requireLeader, (req, res) => {
   const s = engine.snapshot();
-  ok(res, { encounter: s.encounter, items: s.items, index: s.index, indexSource: s.indexSource, remaining: s.itemRemainingMs, now: s.now, propresenter: { auditorium: s.propresenter.auditorium.connected } });
+  ok(res, {
+    encounter: s.encounter,
+    isLive: s.isLive,
+    items: s.items,
+    index: s.index,
+    indexSource: s.indexSource,
+    remaining: s.itemRemainingMs,
+    now: s.now,
+    propresenter: { auditorium: s.propresenter.auditorium.connected, presentation: s.propresenter.auditorium.presentation || '' },
+    unmatched: s.unmatchedPresentation || '',
+    links: db.data.presentationLinks || {},
+  });
+});
+
+// Link a ProPresenter presentation name to a plan item (remembered for future Sundays).
+app.post('/api/live-link', auth.requireLeader, (req, res) => {
+  const { presentation, item } = req.body || {};
+  if (!presentation) return bad(res, 'No presentation name.');
+  db.data.presentationLinks = db.data.presentationLinks || {};
+  if (item) db.data.presentationLinks[String(presentation)] = String(item);
+  else delete db.data.presentationLinks[String(presentation)];
+  db.save();
+  log(`${req.account.name} linked presentation "${presentation}" → ${item || '(nothing)'}`);
+  pushNow();
+  ok(res);
 });
 
 // Manual "where are we" control for when ProPresenter isn't tracking.
@@ -339,12 +408,11 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   const id = req.params.id;
   if (!/^[a-z0-9-]{1,30}$/.test(id)) return bad(res, 'Profile ids are lowercase letters, numbers and dashes.');
   const b = req.body || {};
-  const cur = db.data.profiles[id] || { name: id, mode: 'live', autoMode: false, style: {}, layouts: { live: { widgets: [] } } };
+  const cur = db.data.profiles[id] || { name: id, modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, live: { widgets: [] } } };
   db.data.profiles[id] = {
     ...cur,
     name: b.name ?? cur.name,
-    mode: b.mode ?? cur.mode,
-    autoMode: b.autoMode ?? cur.autoMode,
+    modeSetting: ['auto', 'pre', 'live'].includes(b.modeSetting) ? b.modeSetting : cur.modeSetting || 'auto',
     style: b.style ?? cur.style,
     layouts: b.layouts ?? cur.layouts,
   };
@@ -352,6 +420,16 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   pushNow();
   ok(res);
 });
+app.post('/api/profiles-mode', auth.requireLeader, (req, res) => {
+  const m = (req.body || {}).modeSetting;
+  if (!['auto', 'pre', 'live'].includes(m)) return bad(res, 'Pick auto, pre or live.');
+  for (const p of Object.values(db.data.profiles)) p.modeSetting = m;
+  db.save();
+  log(`All displays set to ${m} by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
 app.delete('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   delete db.data.profiles[req.params.id];
   db.save();
@@ -397,6 +475,44 @@ app.delete('/api/accounts/:id', auth.requireAdmin, (req, res) => {
   ok(res);
 });
 
+// Screens: every TV or output that has opened /display registers itself here
+// so an admin can see it and move it to a different room.
+app.get('/api/devices', auth.requireAdmin, (req, res) => {
+  const live = new Set([...wss.clients].map((c) => c.device).filter(Boolean));
+  ok(
+    res,
+    Object.entries(db.data.devices)
+      .map(([id, d]) => ({ id, ...d, online: live.has(id) }))
+      .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))
+  );
+});
+app.put('/api/devices/:id', auth.requireAdmin, (req, res) => {
+  const d = db.data.devices[req.params.id];
+  if (!d) return bad(res, 'Screen not found.', 404);
+  const b = req.body || {};
+  if (b.name !== undefined) d.name = String(b.name).slice(0, 40);
+  if (b.profile !== undefined) {
+    if (!db.data.profiles[b.profile]) return bad(res, 'Unknown room.');
+    d.profile = b.profile;
+    let sent = false;
+    for (const ws of wss.clients)
+      if (ws.device === req.params.id && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'assign', profile: b.profile }));
+        sent = true;
+      }
+    // Offline right now: switch it the next time it connects.
+    if (sent) delete d.pendingProfile;
+    else d.pendingProfile = b.profile;
+  }
+  db.save();
+  ok(res);
+});
+app.delete('/api/devices/:id', auth.requireAdmin, (req, res) => {
+  delete db.data.devices[req.params.id];
+  db.save();
+  ok(res);
+});
+
 // ---------- live push ----------
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -404,8 +520,25 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws, req) => {
   const u = new URL(req.url, 'http://x');
   ws.profile = u.searchParams.get('profile') || 'broadcast';
+  const device = (u.searchParams.get('device') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
+  if (device) {
+    ws.device = device;
+    const known = db.data.devices[device] || {};
+    // The room in the screen's own address wins, unless an admin moved this
+    // screen while it was off; then it switches to that room now.
+    if (known.pendingProfile && known.pendingProfile !== ws.profile && db.data.profiles[known.pendingProfile]) {
+      ws.send(JSON.stringify({ type: 'assign', profile: known.pendingProfile }));
+    }
+    db.data.devices[device] = {
+      name: known.name || u.searchParams.get('name') || 'Screen ' + device.slice(0, 4).toUpperCase(),
+      profile: ws.profile,
+      lastSeen: Date.now(),
+      address: (req.socket.remoteAddress || '').replace('::ffff:', ''),
+    };
+    db.save();
+  }
   sendTo(ws, engine.snapshot());
 });
 

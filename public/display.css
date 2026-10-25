@@ -211,3 +211,21 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .mb.info .sample-tag, .mb.urgent .sample-tag { color: #ffe0f0; }
 .mb.heads .sample-tag { color: #3a2a00; }
 .missing { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--dim); font-size: 20px; text-align: center; padding: 12px; }
+
+/* Pre-encounter pieces */
+.stat.huge { align-items: center; text-align: center; gap: 2vh; }
+.stat.huge .k { font-size: 30px; letter-spacing: 0.16em; }
+.stat.huge .v { font-size: 260px; line-height: 0.95; font-weight: 800; letter-spacing: -0.02em; }
+.et { height: 100%; display: flex; align-items: center; gap: 14px; padding: 0 24px; background: var(--panel); border-radius: 14px; overflow: hidden; }
+.et.compact { background: transparent; padding: 0 12px; }
+.et .lab { font-size: 14px; letter-spacing: 0.14em; font-weight: 800; color: var(--muted); margin-right: 6px; }
+.et .enc { display: inline-flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 700; padding: 6px 14px; border-radius: 10px; background: var(--panel-2); color: var(--text-2); white-space: nowrap; }
+.et .enc b { font-size: 12px; letter-spacing: 0.12em; font-weight: 800; padding: 3px 7px; border-radius: 5px; background: var(--tile); color: var(--muted); }
+.et .enc.live { background: var(--pink); color: #fff; }
+.et .enc.live b { background: #fff; color: var(--pink); }
+.et .enc.next { box-shadow: inset 0 0 0 2px var(--pink); color: #fff; }
+.et .enc.next b { background: var(--pink); color: #fff; }
+.et .enc.done { color: var(--done); background: transparent; }
+.firstup { justify-content: center; }
+.firstup .fu-t { font-size: 72px; font-weight: 800; line-height: 1.05; }
+.firstup .fu-s { font-size: 30px; color: var(--muted); font-weight: 600; }

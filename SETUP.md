@@ -68,9 +68,12 @@ Do this on **both** ProPresenter machines (auditorium and broadcast):
 2. Note the **IP address** and **Port** shown there.
 3. Admin page → **Settings → ProPresenter** → tick the machine, enter its IP and port → **Save settings**.
 
+The broadcast machine (192.168.10.237, port 65181) is already filled in. Keep that port fixed in ProPresenter so it doesn't change after a restart.
+
 - The **auditorium** machine tells every screen where we are in the Encounter. When the operator moves to the next song, every display follows.
 - The **broadcast** machine feeds the *Broadcast graphics* box on the Broadcast Control screen.
 - If ProPresenter is closed or unreachable, the screens fall back to planned timing. A leader can also set the position by hand from the **Live** tab.
+- The auditorium playlist is built by hand each week, so presentations are matched to Planning Center items by name. Songs usually match on their own. If the **Live** tab says "Not matched", pick the plan item it belongs to. That link is saved for future Sundays. Keeping presentation names close to the Planning Center item names makes this almost automatic.
 
 ## 7. Send the screens to the hub
 
@@ -90,7 +93,7 @@ dock       3840  0
    ```
 4. Route each output to its TV through the hub like any other source.
 
-Any device on the network can also show a display directly. Open `http://<mac address>:8080/display/greenroom` (or `/display` for the full list) in a browser and make it full screen.
+Any TV, stick or computer on the church network can also run a room directly. Open `http://<mac address>:8080/display` in its browser, full screen. The first time, it asks which room it's in. After that it remembers. To change it later, press **R** on a keyboard or remote, or press and hold the screen for 3 seconds. You can also move it from **Admin → Displays → Screens**.
 
 ## 8. Add your leaders
 

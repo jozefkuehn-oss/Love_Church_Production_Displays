@@ -1,6 +1,6 @@
 # Love Church Production Displays
 
-Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control (huddle and live), the Dock, the Greenroom, FOH, and the stage confidence monitor. Leaders send producer messages to any screen from their phones.
+Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control, the Dock, the Greenroom, FOH, and the stage confidence monitor. Each room has a Pre-Encounter screen and a Live screen. Leaders send producer messages to any screen from their phones.
 
 **Setting up the Mac mini? Start with [SETUP.md](SETUP.md).**
 
@@ -18,17 +18,28 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
 
 ## Displays
 
+One app runs every room. Each room has two screens:
+
+- **Pre-Encounter:** before each Encounter and between Encounters. Countdowns to the next Encounter, who's serving, and the brief. On Broadcast Control this is the huddle.
+- **Live:** during each Encounter. Run of show, timing, songs, wireless and messages.
+
+On **Automatic** (the default), every room goes Live a few minutes before each Encounter starts and back to Pre-Encounter a few minutes after its stream ends. Set the minutes in **Admin → Schedule**. Any room can also be held on Pre-Encounter or Live in **Admin → Displays**.
+
+**Setting up a screen:** point the TV or output at `http://<mac address>:8080/display`. The first time, it asks which room it's in. Pick with the arrow keys and Enter on a remote, or tap. After that it opens straight to that room every time.
+
+**Changing a screen's room:** press **R** (or Escape or Back) on a keyboard or remote, or press and hold anywhere on the screen for 3 seconds. Admins can also move any screen from **Admin → Displays → Screens**, and it switches within a second.
+
 | URL | Screen |
 |---|---|
-| `/display/broadcast` | Broadcast Control: Huddle before the switch time, Live after |
+| `/display` | Room picker (remembers this screen's room) |
+| `/display/broadcast` | Broadcast Control: huddle brief, then live |
 | `/display/dock` | The Dock: edge-to-edge face collage |
-| `/display/greenroom` | Greenroom: timers, worship team mics and IEMs, go-to people |
-| `/display/foh` | FOH: timing, run of show, what's coming up, set keys, wireless |
-| `/display/stage` | Stage confidence: current and next slide, timers, messages |
-| `/display` | List of all displays |
+| `/display/greenroom` | Greenroom: countdowns, worship team mics and IEMs, go-to people |
+| `/display/foh` | FOH: run of show, keys, what's coming up, wireless |
+| `/display/stage` | Stage confidence: countdown and first song, then slides and timers |
 | `/admin` | Messages, Live position, and (admins) everything else |
 
-Every display is a 24×12 grid of widgets that you edit in **Admin → Displays**. You can add new displays, such as a lobby screen or LCNO versions, from the same page.
+Every screen is a 24×12 grid of widgets that you edit in **Admin → Displays**. You can add new rooms, such as a lobby screen or LCNO versions, from the same page.
 
 ## Running it
 

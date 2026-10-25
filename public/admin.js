@@ -287,7 +287,8 @@
     app.innerHTML = `<div class="card"><div class="row sp"><div><h2 style="margin:0" id="lh">Live</h2><div class="dim" id="ls"></div></div>
       <div class="row"><button id="lp">◀ Back</button><button class="primary" id="ln">Next ▶</button></div></div>
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
-      <p class="dim">Tap an item if the screens are on the wrong part of the plan. Use this when ProPresenter isn’t tracking.</p></div>
+      <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
+      <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
     $('#lp').onclick = () => act('prev');
@@ -303,6 +304,23 @@
         .map((it, i) => `<button class="item ${it.status === 'now' ? 'now' : it.status === 'done' ? 'done' : ''}" data-i="${i}"><span class="grow">${esc(it.title)}</span>${it.key ? `<span class="dim">${esc(it.key)}</span>` : ''}</button>`)
         .join('');
       $$('#li .item').forEach((b) => (b.onclick = () => act('set', { index: Number(b.dataset.i) })));
+      // ProPresenter presentation -> plan item link (the playlist is built by hand).
+      const pl = $('#pl');
+      const pres = d.propresenter.presentation;
+      if (d.propresenter.auditorium && pres) {
+        const linked = d.links[pres] || '';
+        const sig = pres + '|' + linked + '|' + d.unmatched + '|' + d.items.length;
+        if (pl.dataset.sig !== sig) {
+          pl.dataset.sig = sig;
+          pl.hidden = false;
+          pl.innerHTML = `<div class="row sp"><strong>ProPresenter is on “${esc(pres)}”</strong>${d.unmatched ? '<span class="status"><span class="dot warn"></span>Not matched</span>' : '<span class="status"><span class="dot ok"></span>Matched</span>'}</div>
+            <label>This presentation is…<select id="plsel"><option value="">${d.unmatched ? 'Pick the plan item' : 'Match by name (automatic)'}</option>${d.items
+              .map((it) => `<option value="${esc(it.title)}" ${it.title === linked ? 'selected' : ''}>${esc(it.title)}</option>`)
+              .join('')}</select></label>
+            <div class="dim">Saved for future Sundays, so you only link a presentation once.</div>`;
+          $('#plsel').onchange = (e) => api('/api/live-link', { body: { presentation: pres, item: e.target.value } }).then(() => { toast('Linked'); pl.dataset.sig = ''; load(); }).catch(fail);
+        }
+      } else pl.hidden = true;
     }
     load();
     S.timers.push(setInterval(load, 2500));
@@ -312,7 +330,9 @@
   const WIDGETS = {
     title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'live', 'date', 'encounters']], ['compact', 'bool']] },
     clock: { name: 'Time of day', opts: [['label', 'text'], ['seconds', 'bool'], ['compact', 'bool']] },
-    countdown: { name: 'Countdown', opts: [['target', ['streamEnd', 'encounterStart', 'bandToStage', 'positions', 'firstStream', 'streamStart', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool']] },
+    countdown: { name: 'Countdown', opts: [['target', ['nextStart', 'nextStreamStart', 'nextBandToStage', 'streamEnd', 'encounterStart', 'bandToStage', 'streamStart', 'positions', 'firstStream', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool'], ['huge', 'bool']] },
+    encountersToday: { name: 'Today’s Encounters strip', opts: [['compact', 'bool']] },
+    firstUp: { name: 'First up (next Encounter)', opts: [] },
     itemRemaining: { name: 'Item remaining', opts: [['label', 'text'], ['accent', 'bool'], ['compact', 'bool']] },
     projected: { name: 'Projected finish / running', opts: [['label', 'text']] },
     runOfShow: { name: 'Run of show (live)', opts: [] },
@@ -335,41 +355,87 @@
   };
 
   async function viewDisplays() {
-    const profiles = await api('/api/profiles');
-    app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New display</button></div>
-      <p class="muted">Open a display’s link on the computer or TV that shows it. Changes here reach every screen within a second.</p>
+    const [profiles, devices] = await Promise.all([api('/api/profiles'), api('/api/devices').catch(() => [])]);
+    const modeSel = (id, p) => `<label>Shows<select data-mode="${id}">
+        <option value="auto" ${p.modeSetting === 'auto' ? 'selected' : ''}>Automatic (Pre → Live)</option>
+        <option value="pre" ${p.modeSetting === 'pre' ? 'selected' : ''}>Pre-Encounter only</option>
+        <option value="live" ${p.modeSetting === 'live' ? 'selected' : ''}>Live only</option></select></label>`;
+    const ago = (t) => {
+      const m = Math.round((Date.now() - t) / 60000);
+      return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
+    };
+    app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New room</button></div>
+      <p class="muted">Every room has a <b>Pre-Encounter</b> screen and a <b>Live</b> screen. On Automatic, a room goes Live a few minutes before each Encounter and back to Pre-Encounter after its stream ends (timing is on the Schedule tab).</p>
+      <div class="card"><div class="row sp"><strong>All rooms at once</strong></div>
+        <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="live">All Live</button></div></div>
+      <h2>Screens</h2>
+      <p class="muted">Every TV or output that opens <b>${location.origin}/display</b> asks which room it’s in and shows up here. Move a screen to a different room from here and it switches within a second.</p>
+      <div class="list">${
+        devices.length
+          ? devices
+              .map(
+                (d) => `<div class="card"><div class="row sp"><input class="dn" data-dn="${esc(d.id)}" value="${esc(d.name)}" aria-label="Screen name" style="max-width:240px">
+              <span class="status"><span class="dot ${d.online ? 'ok' : ''}"></span>${d.online ? 'Online' : 'Offline · seen ' + ago(d.lastSeen)}</span></div>
+              <div class="grid2"><label>Room<select data-dev="${esc(d.id)}">${Object.entries(profiles)
+                .map(([id, p]) => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${esc(p.name)}</option>`)
+                .join('')}</select></label><div class="dim" style="align-self:end">${esc(d.address || '')}</div></div>
+              <div class="row"><button class="small ghost" data-forget="${esc(d.id)}">Forget this screen</button></div></div>`
+              )
+              .join('')
+          : '<div class="card dim">No screens have connected yet.</div>'
+      }</div>
+      <h2>Rooms</h2>
       <div class="cards">${Object.entries(profiles)
         .map(
           ([id, p]) => `<div class="card"><div class="row sp"><strong style="font-size:18px">${esc(p.name)}</strong><a href="/display/${id}" target="_blank">Open ↗</a></div>
-        <div class="dim">${location.origin}/display/${id}</div>
-        ${p.layouts.huddle ? `<label>Mode<select data-mode="${id}"><option value="auto" ${p.autoMode ? 'selected' : ''}>Automatic (huddle, then live)</option><option value="huddle" ${!p.autoMode && p.mode === 'huddle' ? 'selected' : ''}>Huddle</option><option value="live" ${!p.autoMode && p.mode === 'live' ? 'selected' : ''}>Live</option></select></label>` : ''}
-        <div class="row"><button class="small" data-edit="${id}" data-l="live">Edit layout</button>${p.layouts.huddle ? `<button class="small" data-edit="${id}" data-l="huddle">Edit huddle layout</button>` : `<button class="small ghost" data-addh="${id}">Add huddle layout</button>`}</div></div>`
+        ${modeSel(id, p)}
+        <div class="row"><button class="small" data-edit="${id}" data-l="pre">Edit Pre-Encounter</button><button class="small" data-edit="${id}" data-l="live">Edit Live</button></div></div>`
         )
         .join('')}</div>`;
     $$('[data-mode]').forEach(
       (s) =>
         (s.onchange = async () => {
-          const v = s.value;
-          await api('/api/profiles/' + s.dataset.mode, { method: 'PUT', body: v === 'auto' ? { autoMode: true } : { autoMode: false, mode: v } }).catch(fail);
-          toast('Mode changed');
+          await api('/api/profiles/' + s.dataset.mode, { method: 'PUT', body: { modeSetting: s.value } }).catch(fail);
+          toast('Saved');
         })
     );
-    $$('[data-edit]').forEach((b) => (b.onclick = () => editLayout(b.dataset.edit, b.dataset.l, profiles)));
-    $$('[data-addh]').forEach(
+    $$('[data-all]').forEach(
       (b) =>
         (b.onclick = async () => {
-          const p = profiles[b.dataset.addh];
-          p.layouts.huddle = structuredClone(p.layouts.live);
-          await api('/api/profiles/' + b.dataset.addh, { method: 'PUT', body: { layouts: p.layouts } }).catch(fail);
+          await api('/api/profiles-mode', { body: { modeSetting: b.dataset.all } }).catch(fail);
+          toast('All rooms updated');
           viewDisplays();
         })
     );
+    $$('[data-dev]').forEach(
+      (s) =>
+        (s.onchange = async () => {
+          await api('/api/devices/' + s.dataset.dev, { method: 'PUT', body: { profile: s.value } }).catch(fail);
+          toast('Screen moved');
+        })
+    );
+    $$('[data-dn]').forEach(
+      (i) =>
+        (i.onchange = async () => {
+          await api('/api/devices/' + i.dataset.dn, { method: 'PUT', body: { name: i.value } }).catch(fail);
+          toast('Renamed');
+        })
+    );
+    $$('[data-forget]').forEach(
+      (b) =>
+        (b.onclick = async () => {
+          if (!confirm('Forget this screen? If it is still on, it will ask for its room again next time it starts.')) return;
+          await api('/api/devices/' + b.dataset.forget, { method: 'DELETE' }).catch(fail);
+          viewDisplays();
+        })
+    );
+    $$('[data-edit]').forEach((b) => (b.onclick = () => editLayout(b.dataset.edit, b.dataset.l, profiles)));
     $('#np').onclick = async () => {
-      const name = prompt('Name for the new display (for example “Lobby”)');
+      const name = prompt('Name for the new room (for example “Lobby”)');
       if (!name) return;
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'display';
-      const copy = prompt('Start from which display? (' + Object.keys(profiles).join(', ') + ') — leave empty for blank', 'greenroom');
-      const base = profiles[copy] ? structuredClone(profiles[copy]) : { mode: 'live', autoMode: false, style: {}, layouts: { live: { widgets: [] } } };
+      const copy = prompt('Start from which room? (' + Object.keys(profiles).join(', ') + ') — leave empty for blank', 'greenroom');
+      const base = profiles[copy] ? structuredClone(profiles[copy]) : { modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, live: { widgets: [] } } };
       await api('/api/profiles/' + id, { method: 'PUT', body: { ...base, name } }).catch(fail);
       viewDisplays();
     };
@@ -379,7 +445,7 @@
     const prof = structuredClone(profiles[id]);
     const layout = prof.layouts[which];
     let sel = null;
-    app.innerHTML = `<div class="row sp"><div><h1 style="margin-bottom:0">${esc(prof.name)}</h1><div class="dim">${which === 'huddle' ? 'Huddle layout' : 'Layout'} · drag to move, drag the corner to resize</div></div>
+    app.innerHTML = `<div class="row sp"><div><h1 style="margin-bottom:0">${esc(prof.name)}</h1><div class="dim">${which === 'pre' ? 'Pre-Encounter screen' : 'Live screen'} · drag to move, drag the corner to resize</div></div>
       <div class="row"><button class="ghost" id="eb">Back</button><button class="primary" id="es">Save</button></div></div>
       <div class="row" style="margin:12px 0">
         <label class="grow">Display name<input id="en" value="${esc(prof.name)}"></label>
@@ -658,7 +724,7 @@
         <label>Feel (start with tempo)<textarea id="e_feel">${esc(v.feel)}</textarea></label>
         <label>Progression (sections separated by →)<textarea id="e_progression">${esc(v.progression)}</textarea></label>
         <label>Notes<textarea id="e_notes" style="min-height:60px">${esc(v.notes)}</textarea></label>
-        <label>Camera cue (shows on the huddle)<input id="e_cue" value="${esc(v.cue)}"></label>
+        <label>Camera cue (shows on the Broadcast huddle)<input id="e_cue" value="${esc(v.cue)}"></label>
         <div class="row"><button class="primary" id="e_s">Save</button>${k ? '<button class="danger" id="e_d">Delete</button>' : ''}<button class="ghost" id="e_c">Close</button></div></div>`;
       $('#se').scrollIntoView({ behavior: 'smooth' });
       $('#e_c').onclick = () => ($('#se').innerHTML = '');
@@ -708,7 +774,8 @@
         <p class="muted">The normal Sunday. When the Planning Center plan has service times, those start times are used and the stream windows here are matched to them. The stream-end countdowns use these times until Resi sync exists.</p>
         <div class="card"><h2 style="margin:0">Every Sunday</h2>${table(s.encounters, 'default')}
           <div class="grid2"><label>Positions (huddle countdown)<input type="time" id="s_pos" value="${esc(s.positions || '')}"></label>
-          <label>Huddle switches to live at<input type="time" id="s_hu" value="${esc(s.huddleUntil || '')}"></label>
+          <label>Rooms go Live (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.liveLeadMinutes ?? 5)}"></label>
+          <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label></div></div>
         <h2>Special Sundays</h2><p class="dim">Different times for one date (holidays, baptism Sunday). Replaces the normal schedule that day.</p>
         ${Object.entries(s.overrides || {})
@@ -730,7 +797,8 @@
       };
       $('#s_save').onclick = async () => {
         s.positions = $('#s_pos').value;
-        s.huddleUntil = $('#s_hu').value;
+        s.liveLeadMinutes = Math.max(0, Math.min(60, Number($('#s_lead').value) || 0));
+        s.liveTailMinutes = Math.max(0, Math.min(60, Number($('#s_tail').value) || 0));
         s.bandToStageMinutes = Number($('#s_bs').value) || 4;
         await api('/api/schedule', { method: 'PUT', body: s }).then(() => toast('Schedule saved')).catch(fail);
       };

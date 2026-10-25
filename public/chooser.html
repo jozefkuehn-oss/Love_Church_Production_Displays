@@ -3,20 +3,106 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Choose a display</title>
-<link rel="stylesheet" href="/static/admin.css">
+<title>Choose this screen’s room · Love Church</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap">
+<style>
+  :root { --bg:#0E0E0F; --panel:#1A1A1C; --panel2:#232326; --pink:#E6007E; --pink-text:#FF4FA8; --dim:#B4B4BA; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: #fff; font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; }
+  main { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4vh; padding: 6vh 6vw; }
+  .kicker { font-size: clamp(14px, 1.4vw, 22px); letter-spacing: .18em; font-weight: 800; color: var(--pink); }
+  h1 { margin: .3em 0 0; font-size: clamp(32px, 4.2vw, 72px); font-weight: 800; line-height: 1.05; }
+  .sub { margin-top: 1vh; font-size: clamp(16px, 1.5vw, 26px); color: var(--dim); }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22vw), 1fr)); gap: 2vw; }
+  button.room { all: unset; cursor: pointer; background: var(--panel); border-radius: 1.4vw; padding: 3vh 2vw; min-height: 18vh; display: flex; flex-direction: column; justify-content: space-between; gap: 2vh; outline: 0.35vw solid transparent; outline-offset: -0.35vw; transition: outline-color .12s, background .12s; }
+  button.room:hover, button.room:focus-visible, button.room:focus { background: var(--panel2); outline-color: var(--pink); }
+  button.room.current { outline-color: var(--pink-text); }
+  .rn { font-size: clamp(24px, 2.6vw, 46px); font-weight: 800; line-height: 1.05; }
+  .rd { font-size: clamp(14px, 1.2vw, 20px); color: var(--dim); line-height: 1.35; }
+  .tag { align-self: flex-start; font-size: clamp(11px, .9vw, 15px); font-weight: 800; letter-spacing: .12em; padding: .35em .7em; border-radius: .4em; background: var(--pink); }
+  .foot { display: flex; flex-wrap: wrap; gap: 1vh 3vw; font-size: clamp(13px, 1.1vw, 18px); color: var(--dim); }
+  .foot b { color: #fff; }
+  .err { color: #FF6B60; font-size: 20px; }
+</style>
 </head>
 <body>
-<main class="wrap">
-  <h1>Choose a display</h1>
-  <p class="muted">Open one of these on the screen or output it should run on. It stays live on its own.</p>
-  <div id="list" class="cards"></div>
+<main>
+  <div>
+    <div class="kicker">LOVE CHURCH · PRODUCTION DISPLAYS</div>
+    <h1>Which room is this screen in?</h1>
+    <div class="sub">Pick once. This screen remembers it and opens straight to that room from now on. Use the arrow keys and Enter on a remote, or tap.</div>
+  </div>
+  <div id="rooms" class="rooms" role="list"></div>
+  <div class="foot">
+    <span>This screen: <b id="devname">—</b></span>
+    <span>To change rooms later, press <b>R</b> on a keyboard or remote, or press and hold anywhere on the screen for 3 seconds.</span>
+  </div>
 </main>
 <script>
-fetch('/api/displays').then(r => r.json()).then(list => {
-  document.getElementById('list').innerHTML = list.map(d =>
-    `<a class="card link" href="/display/${encodeURIComponent(d.id)}"><strong>${d.name}</strong><span class="muted">/display/${d.id}</span></a>`).join('');
-});
+(function () {
+  const DESC = {
+    broadcast: 'Huddle brief before each Encounter, then run of show, timing and faces live.',
+    dock: 'Who’s serving today, as a big photo wall, with where the Encounter is.',
+    greenroom: 'Countdowns, worship team mics and IEMs, and your go-to people.',
+    foh: 'Run of show, keys, what’s coming up and wireless status.',
+    stage: 'Confidence monitor: slides, song timer and messages.',
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  let device = store.get('lcd_device');
+  if (!device) {
+    device = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
+    store.set('lcd_device', device);
+  }
+  document.getElementById('devname').textContent = 'Screen ' + device.slice(0, 4).toUpperCase();
+
+  const params = new URLSearchParams(location.search);
+  const saved = store.get('lcd_room');
+  if (saved && !params.has('choose')) {
+    location.replace('/display/' + encodeURIComponent(saved));
+    return;
+  }
+
+  const wrap = document.getElementById('rooms');
+  fetch('/api/displays')
+    .then((r) => r.json())
+    .then((list) => {
+      wrap.innerHTML = list
+        .map(
+          (d) => `<button class="room ${d.id === saved ? 'current' : ''}" data-id="${d.id}" role="listitem">
+            ${d.id === saved ? '<span class="tag">CURRENT</span>' : ''}
+            <span class="rn">${d.name.replace(/[<>&]/g, '')}</span>
+            <span class="rd">${DESC[d.id] || 'Custom display'}</span>
+          </button>`
+        )
+        .join('');
+      const btns = [...wrap.querySelectorAll('button.room')];
+      (btns.find((b) => b.dataset.id === saved) || btns[0]).focus();
+      btns.forEach((b) => (b.onclick = () => choose(b.dataset.id)));
+      // Arrow-key navigation for TV remotes.
+      document.addEventListener('keydown', (e) => {
+        const i = btns.indexOf(document.activeElement);
+        const cols = Math.max(1, Math.round(wrap.clientWidth / (btns[0].offsetWidth || 1)));
+        const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+        if (move) {
+          e.preventDefault();
+          btns[Math.max(0, Math.min(btns.length - 1, (i < 0 ? 0 : i) + move))].focus();
+        }
+      });
+    })
+    .catch(() => (wrap.innerHTML = '<div class="err">Can’t reach the display server. Check this screen is on the church network.</div>'));
+
+  function choose(id) {
+    store.set('lcd_room', id);
+    fetch('/api/devices/' + encodeURIComponent(device) + '/choose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile: id }),
+    }).finally(() => location.replace('/display/' + encodeURIComponent(id)));
+  }
+})();
 </script>
 </body>
 </html>

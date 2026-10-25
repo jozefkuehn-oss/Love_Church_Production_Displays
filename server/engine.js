@@ -91,6 +91,8 @@ function makeEngine({ config, db, clock, log }) {
   const bc = makeProPresenter('broadcast');
   const wireless = makeWireless();
   const tracking = { encLabel: null, index: null, startedAt: null };
+  let anchor = null; // last ProPresenter match { enc, index, at }
+  const propChange = { name: '', at: 0 }; // when the auditorium presentation last changed
 
   const cfg = () => config.data;
   const d = () => db.data;
@@ -308,13 +310,21 @@ function makeEngine({ config, db, clock, log }) {
       streamEndMs: zoned(dateKey, e.streamEnd || plus(e.start, 75), tz),
     }));
 
-    // Current Encounter: the one in progress (from 30 min before start to 10
-    // min after stream end), otherwise the next one, otherwise the last.
-    let enc =
-      encs.find((e) => now >= e.startMs - 30 * 60e3 && now <= e.streamEndMs + 10 * 60e3) ||
-      encs.find((e) => e.startMs > now) ||
-      encs[encs.length - 1] ||
-      null;
+    // Each Encounter's live window runs from a few minutes before it starts
+    // until a few minutes after its stream ends. Inside a window the
+    // Encounter is "live"; outside, displays on Automatic show Pre-Encounter
+    // for the next one.
+    const sched0 = d().schedule;
+    const lead = (sched0.liveLeadMinutes ?? 5) * 60e3;
+    const tail = (sched0.liveTailMinutes ?? 5) * 60e3;
+    encs.forEach((e) => {
+      e.liveFrom = e.startMs - lead;
+      e.liveUntil = e.streamEndMs + tail;
+    });
+    const liveEnc = encs.find((e) => now >= e.liveFrom && now <= e.liveUntil) || null;
+    const upcoming = encs.find((e) => e.liveFrom > now) || null;
+    let enc = liveEnc || upcoming || encs[encs.length - 1] || null;
+    const nextEnc = liveEnc ? upcoming : enc && enc.liveFrom > now ? enc : null;
 
     // Items for this Encounter.
     const hide = (cfg().hideItems || ['Washed (Remix)', 'T.I.P. Time [PA]', 'Team Huddles']).map((s) => s.toLowerCase());
@@ -347,17 +357,51 @@ function makeEngine({ config, db, clock, log }) {
     const songs = d().songs || {};
     let index = null;
     let indexSource = 'planned';
+    // The auditorium playlist is built by hand each week, so presentations are
+    // matched to plan items by name: first through any links set on the Live
+    // page (presentation name -> plan item), then by comparing titles. When the
+    // operator is on something that matches nothing (walk-in loop, a blank
+    // look), the last match is carried forward on planned timing.
     const ap = aud.status;
+    let unmatched = '';
+    if (ap.connected && ap.presentation !== propChange.name) {
+      propChange.name = ap.presentation;
+      propChange.at = now;
+    }
     if (ap.connected && ap.presentation) {
+      const links = d().presentationLinks || {};
+      const linked = links[ap.presentation];
       const k = songKey(ap.presentation);
-      const hit = items.findIndex((i) => songKey(i.title) === k || (k && songKey(i.title).includes(k)) || (k && k.includes(songKey(i.title)) && songKey(i.title).length > 3));
+      let hit = linked ? items.findIndex((i) => songKey(i.title) === songKey(linked)) : -1;
+      if (hit < 0 && k) {
+        hit = items.findIndex((i) => {
+          const ik = songKey(i.title);
+          return ik && (ik === k || (ik.length > 3 && (ik.includes(k) || k.includes(ik))));
+        });
+      }
       if (hit >= 0) {
         index = hit;
         indexSource = 'propresenter';
+        if (!anchor || anchor.enc !== (enc && enc.label) || anchor.index !== hit) anchor = { enc: enc && enc.label, index: hit, at: now };
+      } else {
+        unmatched = ap.presentation;
+        if (anchor && anchor.enc === (enc && enc.label) && anchor.index < items.length) {
+          let k2 = anchor.index;
+          let t = anchor.at + (items[k2].length || 0) * 1000;
+          while (k2 < items.length - 1 && items[k2].length && now >= t) {
+            k2++;
+            t += (items[k2].length || 0) * 1000;
+          }
+          index = k2;
+          indexSource = 'propresenter';
+        }
       }
     }
+    // A position set by hand on the Live page wins until ProPresenter moves to
+    // a different presentation (or someone taps "Follow ProPresenter again").
     const live = d().live || {};
-    if (index === null && live.manualIndex !== null && live.manualEnc === (enc && enc.label) && live.manualIndex < items.length) {
+    const manualValid = live.manualIndex !== null && live.manualEnc === (enc && enc.label) && live.manualIndex < items.length;
+    if (manualValid && (index === null || (live.manualSetAt || 0) >= propChange.at)) {
       index = live.manualIndex;
       indexSource = 'manual';
     }
@@ -472,15 +516,17 @@ function makeEngine({ config, db, clock, log }) {
       positions: sched.positions ? zoned(dateKey, sched.positions, tz) : null,
       firstStream: first ? first.streamStartMs : null,
       nextEncounter: (encs.find((e) => e.startMs > now) || {}).startMs || null,
+      nextStart: nextEnc ? nextEnc.startMs : null,
+      nextStreamStart: nextEnc ? nextEnc.streamStartMs : null,
+      nextBandToStage: nextEnc ? nextEnc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
     };
 
-    // Display modes (huddle before huddleUntil for profiles that switch automatically).
-    const huddleUntilMs = sched.huddleUntil ? zoned(dateKey, sched.huddleUntil, tz) : null;
+    // Display modes: Automatic follows the live windows; Pre / Live are fixed.
     const modes = {};
     for (const [id, pr] of Object.entries(d().profiles)) {
-      let mode = pr.mode || 'live';
-      if (pr.autoMode && pr.layouts.huddle && huddleUntilMs) mode = now < huddleUntilMs ? 'huddle' : 'live';
-      if (!pr.layouts[mode]) mode = 'live';
+      const setting = pr.modeSetting || 'auto';
+      let mode = setting === 'auto' ? (liveEnc ? 'live' : 'pre') : setting;
+      if (!pr.layouts[mode]) mode = pr.layouts.live ? 'live' : Object.keys(pr.layouts)[0];
       modes[id] = mode;
     }
 
@@ -493,9 +539,13 @@ function makeEngine({ config, db, clock, log }) {
       plan: plan ? { title: plan.title, date: plan.date, source: planSource } : null,
       encounters: encs.map((e) => ({ label: e.label, start: e.start, streamEnd: e.streamEnd, startMs: e.startMs, streamEndMs: e.streamEndMs })),
       encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs } : null,
+      isLive: !!liveEnc,
+      nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs } : null,
+      encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
       items: items.map(({ id, title, key, length, isSong, status, position }) => ({ id, title, key, length, isSong, status, position })),
       index,
       indexSource,
+      unmatchedPresentation: unmatched,
       current: current ? { title: current.title, key: current.key, length: current.length, isSong: current.isSong } : null,
       next: nextItem ? { title: nextItem.title, key: nextItem.key, length: nextItem.length, isSong: nextItem.isSong } : null,
       itemRemainingMs: remainingMs,
@@ -512,9 +562,15 @@ function makeEngine({ config, db, clock, log }) {
       targets,
       modes,
       section: sampleSection,
-      propresenter: sampleProP || {
-        auditorium: { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers },
-        broadcast: { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next },
+      // A real, connected machine always wins; in sample mode a machine that
+      // isn't connected is simulated.
+      propresenter: {
+        auditorium: aud.status.connected || !sampleProP
+          ? { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers }
+          : sampleProP.auditorium,
+        broadcast: bc.status.connected || !sampleProP
+          ? { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next }
+          : sampleProP.broadcast,
       },
     };
   }

@@ -24,6 +24,7 @@
   const fill = (tpl, s) =>
     String(tpl || '')
       .replace('{encounter}', s.encounter ? s.encounter.label : '')
+      .replace('{next}', s.nextEncounter ? s.nextEncounter.label : s.encounter ? s.encounter.label : '')
       .replace('{date}', s.date ? s.date.label : '')
       .replace('{campus}', s.campus || '');
 
@@ -112,13 +113,37 @@
     const left = target ? target - s.now : null;
     let cls = o.accent ? 'accent' : '';
     let text = dur(left);
-    if (left != null && left <= 0) text = { streamEnd: 'Ended', encounterStart: 'Started', bandToStage: 'On stage', streamStart: 'Live', firstStream: 'Live' }[o.target] || 'Now';
+    if (left != null && left <= 0) text = { streamEnd: 'Ended', encounterStart: 'Started', nextStart: 'Starting', bandToStage: 'On stage', nextBandToStage: 'On stage', streamStart: 'Live', nextStreamStart: 'Live', firstStream: 'Live' }[o.target] || 'Now';
+    if (left == null && /^next/.test(o.target)) text = 'Done for today';
+    if (o.huge) {
+      return `<div class="stat huge ${cls}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v">${text}</div></div>`;
+    }
     if (o.target === 'streamEnd' && left != null && left > 0) {
       if (left <= 2 * 60e3) cls += ' alert flash';
       else if (left <= 5 * 60e3) cls += ' alert';
       else if (left <= 10 * 60e3 && !o.accent) cls += ' warn';
     }
-    return `<div class="stat ${cls} ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || COUNT_LABELS[o.target] || '')}</div><div class="v">${text}</div></div>`;
+    return `<div class="stat ${cls} ${o.compact ? 'compact' : ''}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v">${text}</div></div>`;
+  };
+
+  // Today's Encounters as a strip: done, live now, next, later.
+  W.encountersToday = (o, s) => {
+    const st = s.encounterStates || [];
+    if (!st.length) return `<div class="et"><span class="n2">No Encounters scheduled today</span></div>`;
+    const tag = { live: 'LIVE', next: 'NEXT', done: 'DONE', later: '' };
+    return `<div class="et ${o.compact ? 'compact' : ''}"><span class="lab">TODAY</span>${st
+      .map((e) => `<span class="enc ${e.state}">${tag[e.state] ? `<b>${tag[e.state]}</b>` : ''}${esc(e.label)}</span>`)
+      .join('')}</div>`;
+  };
+
+  // First song (or first item) of the upcoming Encounter, for the stage and greenroom.
+  W.firstUp = (o, s) => {
+    const items = (s.items || []).filter((i) => i.position !== 'pre');
+    const first = items.find((i) => i.isSong) || items[0];
+    if (!first) return `<div class="panel" style="height:100%"><div class="label">FIRST UP</div><div class="dim">Waiting for the plan…</div></div>`;
+    const song = (s.daySongs || []).find((d) => d.title.toLowerCase().includes(first.title.replace(/\[[^\]]*\]/g, '').trim().toLowerCase()));
+    const lead = song && song.lead && song.lead !== '—' ? ` · Lead ${esc(song.lead)}` : '';
+    return `<div class="panel firstup" style="height:100%"><div class="label pink">FIRST UP</div><div class="fu-t">${esc(first.title)}</div><div class="fu-s">${first.key ? 'Key ' + esc(first.key) : ''}${lead}</div></div>`;
   };
 
   W.itemRemaining = (o, s) => {
