@@ -32,6 +32,7 @@ const configDefaults = {
     receivers: [
       { label: 'AD4D · Belt packs', host: '192.168.10.202', enabled: true },
       { label: 'AD4Q · Handhelds', host: '192.168.10.243', enabled: true },
+      { label: 'AD4Q · Teaching', host: '192.168.10.244', enabled: true },
     ],
   },
   leaderRoles: LEADER_ROLES,
