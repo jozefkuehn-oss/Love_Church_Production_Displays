@@ -60,6 +60,15 @@ const auth = makeAuth(db, {
   db.data.rolesVersion = 2;
   db.save();
 })();
+(function migrateRoles3() {
+  if ((db.data.rolesVersion || 1) >= 3) return;
+  const td = (db.data.roles || []).find((r) => r.id === 'technical-director');
+  if (td) td.perms = [...new Set([...(td.perms || []), 'admin', 'roles'])];
+  // Technical Director first in the list.
+  db.data.roles.sort((a, b) => (b.id === 'technical-director') - (a.id === 'technical-director'));
+  db.data.rolesVersion = 3;
+  db.save();
+})();
 
 // Displays saved by an earlier build: give every dashboard a location and
 // add the second Greenroom TV and the extra FOH monitors.
@@ -629,10 +638,10 @@ app.delete('/api/profiles/:id', auth.requireAdmin, (req, res) => {
 // Accounts
 // Sign-in roles: names, which Planning Center positions count, what each can
 // do, and its shared PIN (write-only).
-app.get('/api/roles', auth.requireAdmin, (req, res) => {
+app.get('/api/roles', auth.requirePerm('roles'), (req, res) => {
   ok(res, { perms: auth.PERMS, roles: (db.data.roles || []).map((r) => ({ id: r.id, name: r.name, positions: r.positions || [], perms: r.perms || [], hasPin: !!r.pinHash, person: auth.scheduledFor(r.name) })) });
 });
-app.put('/api/roles', auth.requireAdmin, (req, res) => {
+app.put('/api/roles', auth.requirePerm('roles'), (req, res) => {
   const incoming = (req.body || {}).roles || [];
   const old = Object.fromEntries((db.data.roles || []).map((r) => [r.id, r]));
   const next = [];
@@ -647,6 +656,7 @@ app.put('/api/roles', auth.requireAdmin, (req, res) => {
     }
     next.push(role);
   }
+  if (req.account.isRole && !next.some((r) => r.id === req.account.id.slice(5) && r.perms.includes('roles'))) return bad(res, 'You can’t remove your own access to Roles & PINs.');
   db.data.roles = next;
   // Signing out anyone in a role that was removed.
   for (const [t, sess] of Object.entries(db.data.sessions)) if (sess.roleId && !next.some((r) => r.id === sess.roleId)) delete db.data.sessions[t];
@@ -655,8 +665,8 @@ app.put('/api/roles', auth.requireAdmin, (req, res) => {
   ok(res);
 });
 
-app.get('/api/accounts', auth.requireAdmin, (req, res) => ok(res, db.data.accounts.map(auth.publicAccount)));
-app.post('/api/accounts', auth.requireAdmin, (req, res) => {
+app.get('/api/accounts', auth.requirePerm('roles'), (req, res) => ok(res, db.data.accounts.map(auth.publicAccount)));
+app.post('/api/accounts', auth.requirePerm('roles'), (req, res) => {
   const { name, pcoName, role, pin } = req.body || {};
   if (!name || !/^\d{4,8}$/.test(String(pin || ''))) return bad(res, 'Enter a name and a 4–8 digit PIN.');
   if (db.data.accounts.some((a) => a.name.toLowerCase() === String(name).toLowerCase())) return bad(res, 'There’s already an account with that name.');
@@ -664,7 +674,7 @@ app.post('/api/accounts', auth.requireAdmin, (req, res) => {
   log(`Account created by ${req.account.name}: ${a.name} (${a.role})`);
   ok(res, { account: auth.publicAccount(a) });
 });
-app.put('/api/accounts/:id', auth.requireAdmin, (req, res) => {
+app.put('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
   const a = db.data.accounts.find((x) => x.id === req.params.id);
   if (!a) return bad(res, 'Account not found.', 404);
   const b = req.body || {};
@@ -683,7 +693,7 @@ app.put('/api/accounts/:id', auth.requireAdmin, (req, res) => {
   db.save();
   ok(res);
 });
-app.delete('/api/accounts/:id', auth.requireAdmin, (req, res) => {
+app.delete('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
   const a = db.data.accounts.find((x) => x.id === req.params.id);
   if (!a) return bad(res, 'Account not found.', 404);
   if (a.role === 'admin' && db.data.accounts.filter((x) => x.role === 'admin').length === 1) return bad(res, 'Keep at least one admin.');

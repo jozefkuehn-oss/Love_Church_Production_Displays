@@ -327,9 +327,10 @@ const dbDefaults = {
     { id: 'broadcast-producer', name: 'Broadcast Producer', positions: ['Broadcast Producer', 'Producer'], perms: ['messages', 'live'] },
     { id: 'stage-manager', name: 'Stage Manager', positions: ['Stage Manager'], perms: ['messages'] },
     { id: 'floor-manager', name: 'Floor Manager', positions: ['Floor Manager'], perms: ['messages', 'handhelds'] },
-    // Directors: full access, same as an admin.
+    // Directors: full access. The Technical Director outranks the other two:
+    // only they (and personal admin accounts) manage Roles & PINs and admins.
+    { id: 'technical-director', name: 'Technical Director', positions: ['Technical Director'], perms: ['admin', 'roles'] },
     { id: 'production-director', name: 'Production Director', positions: ['Production Director'], perms: ['admin'] },
-    { id: 'technical-director', name: 'Technical Director', positions: ['Technical Director'], perms: ['admin'] },
     { id: 'broadcast-director', name: 'Broadcast Director', positions: ['Broadcast Director'], perms: ['admin'] },
   ],
   sessions: {},

@@ -194,10 +194,10 @@
         { id: 'people', name: 'People' },
         { id: 'songs', name: 'Songs' },
         { id: 'schedule', name: 'Schedule' },
-        { id: 'wireless', name: 'Wireless' },
-        { id: 'accounts', name: 'Roles & PINs' },
-        { id: 'settings', name: 'Settings' }
+        { id: 'wireless', name: 'Wireless' }
       );
+    if (perms.includes('roles')) t.push({ id: 'accounts', name: 'Roles & PINs' });
+    if (S.me && S.me.role === 'admin') t.push({ id: 'settings', name: 'Settings' });
     return t;
   }
 
@@ -1225,7 +1225,7 @@
   // ---------------- Accounts ----------------
   async function viewAccounts() {
     const [{ roles, perms }, accounts] = await Promise.all([api('/api/roles'), api('/api/accounts')]);
-    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Handhelds (HH-1/HH-2)', admin: 'Everything (director / admin)' };
+    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Handhelds (HH-1/HH-2)', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
     const list = roles.map((r) => ({ ...r, positionsText: r.positions.join(', '), pin: '' }));
     app.innerHTML = `<h1>Roles &amp; PINs</h1>
       <p class="muted">Leaders sign in by picking the role they’re serving in that day and entering the role’s PIN. Share each PIN only with the people who serve in that role. Sign-ins end at midnight. If Planning Center has exactly one person in that role, their name shows on messages they send.</p>

@@ -32,8 +32,10 @@ function parseCookies(header) {
   return out;
 }
 
-// admin = everything (directors). handhelds = say who has HH-1 / HH-2.
-const PERMS = ['messages', 'live', 'wireless', 'handhelds', 'admin'];
+// admin = everything (directors) except managing roles. roles = manage
+// Roles & PINs and admin accounts (Technical Director). handhelds = say who
+// has HH-1 / HH-2.
+const PERMS = ['messages', 'live', 'wireless', 'handhelds', 'admin', 'roles'];
 
 function makeAuth(db, opts = {}) {
   const d = db.data;
@@ -128,13 +130,17 @@ function makeAuth(db, opts = {}) {
         pcoName: s.person || '',
         role: full ? 'admin' : 'role',
         roleName: r.name,
-        perms: full ? PERMS.slice() : r.perms || [],
+        perms: full ? PERMS.filter((p) => p !== 'roles' || (r.perms || []).includes('roles')) : r.perms || [],
         isRole: true,
       };
     }
     return d.accounts.find((a) => a.id === s.accountId) || null;
   }
-  const can = (a, perm) => !!a && (a.role === 'admin' || (a.isRole ? a.perms.includes(perm) : perm === 'messages' || perm === 'live'));
+  const can = (a, perm) => {
+    if (!a) return false;
+    if (a.isRole) return a.perms.includes(perm);
+    return a.role === 'admin' || perm === 'messages' || perm === 'live';
+  };
 
   function logout(req) {
     const token = parseCookies(req.headers.cookie).lcd_session;

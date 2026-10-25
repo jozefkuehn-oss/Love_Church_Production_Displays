@@ -121,8 +121,9 @@ Leaders don't need their own accounts. When they open the producer page (`http:/
 Admin page → **Roles & PINs**:
 
 - Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
-- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Handhelds (HH-1/HH-2)** and **Everything (director / admin)**. Defaults:
-  - **Production Director, Technical Director, Broadcast Director:** everything, same as an admin.
+- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Handhelds (HH-1/HH-2)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
+  - **Technical Director:** everything, and the only role that can manage Roles & PINs and admin accounts.
+  - **Production Director, Broadcast Director:** everything except Roles & PINs.
   - **FOH Engineer:** messages, Live, Mics and Handhelds.
   - **Service Producer, Broadcast Producer:** messages and Live.
   - **Floor Manager:** messages and Handhelds — their phone opens on the Handhelds screen to say who has HH-1 / HH-2 for preshow, the host moment, announcements…
