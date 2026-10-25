@@ -10,7 +10,7 @@ const { WebSocketServer } = require('ws');
 const { Doc, PHOTO_DIR, DATA_DIR } = require('./store');
 const { configDefaults, dbDefaults } = require('./defaults');
 const { makeAuth } = require('./auth');
-const { makeClock } = require('./time');
+const { makeClock, parts, zoned } = require('./time');
 const { makeEngine } = require('./engine');
 const photos = require('./photos');
 
@@ -26,9 +26,23 @@ function log(msg) {
 
 const config = new Doc('config.json', configDefaults);
 const db = new Doc('db.json', dbDefaults);
-const auth = makeAuth(db);
 const clock = makeClock(config);
 const engine = makeEngine({ config, db, clock, log });
+const auth = makeAuth(db, {
+  // Role sign-ins last until midnight, church time.
+  endOfDay: () => {
+    const tz = config.data.timezone;
+    return zoned(parts(Date.now(), tz).dateKey, '23:59', tz) + 60000;
+  },
+  // Who is scheduled in this role on the current plan (only if exactly one).
+  scheduledFor: (roleName) => {
+    const role = (db.data.roles || []).find((r) => r.name === roleName);
+    const positions = new Set([roleName, ...((role && role.positions) || [])].map((x) => x.toLowerCase()));
+    const plan = engine.getPlan();
+    const names = [...new Set(((plan && plan.people) || []).filter((p) => positions.has(String(p.position || '').toLowerCase())).map((p) => p.name))];
+    return names.length === 1 ? names[0] : '';
+  },
+});
 
 // Bring profiles saved by older versions up to date: every room has a
 // Pre-Encounter and a Live layout, and one mode setting (auto / pre / live).
@@ -118,10 +132,25 @@ function setCookie(res, token) {
   res.setHeader('Set-Cookie', `lcd_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}`);
 }
 
+// Roles for the sign-in screen, with who's scheduled in each one today.
+app.get('/api/roles/public', (req, res) => {
+  ok(res, (db.data.roles || []).map((r) => ({ id: r.id, name: r.name, hasPin: !!r.pinHash, person: auth.scheduledFor(r.name) })));
+});
+
+app.post('/api/login-role', (req, res) => {
+  const { roleId, pin } = req.body || {};
+  const r = auth.loginRole(String(roleId || ''), String(pin || ''));
+  if (typeof r !== 'string') return bad(res, r.error, 401);
+  setCookie(res, r);
+  const role = db.data.roles.find((x) => x.id === roleId);
+  log(`Signed in as ${role.name}`);
+  ok(res);
+});
+
 app.post('/api/login', (req, res) => {
   const { accountId, pin } = req.body || {};
   const token = auth.login(accountId, pin);
-  if (!token) return bad(res, 'That PIN didn’t match.', 401);
+  if (typeof token !== 'string') return bad(res, token.error, 401);
   setCookie(res, token);
   ok(res, { account: auth.publicAccount(db.data.accounts.find((a) => a.id === accountId)) });
 });
@@ -140,6 +169,7 @@ app.get('/api/me', (req, res) => {
 // ---------- leaders: messages + live control ----------
 function canSend(account) {
   if (account.role === 'admin') return { ok: true };
+  if (account.isRole) return account.perms.includes('messages') ? { ok: true } : { ok: false, reason: 'Your role can’t send messages.' };
   if (!config.data.onlyScheduledLeaders || config.data.sampleMode) return { ok: true };
   const plan = engine.getPlan();
   const roles = config.data.leaderRoles || [];
@@ -157,7 +187,7 @@ app.get('/api/messages', auth.requireLeader, (req, res) => {
   });
 });
 
-app.post('/api/messages', auth.requireLeader, (req, res) => {
+app.post('/api/messages', auth.requirePerm('messages'), (req, res) => {
   const perm = canSend(req.account);
   if (!perm.ok) return bad(res, perm.reason, 403);
   const { text, level, targets, seconds } = req.body || {};
@@ -182,7 +212,7 @@ app.post('/api/messages', auth.requireLeader, (req, res) => {
   ok(res, { message: m });
 });
 
-app.post('/api/messages/:id/clear', auth.requireLeader, (req, res) => {
+app.post('/api/messages/:id/clear', auth.requirePerm('messages'), (req, res) => {
   const m = db.data.messages.find((x) => x.id === req.params.id);
   if (!m) return bad(res, 'Message not found.', 404);
   m.cleared = true;
@@ -192,7 +222,7 @@ app.post('/api/messages/:id/clear', auth.requireLeader, (req, res) => {
   ok(res);
 });
 
-app.post('/api/messages/clear-all', auth.requireLeader, (req, res) => {
+app.post('/api/messages/clear-all', auth.requirePerm('messages'), (req, res) => {
   db.data.messages.forEach((m) => {
     if (!m.cleared) {
       m.cleared = true;
@@ -221,7 +251,7 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
 });
 
 // Link a ProPresenter presentation name to a plan item (remembered for future Sundays).
-app.post('/api/live-link', auth.requireLeader, (req, res) => {
+app.post('/api/live-link', auth.requirePerm('live'), (req, res) => {
   const { presentation, item } = req.body || {};
   if (!presentation) return bad(res, 'No presentation name.');
   db.data.presentationLinks = db.data.presentationLinks || {};
@@ -234,7 +264,7 @@ app.post('/api/live-link', auth.requireLeader, (req, res) => {
 });
 
 // Manual "where are we" control for when ProPresenter isn't tracking.
-app.post('/api/live/:action', auth.requireLeader, (req, res) => {
+app.post('/api/live/:action', auth.requirePerm('live'), (req, res) => {
   const s = engine.snapshot();
   const live = db.data.live;
   const n = s.items.length;
@@ -423,7 +453,7 @@ app.put('/api/wireless', auth.requireAdmin, (req, res) => {
 });
 
 // Networked mic receivers (Shure Axient Digital) and what they report live.
-app.get('/api/wireless-live', auth.requireAdmin, (req, res) => {
+app.get('/api/wireless-live', auth.requirePerm('wireless'), (req, res) => {
   ok(res, {
     receivers: (config.data.wireless || {}).receivers || [],
     status: engine.health().wireless.receivers,
@@ -431,7 +461,7 @@ app.get('/api/wireless-live', auth.requireAdmin, (req, res) => {
   });
 });
 // This Sunday: who has which mic/IEM on the current plan.
-app.get('/api/wireless-week', auth.requireAdmin, (req, res) => {
+app.get('/api/wireless-week', auth.requirePerm('wireless'), (req, res) => {
   engine.snapshot();
   const plan = engine.getPlan();
   const wk = db.data.wirelessWeek && plan && db.data.wirelessWeek.date === plan.date ? db.data.wirelessWeek.byName || {} : {};
@@ -440,7 +470,7 @@ app.get('/api/wireless-week', auth.requireAdmin, (req, res) => {
     rows: engine.wirelessRows().map((r) => ({ ...r, pickMic: (wk[r.name] || {}).mic || '', pickIem: (wk[r.name] || {}).iem || '' })),
   });
 });
-app.put('/api/wireless-week', auth.requireAdmin, (req, res) => {
+app.put('/api/wireless-week', auth.requirePerm('wireless'), (req, res) => {
   const plan = engine.getPlan();
   if (!plan) return bad(res, 'No plan loaded yet.');
   const byName = {};
@@ -487,7 +517,7 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   pushNow();
   ok(res);
 });
-app.post('/api/profiles-mode', auth.requireLeader, (req, res) => {
+app.post('/api/profiles-mode', auth.requirePerm('live'), (req, res) => {
   const m = (req.body || {}).modeSetting;
   if (!['auto', 'pre', 'live'].includes(m)) return bad(res, 'Pick auto, pre or live.');
   for (const p of Object.values(db.data.profiles)) p.modeSetting = m;
@@ -504,6 +534,34 @@ app.delete('/api/profiles/:id', auth.requireAdmin, (req, res) => {
 });
 
 // Accounts
+// Sign-in roles: names, which Planning Center positions count, what each can
+// do, and its shared PIN (write-only).
+app.get('/api/roles', auth.requireAdmin, (req, res) => {
+  ok(res, { perms: auth.PERMS, roles: (db.data.roles || []).map((r) => ({ id: r.id, name: r.name, positions: r.positions || [], perms: r.perms || [], hasPin: !!r.pinHash, person: auth.scheduledFor(r.name) })) });
+});
+app.put('/api/roles', auth.requireAdmin, (req, res) => {
+  const incoming = (req.body || {}).roles || [];
+  const old = Object.fromEntries((db.data.roles || []).map((r) => [r.id, r]));
+  const next = [];
+  for (const r of incoming) {
+    const name = String(r.name || '').trim().slice(0, 40);
+    if (!name) continue;
+    const id = r.id && old[r.id] ? r.id : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + crypto.randomBytes(2).toString('hex');
+    const role = { ...(old[id] || {}), id, name, positions: (r.positions || []).map((x) => String(x).trim()).filter(Boolean).slice(0, 10), perms: (r.perms || []).filter((x) => auth.PERMS.includes(x)) };
+    if (r.pin) {
+      if (!/^\d{4,8}$/.test(String(r.pin))) return bad(res, `The PIN for ${name} must be 4–8 digits.`);
+      auth.setRolePin(role, String(r.pin));
+    }
+    next.push(role);
+  }
+  db.data.roles = next;
+  // Signing out anyone in a role that was removed.
+  for (const [t, sess] of Object.entries(db.data.sessions)) if (sess.roleId && !next.some((r) => r.id === sess.roleId)) delete db.data.sessions[t];
+  db.save();
+  log(`Roles updated by ${req.account.name}`);
+  ok(res);
+});
+
 app.get('/api/accounts', auth.requireAdmin, (req, res) => ok(res, db.data.accounts.map(auth.publicAccount)));
 app.post('/api/accounts', auth.requireAdmin, (req, res) => {
   const { name, pcoName, role, pin } = req.body || {};

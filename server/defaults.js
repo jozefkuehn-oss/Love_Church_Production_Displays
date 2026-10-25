@@ -213,6 +213,17 @@ const profiles = {
 
 const dbDefaults = {
   accounts: [],
+  // Sign-in roles. Pick the role you're serving in today and enter its PIN
+  // (set by an admin in Accounts). positions = the Planning Center position
+  // names that count as this role, so the app knows who's signed in.
+  roles: [
+    { id: 'foh', name: 'FOH Engineer', positions: ['FOH Audio Engineer', 'FOH Engineer'], perms: ['messages', 'live', 'wireless'] },
+    { id: 'service-producer', name: 'Service Producer', positions: ['Service Producer'], perms: ['messages', 'live'] },
+    { id: 'broadcast-producer', name: 'Broadcast Producer', positions: ['Broadcast Producer', 'Producer'], perms: ['messages', 'live'] },
+    { id: 'stage-manager', name: 'Stage Manager', positions: ['Stage Manager'], perms: ['messages'] },
+    { id: 'floor-manager', name: 'Floor Manager', positions: ['Floor Manager'], perms: ['messages'] },
+    { id: 'encounter-lead', name: 'Encounter Lead', positions: ['Encounter Lead'], perms: ['messages'] },
+  ],
   sessions: {},
   messages: [],
   quickMessages: [

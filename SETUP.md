@@ -105,12 +105,19 @@ dock       3840  0
 
 Any TV, stick or computer on the church network can also run a room directly. Open `http://<mac address>:8080/display` in its browser, full screen. The first time, it asks which room it's in. After that it remembers. To change it later, press **R** on a keyboard or remote, or press and hold the screen for 3 seconds. You can also move it from **Admin → Displays → Screens**.
 
-## 8. Add your leaders
+## 8. Set the role PINs
 
-Admin page → **Accounts** → add each leader with their name, their Planning Center name and a starting PIN.
+Leaders don't need their own accounts. When they open the producer page (`http://<mac>:8080/admin`) on their phone, they pick the role they're serving in that day and enter that role's PIN. They stay signed in until midnight.
 
-- **Leaders** can send producer messages and use the **Live** tab, on days they're scheduled in a leadership role. You can turn that rule off in Settings.
-- **Admins** can change everything.
+Admin page → **Roles & PINs**:
+
+- Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
+- Choose what each role can do: **Send messages**, **Live control**, and **Mics (This Sunday)**. By default, FOH Engineer can do all three; Service Producer and Broadcast Producer can send messages and use Live; Stage Manager, Floor Manager and Encounter Lead can send messages.
+- **Planning Center positions** tells the app which scheduled positions count as the role. When exactly one person is scheduled in it, their name shows on the sign-in button and on the messages they send.
+- Add or remove roles as the team changes. Changing a PIN doesn't sign anyone out; removing a role does.
+- Five wrong PINs in a row locks that role for five minutes.
+
+**Admins** have their own name and PIN (**Admin sign-in** at the bottom of the sign-in screen) and can change everything. Add more admins on the same page.
 
 ## 9. Set the schedule
 

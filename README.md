@@ -1,6 +1,6 @@
 # Love Church Production Displays
 
-Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control, the Dock, the Greenroom, FOH, and the stage confidence monitor. Each room has a Pre-Encounter screen and a Live screen. Leaders send producer messages to any screen from their phones.
+Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control, the Dock, the Greenroom, FOH, and the stage confidence monitor. Each room has a Pre-Encounter screen and a Live screen. Leaders sign in by role and send producer messages to any screen from their phones.
 
 **Setting up the Mac mini? Start with [SETUP.md](SETUP.md).**
 
@@ -14,7 +14,7 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
 - **Schedule:** stream start and end times for each Encounter, which drive the stream-end countdowns and the projected finish.
 - **Song bank:** Feel, progression, notes and camera cues for each song.
 - **Wireless:** mic and IEM assignments by position. Mic battery (percent and runtime), transmitter on/off and RF come live from the Shure Axient Digital receivers (AD4D/AD4Q) over the network. The Lectrosonics Duet IEM packs are one-way radio, so IEMs show their assignment only. Sample values are shown until a receiver is added.
-- **Producer messages:** each leader signs in with their own name and PIN. They can target any screens, choose an urgency (info, heads-up or urgent), and set the message to clear itself or stay until cleared.
+- **Producer messages:** leaders sign in by picking the role they're serving in that day (FOH Engineer, Service Producer…) and entering that role's PIN; each role has its own permissions (messages, Live control, This Sunday mics). They can target any screens, choose an urgency (info, heads-up or urgent), and set the message to clear itself or stay until cleared.
 
 ## Displays
 
@@ -57,7 +57,7 @@ server/
   index.js        HTTP + WebSocket server, all API routes
   engine.js       works out the live state every second (Encounter, item, timers, people)
   defaults.js     starting settings and the six starting display layouts
-  auth.js         leader/admin logins (name + PIN, hashed)
+  auth.js         role sign-in (shared role PINs) + admin accounts, hashed PINs, lockout
   store.js        JSON-file storage in ./data
   time.js         time-zone-safe clock (demo clock in sample mode)
   sources/        Planning Center, Slack, ProPresenter, wireless connectors

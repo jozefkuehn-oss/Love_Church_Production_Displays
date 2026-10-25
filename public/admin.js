@@ -19,7 +19,7 @@
       credentials: 'same-origin',
     });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401 && path !== '/api/login') {
+    if (res.status === 401 && path !== '/api/login' && path !== '/api/login-role') {
       S.me = null;
       showLogin();
       throw new Error(data.error || 'Please sign in.');
@@ -89,26 +89,70 @@
     };
   }
 
-  async function showLogin() {
+  // Sign-in: pick the role you're serving in today, then its PIN.
+  // Admins use their personal account from the link at the bottom.
+  async function showLogin(mode) {
     clearTimers();
     tabsEl.hidden = true;
     whoEl.innerHTML = '';
-    const accounts = await fetch('/api/accounts/public').then((r) => r.json());
+    document.onkeydown = null;
+    const store = {
+      get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+    };
+    if (mode === 'admin') {
+      const accounts = await fetch('/api/accounts/public').then((r) => r.json());
+      app.innerHTML = `<div class="login card"><div class="row sp"><h1 style="margin:0">Admin sign-in</h1><button class="small ghost" id="back">Back</button></div>
+        <label>Your name<select id="la">${accounts.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>
+        ${pinPadHtml()}<p class="dim">Forgot your PIN? Another admin can reset it.</p></div>`;
+      const saved = store.get('lcd_last');
+      if (saved && accounts.some((a) => a.id === saved)) $('#la').value = saved;
+      $('#back').onclick = () => showLogin();
+      return pinPad(async (pin) => {
+        await api('/api/login', { body: { accountId: $('#la').value, pin } });
+        store.set('lcd_last', $('#la').value);
+        boot();
+      });
+    }
+    const roles = await fetch('/api/roles/public').then((r) => r.json());
+    const last = store.get('lcd_role');
+    app.innerHTML = `<div class="login card" style="max-width:640px"><h1 style="margin:0">What are you serving as today?</h1>
+      <p class="muted" style="margin:0">Pick your role, then enter the role PIN.</p>
+      <div class="rolegrid">${roles
+        .map(
+          (r) => `<button class="rolebtn ${r.id === last ? 'last' : ''}" data-r="${esc(r.id)}" ${r.hasPin ? '' : 'disabled'}>
+            <span class="rn">${esc(r.name)}</span><span class="rp">${r.hasPin ? (r.person ? 'Today: ' + esc(r.person) : '&nbsp;') : 'No PIN set yet'}</span></button>`
+        )
+        .join('')}</div>
+      <button class="small ghost" id="adm" style="align-self:flex-start">Admin sign-in</button></div>`;
+    $('#adm').onclick = () => showLogin('admin');
+    $$('.rolebtn').forEach(
+      (b) =>
+        (b.onclick = () => {
+          const r = roles.find((x) => x.id === b.dataset.r);
+          app.innerHTML = `<div class="login card"><div class="row sp"><div><div class="dim">Signing in as</div><h1 style="margin:0">${esc(r.name)}</h1>${r.person ? `<div class="muted">${esc(r.person)}</div>` : ''}</div><button class="small ghost" id="back">Back</button></div>
+            ${pinPadHtml()}<p class="dim">You stay signed in until midnight.</p></div>`;
+          $('#back').onclick = () => showLogin();
+          pinPad(async (pin) => {
+            await api('/api/login-role', { body: { roleId: r.id, pin } });
+            store.set('lcd_role', r.id);
+            boot();
+          });
+        })
+    );
+  }
+
+  function pinPadHtml() {
+    return `<div class="pin-dots" id="pd"></div>
+      <div class="pinpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, '→'].map((k) => `<button data-k="${k}" class="${k === '→' ? 'primary' : ''}">${k}</button>`).join('')}</div>`;
+  }
+  function pinPad(submit) {
     let pin = '';
-    app.innerHTML = `<div class="login card"><h1>Sign in</h1>
-      <label>Who are you?<select id="la">${accounts.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>
-      <div class="pin-dots" id="pd"></div>
-      <div class="pinpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, '→'].map((k) => `<button data-k="${k}" class="${k === '→' ? 'primary' : ''}">${k}</button>`).join('')}</div>
-      <p class="dim">Ask an admin if you need an account or forgot your PIN.</p></div>`;
-    const savedId = localStorage.getItem('lcd_last');
-    if (savedId && accounts.some((a) => a.id === savedId)) $('#la').value = savedId;
     const dots = () => ($('#pd').innerHTML = Array.from({ length: Math.max(4, pin.length) }, (_, i) => `<span class="${i < pin.length ? 'on' : ''}"></span>`).join(''));
     dots();
     const go = async () => {
       try {
-        await api('/api/login', { body: { accountId: $('#la').value, pin } });
-        localStorage.setItem('lcd_last', $('#la').value);
-        boot();
+        await submit(pin);
       } catch (e) {
         pin = '';
         dots();
@@ -130,16 +174,17 @@
       if (/^\d$/.test(e.key) && pin.length < 8) pin += e.key;
       else if (e.key === 'Backspace') pin = pin.slice(0, -1);
       else if (e.key === 'Enter') return go();
+      else return;
       dots();
     };
   }
 
   // ---------------- shell ----------------
   function tabsFor() {
-    const t = [
-      { id: 'messages', name: 'Messages' },
-      { id: 'live', name: 'Live' },
-    ];
+    const perms = (S.me && S.me.perms) || [];
+    const t = [{ id: 'messages', name: 'Messages' }];
+    if (perms.includes('live')) t.push({ id: 'live', name: 'Live' });
+    if (S.me && S.me.role !== 'admin' && perms.includes('wireless')) t.push({ id: 'wireless', name: 'Mics' });
     if (S.me && S.me.role === 'admin')
       t.push(
         { id: 'displays', name: 'Displays' },
@@ -147,7 +192,7 @@
         { id: 'songs', name: 'Songs' },
         { id: 'schedule', name: 'Schedule' },
         { id: 'wireless', name: 'Wireless' },
-        { id: 'accounts', name: 'Accounts' },
+        { id: 'accounts', name: 'Roles & PINs' },
         { id: 'settings', name: 'Settings' }
       );
     return t;
@@ -962,24 +1007,27 @@
 
   // ---------------- Wireless ----------------
   async function viewWireless() {
-    const [w, live, week] = await Promise.all([api('/api/wireless'), api('/api/wireless-live'), api('/api/wireless-week')]);
+    // FOH (role sign-in) gets This Sunday plus live receiver status; admins also
+    // manage receivers and the standard assignments.
+    const admin = S.me.role === 'admin';
+    const [w, live, week] = await Promise.all([admin ? api('/api/wireless') : {}, api('/api/wireless-live'), api('/api/wireless-week')]);
     const MICS = ['VOX 1', 'VOX 2', 'VOX 3', 'VOX 4', 'VOX 5', 'HH-1', 'HH-2', 'TEACH', 'BP-1', 'BP-2'];
     const picks = Object.fromEntries(week.rows.map((r) => [r.name, { mic: r.pickMic, iem: r.pickIem }]));
     const rows = Object.entries(w).map(([k, v]) => ({ k, mic: v.mic || '', iem: v.iem || '' }));
     const recv = live.receivers.length ? live.receivers.map((r) => ({ ...r })) : [{ label: '', host: '', enabled: true }];
-    app.innerHTML = `<h1>Wireless</h1>
+    app.innerHTML = `<h1>${admin ? 'Wireless' : 'Mics'}</h1>
       <div class="card"><h2 style="margin:0">This Sunday${week.date ? ` · ${esc(week.date)}` : ''}</h2>
-        <p class="dim" style="margin:0">Who has which mic on this plan. If the plan’s notes in Planning Center list mic assignments, they’re filled in automatically (<em>Plan notes</em>); otherwise each person starts on their <em>Standard</em> mic below. Change anyone here. Picks reset when the next plan loads.</p>
-        <div style="overflow-x:auto"><table id="wk"></table></div>
+        <p class="dim" style="margin:0">Who has which mic on this plan. If the plan’s notes in Planning Center list mic assignments, they’re filled in automatically (<em>Plan notes</em>); otherwise each person starts on their usual (<em>Standard</em>) mic. Change anyone here. Picks reset when the next plan loads.</p>
+        <div id="wk" class="wklist"></div>
         <div class="row"><button class="primary" id="wks">Save this Sunday</button><span class="dim" id="wkw"></span></div></div>
-      <div class="card" style="margin-top:14px"><h2 style="margin:0">Mic receivers</h2>
-        <p class="dim" style="margin:0">Shure Axient Digital (AD4D, AD4Q). Enter each receiver’s IP address (on the receiver: Menu → Network). Battery, runtime and RF come straight from the receivers. IEM packs are one-way radio, so they show their assignment only.</p>
+      <div class="card" style="margin-top:14px"><h2 style="margin:0">${admin ? 'Mic receivers' : 'Live from the receivers'}</h2>
+        ${admin ? `<p class="dim" style="margin:0">Shure Axient Digital (AD4D, AD4Q). Enter each receiver’s IP address (on the receiver: Menu → Network). Battery, runtime and RF come straight from the receivers. IEM packs are one-way radio, so they show their assignment only.</p>
         <div id="rcv"></div>
-        <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>
+        <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>` : ''}
         <div id="rst"></div></div>
-      <h2>Standard assignments</h2>
+      ${admin ? `<h2>Standard assignments</h2>
       <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
-      <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>
+      <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>` : ''}
       <datalist id="chl"></datalist>`;
 
     function drawRecv() {
@@ -1019,16 +1067,16 @@
       week.rows.forEach((r) => { const m = eff(r); if (m && m !== 'WIRED') counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] = (counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] || 0) + 1; });
       const dup = (m) => m && m !== 'WIRED' && counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] > 1;
       $('#wk').innerHTML = week.rows.length
-        ? `<tr><th>Person</th><th>Mic</th><th>IEM</th></tr>${week.rows
+        ? week.rows
             .map(
-              (r, i) => `<tr><td><strong>${esc(r.name)}</strong><br><span class="dim">${esc(r.role || r.position || '')}</span></td>
-              <td><select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">${r.fromNotes && r.fromNotes.mic ? 'Plan notes' : 'Standard'}${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
+              (r, i) => `<div class="wkrow"><div class="wkn"><strong>${esc(r.name)}</strong><span class="dim">${esc(r.role || r.position || '')}</span></div>
+              <label class="wkf">Mic<select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">${r.fromNotes && r.fromNotes.mic ? 'Plan notes' : 'Standard'}${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
                 .map((m) => `<option ${picks[r.name].mic === m ? 'selected' : ''}>${esc(m)}</option>`)
-                .join('')}</select></td>
-              <td><input data-w="${i}" data-f="iem" value="${esc(picks[r.name].iem)}" placeholder="${esc(r.defIem || '—')}"></td></tr>`
+                .join('')}</select></label>
+              <label class="wkf">IEM<input data-w="${i}" data-f="iem" value="${esc(picks[r.name].iem)}" placeholder="${esc(r.defIem || '—')}"></label></div>`
             )
-            .join('')}`
-        : '<tr><td class="dim">Nobody on this plan uses wireless yet.</td></tr>';
+            .join('')
+        : '<div class="dim">Nobody on this plan uses wireless yet.</div>';
       const d = Object.keys(counts).filter((k) => counts[k] > 1);
       $('#wkw').textContent = d.length ? 'Heads up: the same mic is picked twice (highlighted).' : '';
       $$('#wk [data-w]').forEach((el) => (el.oninput = el.onchange = () => {
@@ -1053,48 +1101,102 @@
       $$('#wt [data-f]').forEach((i) => (i.oninput = () => (rows[i.dataset.i][i.dataset.f] = i.value)));
       $$('#wt [data-d]').forEach((b) => (b.onclick = () => (rows.splice(b.dataset.d, 1), drawRows())));
     }
-    $('#ra').onclick = () => (recv.push({ label: '', host: '', enabled: true }), drawRecv());
-    $('#rs').onclick = async () => {
-      try {
-        await api('/api/wireless-receivers', { method: 'PUT', body: { receivers: recv.filter((r) => r.host) } });
-        toast('Saved — connecting to receivers');
-      } catch (e) {
-        fail(e);
-      }
-    };
-    $('#wa').onclick = () => (rows.push({ k: '', mic: '', iem: '' }), drawRows());
-    $('#ws').onclick = async () => {
-      const body = {};
-      rows.filter((r) => r.k).forEach((r) => (body[r.k] = { mic: r.mic, ...(r.iem ? { iem: r.iem } : {}) }));
-      await api('/api/wireless', { method: 'PUT', body }).then(() => toast('Saved')).catch(fail);
-    };
+    if (admin) {
+      $('#ra').onclick = () => (recv.push({ label: '', host: '', enabled: true }), drawRecv());
+      $('#rs').onclick = async () => {
+        try {
+          await api('/api/wireless-receivers', { method: 'PUT', body: { receivers: recv.filter((r) => r.host) } });
+          toast('Saved — connecting to receivers');
+        } catch (e) {
+          fail(e);
+        }
+      };
+      $('#wa').onclick = () => (rows.push({ k: '', mic: '', iem: '' }), drawRows());
+      $('#ws').onclick = async () => {
+        const body = {};
+        rows.filter((r) => r.k).forEach((r) => (body[r.k] = { mic: r.mic, ...(r.iem ? { iem: r.iem } : {}) }));
+        await api('/api/wireless', { method: 'PUT', body }).then(() => toast('Saved')).catch(fail);
+      };
+    }
     drawWeek();
-    drawRecv();
-    drawRows();
+    if (admin) {
+      drawRecv();
+      drawRows();
+    }
     drawLive(live);
     S.timers.push(setInterval(() => api('/api/wireless-live').then(drawLive).catch(() => {}), 3000));
   }
 
   // ---------------- Accounts ----------------
   async function viewAccounts() {
-    const accounts = await api('/api/accounts');
-    app.innerHTML = `<h1>Accounts</h1>
-      <p class="muted">Each leader signs in with their own name and PIN, so messages show who sent them. Leaders can send messages on days they’re scheduled in a leadership role (Settings). Admins can always send and can change everything here.</p>
+    const [{ roles, perms }, accounts] = await Promise.all([api('/api/roles'), api('/api/accounts')]);
+    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)' };
+    const list = roles.map((r) => ({ ...r, positionsText: r.positions.join(', '), pin: '' }));
+    app.innerHTML = `<h1>Roles &amp; PINs</h1>
+      <p class="muted">Leaders sign in by picking the role they’re serving in that day and entering the role’s PIN. Share each PIN only with the people who serve in that role. Sign-ins end at midnight. If Planning Center has exactly one person in that role, their name shows on messages they send.</p>
+      <div class="list" id="rl"></div>
+      <div class="row" style="margin-top:12px"><button class="small" id="radd">Add role</button><button class="primary" id="rsave">Save roles</button></div>
+      <h2>Admins</h2>
+      <p class="muted">Admins have their own name and PIN and can change everything. They sign in from <em>Admin sign-in</em> at the bottom of the sign-in screen.</p>
       <div class="list">${accounts
         .map(
-          (a) => `<div class="msg"><div class="grow"><div class="t">${esc(a.name)} <span class="dim">· ${a.role}</span></div><div class="m">Planning Center name: ${esc(a.pcoName)}</div></div>
-        <button class="small" data-pin="${a.id}">New PIN</button><button class="small" data-role="${a.id}" data-r="${a.role === 'admin' ? 'leader' : 'admin'}">Make ${a.role === 'admin' ? 'leader' : 'admin'}</button><button class="small danger" data-del="${a.id}">Remove</button></div>`
+          (a) => `<div class="msg"><div class="grow"><div class="t">${esc(a.name)}${a.role !== 'admin' ? ' <span class="dim">· older leader account</span>' : ''}</div><div class="m">Planning Center name: ${esc(a.pcoName)}</div></div>
+        <button class="small" data-pin="${a.id}">New PIN</button>${a.role !== 'admin' ? `<button class="small" data-role="${a.id}" data-r="admin">Make admin</button>` : ''}<button class="small danger" data-del="${a.id}">Remove</button></div>`
         )
         .join('')}</div>
-      <div class="card" style="margin-top:16px"><h2 style="margin:0">Add a person</h2>
+      <div class="card" style="margin-top:16px"><h2 style="margin:0">Add an admin</h2>
         <div class="grid2"><label>Name<input id="a_n"></label><label>Name in Planning Center<input id="a_p" placeholder="Same as name"></label>
-        <label>Role<select id="a_r"><option value="leader">Leader (send messages)</option><option value="admin">Admin (everything)</option></select></label>
         <label>Starting PIN (4–8 digits)<input id="a_pin" inputmode="numeric"></label></div>
-        <button class="primary" id="a_go">Add</button></div>`;
+        <button class="primary" id="a_go">Add admin</button></div>`;
+    function drawRoles() {
+      $('#rl').innerHTML = list
+        .map(
+          (r, i) => `<div class="card" style="gap:10px">
+            <div class="grid2"><label>Role name<input data-i="${i}" data-f="name" value="${esc(r.name)}"></label>
+              <label>${r.hasPin ? 'Change PIN (leave blank to keep)' : 'Set PIN (4–8 digits)'}<input data-i="${i}" data-f="pin" type="password" inputmode="numeric" maxlength="8" placeholder="${r.hasPin ? '••••' : 'No PIN yet'}" autocomplete="new-password"></label></div>
+            <label>Planning Center positions that count as this role<input data-i="${i}" data-f="positionsText" value="${esc(r.positionsText)}" placeholder="FOH Audio Engineer"></label>
+            <div class="row">${perms.map((p) => `<label class="inline"><input type="checkbox" data-i="${i}" data-p="${p}" ${r.perms.includes(p) ? 'checked' : ''}> ${PERM_NAMES[p] || p}</label>`).join('')}
+              <span class="grow"></span>${r.person ? `<span class="dim">Today: ${esc(r.person)}</span>` : ''}<button class="small danger" data-rd="${i}">Remove</button></div></div>`
+        )
+        .join('');
+      $$('#rl [data-f]').forEach((el) => (el.oninput = () => (list[el.dataset.i][el.dataset.f] = el.value)));
+      $$('#rl [data-p]').forEach(
+        (el) =>
+          (el.onchange = () => {
+            const r = list[el.dataset.i];
+            r.perms = el.checked ? [...new Set([...r.perms, el.dataset.p])] : r.perms.filter((x) => x !== el.dataset.p);
+          })
+      );
+      $$('#rl [data-rd]').forEach(
+        (b) =>
+          (b.onclick = () => {
+            if (!confirm(`Remove the ${list[b.dataset.rd].name || 'new'} role? Anyone signed in with it is signed out when you save.`)) return;
+            list.splice(b.dataset.rd, 1);
+            drawRoles();
+          })
+      );
+    }
+    drawRoles();
+    $('#radd').onclick = () => {
+      list.push({ id: '', name: '', positionsText: '', perms: ['messages'], hasPin: false, pin: '' });
+      drawRoles();
+    };
+    $('#rsave').onclick = async () => {
+      try {
+        await api('/api/roles', {
+          method: 'PUT',
+          body: { roles: list.map((r) => ({ id: r.id, name: r.name, positions: r.positionsText.split(',').map((x) => x.trim()).filter(Boolean), perms: r.perms, pin: r.pin || undefined })) },
+        });
+        toast('Roles saved');
+        viewAccounts();
+      } catch (e) {
+        fail(e);
+      }
+    };
     $('#a_go').onclick = async () => {
       try {
-        await api('/api/accounts', { body: { name: $('#a_n').value, pcoName: $('#a_p').value || $('#a_n').value, role: $('#a_r').value, pin: $('#a_pin').value } });
-        toast('Added');
+        await api('/api/accounts', { body: { name: $('#a_n').value, pcoName: $('#a_p').value || $('#a_n').value, role: 'admin', pin: $('#a_pin').value } });
+        toast('Admin added');
         viewAccounts();
       } catch (e) {
         fail(e);
