@@ -583,101 +583,255 @@
   }
 
   // ---------------- People / photos ----------------
+  // A grid of faces. Tap anyone to open the photo editor: upload a new photo,
+  // drag to move it, pinch / scroll / slider to zoom, and see how it lands on
+  // a big card, a wide collage tile and the small FOH circle.
   async function viewPeople() {
-    const { people, helpText } = await api('/api/people');
+    S.peopleScope = S.peopleScope || 'plan';
+    let data;
+    try {
+      data = await api('/api/people' + (S.peopleScope === 'all' ? '?all=1' : ''));
+    } catch (e) {
+      return fail(e);
+    }
+    const { people, helpText } = data;
     app.innerHTML = `<h1>People &amp; photos</h1>
-      <p class="muted">Everyone scheduled on the current plan. Photos come from Slack; upload a better headshot for anyone whose Slack photo doesn’t work, then frame it with the sliders. People without a usable photo show their initials.</p>
-      <input id="pf" placeholder="Search names…" style="margin-bottom:12px">
-      <div class="list" id="pl"></div>
+      <p class="muted">Tap a face to upload a new photo or adjust how it’s framed. Anyone without a usable photo shows their initials.</p>
+      <div class="row" style="margin-bottom:12px">
+        <div class="seg" style="min-width:280px"><button class="small ${S.peopleScope === 'plan' ? 'on info' : ''}" data-sc="plan">On today’s plan</button><button class="small ${S.peopleScope === 'all' ? 'on info' : ''}" data-sc="all">Everyone</button></div>
+        <input id="pf" class="grow" placeholder="Search names…" style="min-width:180px">
+      </div>
+      <div class="row" style="margin-bottom:12px"><span class="dim" id="pcount"></span>
+        <label class="inline"><input type="checkbox" id="pnone"> Only people showing initials</label></div>
+      <div class="pgrid" id="pl"></div>
+      <div class="card" style="margin-top:16px"><h3 style="margin:0">Add someone</h3>
+        <p class="dim" style="margin:0">For anyone not on the list yet. Use their full name exactly as it appears in Planning Center so the photo matches.</p>
+        <div class="row nowrap"><input id="pan" placeholder="First Last"><button class="primary" id="pab">Add</button></div></div>
       <h2>What to go to each leader for</h2><p class="dim">Shown on the Greenroom go-to cards.</p>
       <div class="card" id="ht">${Object.entries(helpText)
         .map(([k, v]) => `<label>${esc(k)}<input data-h="${esc(k)}" value="${esc(v)}"></label>`)
         .join('')}<button class="primary" id="hs">Save</button></div>`;
-    function src(p) {
-      if (p.override.hidePhoto) return '';
-      return p.override.photo || p.seedPhoto || p.slackPhoto || '';
-    }
-    function card(p) {
+
+    const src = (p) => (p.override.hidePhoto ? '' : p.override.photo || p.seedPhoto || p.slackPhoto || '');
+    const initials = (name) => {
+      const w = name.split(/\s+/).filter((x) => /[A-Za-z]/.test(x[0] || ''));
+      return ((w[0] || '')[0] || '') + (w.length > 1 ? w[w.length - 1][0] : '');
+    };
+    const fromLabel = (p) => {
       const o = p.override;
+      return o.hidePhoto ? 'Initials (photo hidden)' : o.photo ? 'Uploaded photo' : p.seedPhoto ? 'Starter photo' : p.slackPhoto ? 'Slack photo' : 'Initials — no photo';
+    };
+    const imgStyle = (o) => {
+      const fx = o.focusX ?? 50, fy = o.focusY ?? 15, z = o.zoom ?? 1;
+      return `object-position:${fx}% ${fy}%;transform:scale(${z});transform-origin:${fx}% ${fy}%`;
+    };
+    const face = (p) => {
       const s = src(p);
-      const ini = p.name.split(' ').filter(Boolean).map((x) => x[0]).filter((c) => /[A-Za-z]/.test(c));
-      const from = o.hidePhoto ? 'Initials (photo hidden)' : o.photo ? 'Uploaded photo' : p.seedPhoto ? 'Starter photo' : p.slackPhoto ? 'Slack photo' : 'No photo — initials';
-      return `<div class="card person" data-n="${esc(p.name)}">
-        <div class="pframe">${s ? `<img src="${esc(s)}" style="object-position:${o.focusX ?? 50}% ${o.focusY ?? 15}%;transform:scale(${o.zoom ?? 1});transform-origin:${o.focusX ?? 50}% ${o.focusY ?? 15}%">` : esc((ini[0] || '') + (ini[ini.length - 1] || ''))}</div>
-        <div class="kv"><div><strong>${esc(p.name)}</strong> <span class="dim">· ${esc(p.positions.join(', '))}</span></div>
-          <div class="dim">${from}</div>
-          <div class="grid2"><label>Left ↔ right<input type="range" min="0" max="100" data-f="focusX" value="${o.focusX ?? 50}"></label>
-          <label>Up ↕ down<input type="range" min="0" max="100" data-f="focusY" value="${o.focusY ?? 15}"></label>
-          <label>Zoom<input type="range" min="1" max="2.5" step="0.05" data-f="zoom" value="${o.zoom ?? 1}"></label>
-          <label>Slack name (if different)<input data-f="slackName" value="${esc(p.slackName)}" placeholder="${esc(p.name)}"></label></div>
-          <div class="row"><label class="btn small" style="display:inline-flex;align-items:center;min-height:34px;padding:6px 12px;color:#fff;font-size:14px">Upload photo<input type="file" accept="image/*" data-up hidden></label>
-          ${o.photo ? '<button class="small ghost" data-rm>Remove upload</button>' : ''}
-          <label class="inline"><input type="checkbox" data-f="hidePhoto" ${o.hidePhoto ? 'checked' : ''}> Use initials instead</label></div></div></div>`;
+      return s ? `<img src="${esc(s)}" alt="" style="${imgStyle(p.override)}">` : `<span>${esc(initials(p.name))}</span>`;
+    };
+
+    function draw() {
+      const f = $('#pf').value.toLowerCase();
+      const onlyNone = $('#pnone').checked;
+      const list = people.filter((p) => p.name.toLowerCase().includes(f) && (!onlyNone || !src(p)));
+      $('#pcount').textContent = `${list.length} ${list.length === 1 ? 'person' : 'people'} · ${people.filter((p) => !src(p)).length} showing initials`;
+      $('#pl').innerHTML = list
+        .map(
+          (p) => `<button class="pcard" data-n="${esc(p.name)}"><span class="pframe">${face(p)}</span>
+            <span class="pn">${esc(p.name)}</span><span class="ps">${esc(p.positions.join(', ') || fromLabel(p))}</span></button>`
+        )
+        .join('');
+      $$('#pl .pcard').forEach((b) => (b.onclick = () => editor(people.find((x) => x.name === b.dataset.n))));
     }
-    function draw(filter = '') {
-      $('#pl').innerHTML = people.filter((p) => p.name.toLowerCase().includes(filter.toLowerCase())).map(card).join('');
-      $$('#pl .person').forEach(bind);
-    }
-    function bind(el) {
-      const p = people.find((x) => x.name === el.dataset.n);
-      let t;
-      const save = () => {
-        clearTimeout(t);
-        t = setTimeout(async () => {
-          const body = {};
-          $$('[data-f]', el).forEach((i) => (body[i.dataset.f] = i.type === 'checkbox' ? i.checked : i.type === 'range' ? Number(i.value) : i.value));
+
+    function editor(p) {
+      const o = p.override;
+      const dlg = document.createElement('div');
+      dlg.className = 'modal';
+      dlg.innerHTML = `<div class="mbox" role="dialog" aria-label="Photo for ${esc(p.name)}">
+        <div class="row sp"><div><h2 style="margin:0">${esc(p.name)}</h2><div class="dim" data-from></div></div><button class="small ghost" data-x>Done</button></div>
+        <div class="ed">
+          <div class="edmain"><div class="pframe big" data-stage></div>
+            <div class="dim" style="text-align:center">Drag to move · scroll or pinch to zoom</div></div>
+          <div class="edside">
+            <label>Zoom<input type="range" min="1" max="3" step="0.02" data-z></label>
+            <div class="dim">How it looks on the screens</div>
+            <div class="prevs"><div class="pframe wide" data-pv></div><div class="pframe circle" data-pv></div></div>
+            <div class="row">
+              <label class="btn small primary" style="display:inline-flex;align-items:center;min-height:34px;padding:6px 12px;color:#fff;font-size:14px;flex-direction:row">Upload new photo<input type="file" accept="image/*" data-up hidden></label>
+              <button class="small" data-reset>Reset framing</button>
+            </div>
+            <div class="row"><button class="small ghost" data-rm hidden>Remove upload</button>
+              <label class="inline"><input type="checkbox" data-hide> Use initials instead</label></div>
+            <label>Slack name (if different)<input data-slack placeholder="${esc(p.name)}"></label>
+          </div>
+        </div></div>`;
+      document.body.appendChild(dlg);
+      document.body.style.overflow = 'hidden';
+      const stage = $('[data-stage]', dlg);
+      const zoomEl = $('[data-z]', dlg);
+      const st = { fx: o.focusX ?? 50, fy: o.focusY ?? 15, z: o.zoom ?? 1 };
+      $('[data-hide]', dlg).checked = !!o.hidePhoto;
+      $('[data-slack]', dlg).value = p.slackName || '';
+
+      let saveT;
+      const save = (extra = {}) => {
+        clearTimeout(saveT);
+        saveT = setTimeout(async () => {
+          const body = { focusX: Math.round(st.fx * 10) / 10, focusY: Math.round(st.fy * 10) / 10, zoom: st.z, hidePhoto: $('[data-hide]', dlg).checked, slackName: $('[data-slack]', dlg).value.trim(), ...extra };
           try {
             await api('/api/people/' + encodeURIComponent(p.name), { method: 'PUT', body });
-            Object.assign(p.override, body);
+            Object.assign(o, { focusX: body.focusX, focusY: body.focusY, zoom: body.zoom, hidePhoto: body.hidePhoto });
             p.slackName = body.slackName;
           } catch (e) {
             fail(e);
           }
-        }, 300);
+        }, 250);
       };
-      $$('[data-f]', el).forEach(
-        (i) =>
-          (i.oninput = () => {
-            const img = $('img', el);
-            if (img && i.type === 'range') {
-              const fx = $('[data-f=focusX]', el).value;
-              const fy = $('[data-f=focusY]', el).value;
-              img.style.objectPosition = `${fx}% ${fy}%`;
-              img.style.transformOrigin = `${fx}% ${fy}%`;
-              img.style.transform = `scale(${$('[data-f=zoom]', el).value})`;
-            }
-            save();
-            if (i.dataset.f === 'hidePhoto')
-              setTimeout(() => {
-                p.override.hidePhoto = i.checked;
-                draw($('#pf').value);
-              }, 350);
-          })
-      );
-      const up = $('[data-up]', el);
-      if (up)
-        up.onchange = async () => {
-          const f = up.files[0];
-          if (!f) return;
-          try {
-            const dataUrl = await shrink(f, 1400);
-            const r = await api('/api/people/' + encodeURIComponent(p.name) + '/photo', { body: { dataUrl } });
-            p.override = { ...p.override, photo: r.photo, hidePhoto: false, focusX: 50, focusY: 15, zoom: 1 };
-            toast('Photo uploaded');
-            draw($('#pf').value);
-          } catch (e) {
-            fail(e);
-          }
-        };
-      const rm = $('[data-rm]', el);
-      if (rm)
-        rm.onclick = async () => {
-          await api('/api/people/' + encodeURIComponent(p.name) + '/photo', { method: 'DELETE' }).catch(fail);
-          delete p.override.photo;
-          draw($('#pf').value);
-        };
+      function paint() {
+        const s = src(p);
+        $('[data-from]', dlg).textContent = fromLabel(p) + (p.positions.length ? ' · ' + p.positions.join(', ') : '');
+        $('[data-rm]', dlg).hidden = !o.photo;
+        zoomEl.value = st.z;
+        const style = imgStyle({ focusX: st.fx, focusY: st.fy, zoom: st.z });
+        const inner = s ? `<img src="${esc(s)}" alt="" draggable="false" style="${style}">` : `<span>${esc(initials(p.name))}</span>`;
+        stage.innerHTML = inner + (s ? '<i class="thirds"></i>' : '');
+        $$('[data-pv]', dlg).forEach((el) => (el.innerHTML = inner));
+      }
+      function restyle() {
+        const style = imgStyle({ focusX: st.fx, focusY: st.fy, zoom: st.z });
+        $$('img', dlg).forEach((i) => i.setAttribute('style', style));
+        zoomEl.value = st.z;
+      }
+      paint();
+
+      // Drag to move. How far the focus point moves per pixel depends on how
+      // much of the photo is hidden (cover overflow + zoom).
+      const pointers = new Map();
+      let last = null, pinch0 = null;
+      const slack = () => {
+        const img = $('img', stage);
+        const r = stage.getBoundingClientRect();
+        if (!img || !img.naturalWidth) return { x: 1, y: 1, w: r.width, h: r.height };
+        const cover = Math.max(r.width / img.naturalWidth, r.height / img.naturalHeight);
+        const ox = (img.naturalWidth * cover - r.width) / r.width, oy = (img.naturalHeight * cover - r.height) / r.height;
+        return { x: Math.max(ox + (st.z - 1), 0.25), y: Math.max(oy + (st.z - 1), 0.25), w: r.width, h: r.height };
+      };
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      stage.onpointerdown = (e) => {
+        stage.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        last = { x: e.clientX, y: e.clientY };
+        if (pointers.size === 2) {
+          const [a, b] = [...pointers.values()];
+          pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), z: st.z };
+        }
+      };
+      stage.onpointermove = (e) => {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 2 && pinch0) {
+          const [a, b] = [...pointers.values()];
+          st.z = clamp(pinch0.z * (Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d), 1, 3);
+        } else if (pointers.size === 1 && last) {
+          const k = slack();
+          st.fx = clamp(st.fx - ((e.clientX - last.x) / (k.w * k.x)) * 100, 0, 100);
+          st.fy = clamp(st.fy - ((e.clientY - last.y) / (k.h * k.y)) * 100, 0, 100);
+          last = { x: e.clientX, y: e.clientY };
+        }
+        restyle();
+      };
+      stage.onpointerup = stage.onpointercancel = (e) => {
+        pointers.delete(e.pointerId);
+        if (pointers.size < 2) pinch0 = null;
+        const rest = [...pointers.values()][0];
+        last = rest ? { ...rest } : null;
+        save();
+      };
+      stage.onwheel = (e) => {
+        e.preventDefault();
+        st.z = clamp(st.z * (e.deltaY < 0 ? 1.06 : 1 / 1.06), 1, 3);
+        restyle();
+        save();
+      };
+      zoomEl.oninput = () => {
+        st.z = Number(zoomEl.value);
+        restyle();
+        save();
+      };
+      $('[data-reset]', dlg).onclick = () => {
+        Object.assign(st, { fx: 50, fy: 15, z: 1 });
+        restyle();
+        save();
+      };
+      $('[data-hide]', dlg).onchange = () => {
+        o.hidePhoto = $('[data-hide]', dlg).checked;
+        paint();
+        save();
+      };
+      $('[data-slack]', dlg).oninput = () => save();
+      $('[data-up]', dlg).onchange = async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        try {
+          const dataUrl = await shrink(f, 1600);
+          const r = await api('/api/people/' + encodeURIComponent(p.name) + '/photo', { body: { dataUrl } });
+          Object.assign(o, { photo: r.photo, hidePhoto: false, focusX: 50, focusY: 15, zoom: 1 });
+          Object.assign(st, { fx: 50, fy: 15, z: 1 });
+          $('[data-hide]', dlg).checked = false;
+          paint();
+          toast('Photo uploaded — drag and zoom to frame it');
+        } catch (err) {
+          fail(err);
+        }
+      };
+      $('[data-rm]', dlg).onclick = async () => {
+        try {
+          await api('/api/people/' + encodeURIComponent(p.name) + '/photo', { method: 'DELETE' });
+          delete o.photo;
+          paint();
+          toast('Upload removed');
+        } catch (err) {
+          fail(err);
+        }
+      };
+      const close = () => {
+        clearTimeout(saveT);
+        save();
+        document.removeEventListener('keydown', onKey);
+        dlg.remove();
+        document.body.style.overflow = '';
+        draw();
+      };
+      const onKey = (e) => e.key === 'Escape' && close();
+      document.addEventListener('keydown', onKey);
+      $('[data-x]', dlg).onclick = close;
+      dlg.onclick = (e) => e.target === dlg && close();
     }
-    $('#pf').oninput = (e) => draw(e.target.value);
+
+    $('#pf').oninput = draw;
+    $('#pnone').onchange = draw;
+    $$('[data-sc]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          S.peopleScope = b.dataset.sc;
+          viewPeople();
+        })
+    );
+    $('#pab').onclick = async () => {
+      const name = $('#pan').value.trim();
+      if (!name) return;
+      try {
+        await api('/api/people', { body: { name } });
+        S.peopleScope = 'all';
+        await viewPeople();
+        toast('Added ' + name);
+        $('#pf').value = name;
+        $('#pf').dispatchEvent(new Event('input'));
+      } catch (e) {
+        fail(e);
+      }
+    };
     $('#hs').onclick = async () => {
       const body = {};
       $$('[data-h]').forEach((i) => (body[i.dataset.h] = i.value));

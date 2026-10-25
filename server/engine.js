@@ -9,6 +9,7 @@ const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
 const sample = require('./seed/sample');
+const photos = require('./photos');
 
 const SEED_PHOTO_DIR = path.join(__dirname, 'seed', 'photos');
 
@@ -186,8 +187,7 @@ function makeEngine({ config, db, clock, log }) {
     const o = (d().people || {})[name] || {};
     // Order: an uploaded override, then the hand-cropped starter photo that
     // ships with the app, then the person's Slack photo, then Planning Center.
-    const f = name.toLowerCase().replace(/[^a-z ]/g, '').trim().replace(/\s+/g, '-') + '.jpg';
-    const seed = fs.existsSync(path.join(SEED_PHOTO_DIR, f)) ? '/seed-photos/' + f : '';
+    const seed = photos.seedPhoto(name);
     // Planning Center profile photo as the last resort (skips its default
     // initials / no-photo avatars). Lets faces work without a Slack app.
     const pcoPerson = plan && plan.people.find((pp) => pp.name === name && pp.photo);

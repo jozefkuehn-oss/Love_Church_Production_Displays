@@ -12,6 +12,7 @@ const { configDefaults, dbDefaults } = require('./defaults');
 const { makeAuth } = require('./auth');
 const { makeClock } = require('./time');
 const { makeEngine } = require('./engine');
+const photos = require('./photos');
 
 const LOG_DIR = path.join(DATA_DIR, 'logs');
 fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -305,26 +306,44 @@ app.put('/api/quick', auth.requireAdmin, (req, res) => {
   ok(res);
 });
 
-// People: who's scheduled, their photo source and framing.
+// People: who's scheduled (or, with ?all=1, everyone the app knows about),
+// their photo source and framing.
 app.get('/api/people', auth.requireAdmin, (req, res) => {
   const plan = engine.getPlan();
   const slack = engine.getSlackPhotos();
-  const names = plan ? [...new Set(plan.people.map((p) => p.name))] : [];
+  const onPlan = new Map();
+  for (const p of (plan && plan.people) || []) onPlan.set(p.name, [...(onPlan.get(p.name) || []), p.position]);
+  let names = [...onPlan.keys()];
+  if (req.query.all) {
+    const added = Object.keys(db.data.people || {});
+    names = [...new Set([...names, ...photos.roster(), ...added])].sort((a, b) => a.localeCompare(b));
+  }
   ok(res, {
     people: names.map((name) => {
       const o = db.data.people[name] || {};
-      const positions = plan.people.filter((p) => p.name === name).map((p) => p.position);
-      const seed = seedPhoto(name);
-      return { name, positions, override: o, slackPhoto: slack[name] || '', seedPhoto: seed, slackName: db.data.nameMap[name] || '' };
+      return {
+        name,
+        positions: [...new Set(onPlan.get(name) || [])],
+        onPlan: onPlan.has(name),
+        override: o,
+        slackPhoto: slack[name] || '',
+        seedPhoto: photos.seedPhoto(name),
+        slackName: db.data.nameMap[name] || '',
+      };
     }),
     helpText: db.data.helpText,
   });
 });
 
-function seedPhoto(name) {
-  const f = name.toLowerCase().replace(/[^a-z ]/g, '').trim().replace(/\s+/g, '-') + '.jpg';
-  return fs.existsSync(path.join(__dirname, 'seed', 'photos', f)) ? '/seed-photos/' + f : '';
-}
+// Add someone who isn't on the plan or the roster yet, so a photo can be
+// ready before they serve.
+app.post('/api/people', auth.requireAdmin, (req, res) => {
+  const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!name) return bad(res, 'Type the person’s full name as it appears in Planning Center.');
+  db.data.people[name] = db.data.people[name] || {};
+  db.save();
+  ok(res, { name });
+});
 
 app.put('/api/people/:name', auth.requireAdmin, (req, res) => {
   const name = req.params.name;
@@ -338,6 +357,7 @@ app.put('/api/people/:name', auth.requireAdmin, (req, res) => {
     zoom: num(b.zoom, 1, 3, cur.zoom ?? 1),
     hidePhoto: b.hidePhoto ?? cur.hidePhoto ?? false,
   };
+  if (b.reset) Object.assign(db.data.people[name], { focusX: 50, focusY: 15, zoom: 1 });
   if ('slackName' in b) {
     if (b.slackName) db.data.nameMap[name] = String(b.slackName);
     else delete db.data.nameMap[name];

@@ -58,7 +58,7 @@ Your Slack workspace admin approves this.
 4. Copy the **Bot User OAuth Token**. It starts with `xoxb-`.
 5. Admin page → **Settings → Slack photos** → paste it → **Save settings**.
 
-Photos download once and are kept on the Mac, so the screens don't depend on Slack during an Encounter. The hand-cropped starter photos that ship with the app are used first. Fix anyone else in **People**: upload a better headshot, frame it with the sliders, or switch to initials.
+Photos download once and are kept on the Mac, so the screens don't depend on Slack during an Encounter. The hand-cropped starter photos that ship with the app are used first. Fix anyone else in **People**: tap their face, upload a better headshot, drag and zoom to frame it, or switch to initials. Use **Everyone** to reach people who aren't on today's plan, and **Add someone** for new volunteers.
 
 ## 6. Connect ProPresenter
 
