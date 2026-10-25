@@ -4,6 +4,22 @@ Step by step, start to finish. Plan on about an hour the first time. Anything in
 
 ---
 
+## Beta: try it on the broadcast Mac first
+
+You can run the app on the broadcast ProPresenter Mac (192.168.10.237) before the Mac mini arrives. Beta mode runs only the display server, in a Terminal window: nothing starts at login, no windows open on that Mac's screens, and closing the window stops it completely. ProPresenter and Companion aren't touched (Companion uses port 8000; the app uses 8080).
+
+1. Install **Node.js** (LTS) from https://nodejs.org if it isn't there yet.
+2. Get the app: in GitHub Desktop, **File → Clone Repository** → `Love_Church_Production_Displays` → **Documents** → **Clone**. (Or on github.com: **Code → Download ZIP** and unzip it into Documents.)
+3. In Terminal:
+   ```
+   cd ~/Documents/Love_Church_Production_Displays
+   bash scripts/beta-mac.sh
+   ```
+4. It prints the addresses, e.g. `http://192.168.10.237:8080/admin`. Open that on your phone, create your admin account, then follow steps 4–9 below. Open `/display` on any TV or laptop to pick a room.
+5. To update the beta: stop it (Control-C), **Fetch/Pull** in GitHub Desktop, run step 3 again.
+
+When the Mac mini is ready, copy the beta's `data` folder into the Mac mini's copy of the app before running the installer. Your settings, PINs, mic assignments and uploaded photos come with it.
+
 ## 1. Prepare the Mac
 
 1. **Sign in to the Mac** with the account that will run the displays. A dedicated account like "Production Displays" keeps it simple.
