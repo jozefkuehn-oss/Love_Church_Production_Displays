@@ -477,7 +477,7 @@ function makeEngine({ config, db, clock, log }) {
     // and section widgets can be seen before the real machines are connected.
     let sampleProP = null;
     let sampleSection = null;
-    if (cfg().sampleMode && !aud.status.enabled && current) {
+    if (cfg().sampleMode && current && (!aud.status.connected || !bc.status.connected)) {
       const sn = songInfo(current);
       const secs = sn && sn.progression ? sn.progression.split(/\s*→\s*/) : [];
       const frac = current.length && remainingMs != null ? Math.min(0.999, Math.max(0, 1 - remainingMs / (current.length * 1000))) : 0;

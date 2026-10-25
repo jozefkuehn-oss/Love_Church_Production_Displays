@@ -68,7 +68,7 @@ Do this on **both** ProPresenter machines (auditorium and broadcast):
 2. Note the **IP address** and **Port** shown there.
 3. Admin page → **Settings → ProPresenter** → tick the machine, enter its IP and port → **Save settings**.
 
-The broadcast machine (192.168.10.237, port 65181) is already filled in. Keep that port fixed in ProPresenter so it doesn't change after a restart.
+Both machines are already filled in: **auditorium 192.168.10.204, port 51090** and **broadcast 192.168.10.237, port 65181**. Keep those ports fixed in ProPresenter so they don't change after a restart. If one ever stops connecting, check its port here first.
 
 - The **auditorium** machine tells every screen where we are in the Encounter. When the operator moves to the next song, every display follows.
 - The **broadcast** machine feeds the *Broadcast graphics* box on the Broadcast Control screen.

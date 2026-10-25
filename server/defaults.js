@@ -22,7 +22,7 @@ const configDefaults = {
   pco: { appId: '', secret: '', serviceTypeId: '427029', refreshMinutes: 5 },
   slack: { botToken: '', refreshHours: 12 },
   propresenter: {
-    auditorium: { host: '', port: 50001, enabled: false },
+    auditorium: { host: '192.168.10.204', port: 51090, enabled: true }, // auditorium ProPresenter machine (playlist built by hand)
     broadcast: { host: '192.168.10.237', port: 65181, enabled: true }, // broadcast ProPresenter machine
     pollMs: 1000,
   },
