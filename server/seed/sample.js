@@ -139,19 +139,22 @@ const songs = {
 // these in the admin page; once the receivers are networked the battery and
 // RF numbers come from the gear instead of the sample generator.
 const wireless = {
-  'Worship Leader': { mic: 'HH 1', iem: 'IEM 1' },
-  MD: { mic: 'TB 1', iem: 'IEM 2' },
-  'Frontline#1': { mic: 'HH 2', iem: 'IEM 3' },
-  'Frontline#2': { mic: 'HH 3', iem: 'IEM 4' },
-  'Frontline#3': { mic: 'HH 4', iem: 'IEM 5' },
-  'Frontline#4': { mic: 'HH 5', iem: 'IEM 6' },
+  'Worship Leader': { mic: 'VOX 1', iem: 'IEM 1' },
+  'Frontline#1': { mic: 'VOX 2', iem: 'IEM 3' },
+  'Frontline#2': { mic: 'VOX 3', iem: 'IEM 4' },
+  'Frontline#3': { mic: 'VOX 4', iem: 'IEM 5' },
+  'Frontline#4': { mic: 'VOX 5', iem: 'IEM 6' },
+  MD: { mic: 'WIRED', iem: 'IEM 2' },
   Keys: { mic: 'WIRED', iem: 'IEM 7' },
   Drums: { mic: 'WIRED', iem: 'IEM 8' },
   'Rhythm Electric Guitar': { mic: 'WIRED', iem: 'IEM 9' },
   'Lead Electric Guitar': { mic: 'WIRED', iem: 'IEM 10' },
-  'Bible Teacher': { mic: 'LAV 1' },
-  'Encounter Host#1': { mic: 'HH 6' },
-  'Encounter Host#2': { mic: 'HH 7' },
+  'Bible Teacher': { mic: 'TEACH' },
+  'Encounter Host#1': { mic: 'HH-1' },
+  'Encounter Host#2': { mic: 'HH-2' },
 };
+// The first build's placeholder names; installs still using them get the
+// real channel names above.
+const oldWirelessMics = ['HH 1', 'TB 1', 'HH 2', 'HH 3', 'HH 4', 'HH 5', 'LAV 1', 'HH 6', 'HH 7'];
 
-module.exports = { date, plan, songs, wireless };
+module.exports = { date, plan, songs, wireless, oldWirelessMics };

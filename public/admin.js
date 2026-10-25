@@ -972,7 +972,7 @@
         <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>
         <div id="rst"></div></div>
       <h2>Assignments</h2>
-      <p class="muted">Which mic and IEM go with each Planning Center position. Type the mic exactly as the receiver channel is named (like <code>VOX-4</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
+      <p class="muted">Which mic and IEM go with each Planning Center position. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
       <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>
       <datalist id="chl"></datalist>`;
 

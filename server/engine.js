@@ -110,6 +110,9 @@ function makeEngine({ config, db, clock, log }) {
     // Seed song bank + wireless assignments the first time.
     for (const [k, v] of Object.entries(sample.songs)) if (!d().songs[k]) d().songs[k] = v;
     if (!d().wireless) d().wireless = structuredClone(sample.wireless);
+    else if (Object.values(d().wireless).some((a) => a && sample.oldWirelessMics.includes(a.mic)) && Object.values(d().wireless).every((a) => !a || !a.mic || a.mic === 'WIRED' || sample.oldWirelessMics.includes(a.mic))) {
+      d().wireless = structuredClone(sample.wireless);
+    }
     db.save();
   }
 
