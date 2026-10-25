@@ -973,7 +973,7 @@
       <button class="small" data-add="${key}">Add Encounter</button>`;
     function draw() {
       app.innerHTML = `<h1>Schedule</h1>
-        <p class="muted">The normal Sunday. When the Planning Center plan has service times, those start times are used and the stream windows here are matched to them. The stream-end countdowns use these times until Resi sync exists.</p>
+        <p class="muted">The normal Sunday. When the Planning Center plan has service times, those start times are used and the stream windows here are matched to them. The stream countdowns use these times. Leave both stream times blank for an Encounter that isn’t streamed.</p>
         <div class="card"><h2 style="margin:0">Every Sunday</h2>${table(s.encounters, 'default')}
           <div class="grid2"><label>Positions (huddle countdown)<input type="time" id="s_pos" value="${esc(s.positions || '')}"></label>
           <label>Rooms go Live (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.liveLeadMinutes ?? 5)}"></label>

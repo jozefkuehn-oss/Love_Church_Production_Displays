@@ -119,6 +119,7 @@
     let text = dur(left);
     if (left != null && left <= 0) text = { streamEnd: 'Ended', encounterStart: 'Started', nextStart: 'Starting', bandToStage: 'On stage', nextBandToStage: 'On stage', streamStart: 'Live', nextStreamStart: 'Live', firstStream: 'Live' }[o.target] || 'Now';
     if (left == null && /^next/.test(o.target)) text = 'Done for today';
+    if (left == null && ((s.targets && s.targets.notStreamed) || []).includes(o.target)) text = 'Not streamed';
     if (o.huge) {
       return `<div class="stat huge ${cls}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v">${text}</div></div>`;
     }

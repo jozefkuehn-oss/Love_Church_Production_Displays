@@ -8,6 +8,8 @@ const plan = {
   id: '90898002',
   title: 'Orange Sunday · “You Are A Tool”',
   date,
+  // AUDIO/VISUAL note from the real Oct 25 plan
+  notes: 'AUDIO/VISUAL: Vox 1: Caleb\nVox 2: Linda\nVox 3: Clyde\nVox 4: Craig\nVox 5: Christina\n\nOrder from stage right to left:\nChristina\nClyde\nLinda\nCaleb\nCraig',
   times: [
     { label: '8:30', start: '08:30' },
     { label: '10:00', start: '10:00' },

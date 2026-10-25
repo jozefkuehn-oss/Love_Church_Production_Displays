@@ -73,4 +73,28 @@ function parseMicNotes(text, people) {
   return out;
 }
 
-module.exports = { parseMicNotes };
+// "Order from stage right to left:" followed by one name per line. Returns
+// full names in that order (= left to right as the audience and cameras see
+// the stage). The last filled-in list wins.
+function parseStageOrder(text, people) {
+  if (!text || !people.length) return [];
+  const lines = String(text).split('\n').map((l) => l.trim());
+  let best = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!/order.*stage\s*right/i.test(lines[i])) continue;
+    const names = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j];
+      if (!l) { if (names.length) break; continue; }
+      if (/:/.test(l) || MIC_RE.test(l)) { MIC_RE.lastIndex = 0; break; }
+      const found = parseMicNotes(`VOX 1 ${l}`, people);
+      const n = Object.keys(found)[0];
+      if (!n) break;
+      if (!names.includes(n)) names.push(n);
+    }
+    if (names.length) best = names;
+  }
+  return best;
+}
+
+module.exports = { parseMicNotes, parseStageOrder };

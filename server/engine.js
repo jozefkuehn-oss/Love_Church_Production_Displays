@@ -9,7 +9,7 @@ const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
 const { makeShure } = require('./sources/shure');
-const { parseMicNotes } = require('./micnotes');
+const { parseMicNotes, parseStageOrder } = require('./micnotes');
 const sample = require('./seed/sample');
 const photos = require('./photos');
 
@@ -253,6 +253,15 @@ function makeEngine({ config, db, clock, log }) {
     stage.forEach((s) => {
       if (s.position === 'Frontline') s.slot = `Frontline#${++frontN}`;
     });
+    // If the plan notes give the singers' order across the stage ("Order from
+    // stage right to left"), show them that way — left to right as the
+    // cameras see them — singers first, then the band in its usual order.
+    const order = plan.notes ? parseStageOrder(plan.notes, stage.map((c) => ({ name: c.name, aliases: [(d().nameMap || {})[c.name]].filter(Boolean) }))) : [];
+    if (order.length > 1) {
+      const picked = stage.filter((c) => order.includes(c.name)).sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+      const rest = stage.filter((c) => !order.includes(c.name));
+      stage.splice(0, stage.length, ...picked, ...rest);
+    }
 
     const fromTeam = (re, order) =>
       plan.people
@@ -382,13 +391,19 @@ function makeEngine({ config, db, clock, log }) {
     const p = parts(now, tz);
     const dateKey = p.dateKey;
     const nowMin = p.h * 60 + p.mi + p.s / 60;
-    const encs = encountersFor(dateKey).map((e, i) => ({
-      ...e,
-      index: i,
-      startMs: zoned(dateKey, e.start, tz),
-      streamStartMs: zoned(dateKey, e.streamStart || e.start, tz),
-      streamEndMs: zoned(dateKey, e.streamEnd || plus(e.start, 75), tz),
-    }));
+    // An Encounter with no stream times in the Schedule isn't streamed: its
+    // stream countdowns read "Not streamed" and Live mode lasts 75 minutes.
+    const encs = encountersFor(dateKey).map((e, i) => {
+      const noStream = !e.streamStart && !e.streamEnd;
+      return {
+        ...e,
+        index: i,
+        noStream,
+        startMs: zoned(dateKey, e.start, tz),
+        streamStartMs: noStream ? null : zoned(dateKey, e.streamStart || e.start, tz),
+        streamEndMs: noStream ? null : zoned(dateKey, e.streamEnd || plus(e.start, 75), tz),
+      };
+    });
 
     // Each Encounter's live window runs from a few minutes before it starts
     // until a few minutes after its stream ends. Inside a window the
@@ -398,8 +413,9 @@ function makeEngine({ config, db, clock, log }) {
     const lead = (sched0.liveLeadMinutes ?? 5) * 60e3;
     const tail = (sched0.liveTailMinutes ?? 5) * 60e3;
     encs.forEach((e) => {
-      e.liveFrom = e.startMs - lead;
-      e.liveUntil = e.streamEndMs + tail;
+      // Live from whichever comes first, the stream or the Encounter itself.
+      e.liveFrom = Math.min(e.startMs, e.streamStartMs ?? e.startMs) - lead;
+      e.liveUntil = (e.streamEndMs ?? e.startMs + 75 * 60e3) + tail;
     });
     const liveEnc = encs.find((e) => now >= e.liveFrom && now <= e.liveUntil) || null;
     const upcoming = encs.find((e) => e.liveFrom > now) || null;
@@ -618,6 +634,8 @@ function makeEngine({ config, db, clock, log }) {
       nextEncounter: (encs.find((e) => e.startMs > now) || {}).startMs || null,
       nextStart: nextEnc ? nextEnc.startMs : null,
       nextStreamStart: nextEnc ? nextEnc.streamStartMs : null,
+      // Which stream countdowns are empty because that Encounter isn't streamed.
+      notStreamed: [...(enc && enc.noStream ? ['streamStart', 'streamEnd'] : []), ...(nextEnc && nextEnc.noStream ? ['nextStreamStart'] : [])],
       nextBandToStage: nextEnc ? nextEnc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
     };
 

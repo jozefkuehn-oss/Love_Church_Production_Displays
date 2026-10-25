@@ -241,9 +241,11 @@ const dbDefaults = {
     // Default Sunday. Times are local (America/Chicago). Stream windows are
     // what the stream-end countdown uses until Resi sync exists.
     encounters: [
-      { label: '8:30', start: '08:30', streamStart: '08:25', streamEnd: '09:45' },
-      { label: '10:00', start: '10:00', streamStart: '09:55', streamEnd: '11:15' },
-      { label: '11:45', start: '11:45', streamStart: '11:40', streamEnd: '13:00' },
+      // Broadcast windows: 8:15–9:40 and 9:45–11:40. 11:45 isn't streamed
+      // (blank stream times).
+      { label: '8:30', start: '08:30', streamStart: '08:15', streamEnd: '09:40' },
+      { label: '10:00', start: '10:00', streamStart: '09:45', streamEnd: '11:40' },
+      { label: '11:45', start: '11:45', streamStart: '', streamEnd: '' },
     ],
     positions: '08:15', // "Positions in" countdown (optional widget)
     // Displays set to Automatic switch to their Live layout this many minutes
