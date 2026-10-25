@@ -329,6 +329,24 @@ function makeEngine({ config, db, clock, log }) {
         n[c.position] = (n[c.position] || 0) + 1;
         add(c, assign[`${c.position}#${n[c.position]}`] ? `${c.position}#${n[c.position]}` : c.position);
       });
+    // Handhelds (HH-1, HH-2) move around during the day — preshow, host
+    // moment… The Floor Manager says who has each one right now, and that
+    // wins over everything else for that channel.
+    const hh = d().wirelessWeek && plan && d().wirelessWeek.date === plan.date ? d().wirelessWeek.handhelds || {} : {};
+    const nrm = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const everyone = Object.values(people).flat();
+    for (const [ch, h] of Object.entries(hh)) {
+      if (!h || !h.name) continue;
+      for (const r of rows) if (r.name !== h.name && nrm(r.mic) === nrm(ch)) r.mic = '';
+      let r = rows.find((x) => x.name === h.name);
+      if (!r) {
+        const c = everyone.find((x) => x && x.name === h.name) || { name: h.name, initials: initials(h.name), ...photoFor(h.name) };
+        r = { name: c.name, role: (h.moment || c.role || '').toUpperCase(), position: c.position || '', photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic: '', iem: '', defMic: '', defIem: '', fromNotes: {} };
+        rows.push(r);
+      }
+      r.mic = ch;
+      r.handheld = h.moment || '';
+    }
     // Real receivers win. Mics come from the Shure receivers by channel name.
     // IEMs are one-way radio (the belt packs can't report back), so in live
     // mode they show the assignment only, with no battery or RF.
@@ -353,7 +371,7 @@ function makeEngine({ config, db, clock, log }) {
     } else {
       mic = iem = (name) => ({ ch: name, battery: null, rf: null });
     }
-    lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem, fromNotes: r.fromNotes }));
+    lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem, fromNotes: r.fromNotes, handheld: r.handheld || '' }));
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
 

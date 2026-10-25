@@ -63,7 +63,9 @@
       S.canSend = me.canSend;
       S.reason = me.reason;
       const hash = location.hash.replace('#', '');
-      S.tab = tabsFor().some((t) => t.id === hash) ? hash : 'messages';
+      const p = S.me.perms || [];
+      const home = p.includes('handhelds') && !p.includes('wireless') ? 'handhelds' : 'messages';
+      S.tab = tabsFor().some((t) => t.id === hash) ? hash : home;
       renderShell();
     } catch (e) {
       app.innerHTML = `<p class="muted">${esc(e.message)}</p>`;
@@ -184,6 +186,7 @@
     const perms = (S.me && S.me.perms) || [];
     const t = [{ id: 'messages', name: 'Messages' }];
     if (perms.includes('live')) t.push({ id: 'live', name: 'Live' });
+    if (perms.includes('handhelds')) t.push({ id: 'handhelds', name: 'Handhelds' });
     if (S.me && S.me.role !== 'admin' && perms.includes('wireless')) t.push({ id: 'wireless', name: 'Mics' });
     if (S.me && S.me.role === 'admin')
       t.push(
@@ -1127,10 +1130,92 @@
     S.timers.push(setInterval(() => api('/api/wireless-live').then(drawLive).catch(() => {}), 3000));
   }
 
+  // ---------------- Handhelds ----------------
+  // Floor Manager / FOH: who has HH-1 and HH-2 right now (preshow, host
+  // moment…). Picking a person saves straight away and the screens follow.
+  async function viewHandhelds() {
+    const MOMENTS = ['Preshow', 'Host moment', 'Announcements'];
+    const sel = {}; // ch → chosen moment while editing
+    let data = await api('/api/handhelds');
+    const fmtMin = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+    function draw() {
+      app.innerHTML = `<h1>Handhelds</h1>
+        <p class="muted">Who has each handheld right now. Pick the moment, then the person — it saves straight away and the screens update.</p>
+        <div class="hhgrid">${data.handhelds
+          .map((h) => {
+            const m = sel[h.ch] ?? h.moment;
+            const l = h.live;
+            const status = !l ? '' : !l.online ? '<span class="dim">Receiver offline</span>' : !l.tx ? '<span class="dim">Transmitter off</span>'
+              : `<span class="status"><span class="dot ${l.rf === false ? 'bad' : 'ok'}"></span>${l.battery != null ? l.battery + '%' : ''}${l.minutes != null ? ' · ' + fmtMin(l.minutes) : ''}</span>`;
+            const known = data.people.some((p) => p.name === h.name);
+            return `<div class="card hh" data-ch="${h.ch}">
+              <div class="row sp"><div class="hhch">${h.ch}</div>${status}</div>
+              <div class="hhwho">${h.name ? esc(h.name) : '<span class="dim">Nobody yet</span>'}${h.moment ? `<span class="hhm">${esc(h.moment)}</span>` : ''}</div>
+              ${h.by ? `<div class="dim">Set by ${esc(h.by)} at ${fmtTime(h.at)}</div>` : h.name ? '<div class="dim">From the mic plan</div>' : ''}
+              <div class="chips">${MOMENTS.map((x) => `<button class="chip ${m === x ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+              <label>Who has it<select data-p>
+                <option value="">— Pick a person —</option>
+                ${data.people.map((p) => `<option value="${esc(p.name)}" ${p.name === h.name ? 'selected' : ''}>${esc(p.name)}${p.position ? ' · ' + esc(p.position) : ''}</option>`).join('')}
+                <option value="__other" ${h.name && !known ? 'selected' : ''}>Someone else…</option>
+              </select></label>
+              <div class="row nowrap" data-otherrow ${h.name && !known ? '' : 'hidden'}><input data-other placeholder="Their name" value="${h.name && !known ? esc(h.name) : ''}"><button class="primary small" data-oksave>Set</button></div>
+              ${h.set ? '<button class="small ghost" data-clear style="align-self:flex-start">Clear (back to the mic plan)</button>' : ''}
+            </div>`;
+          })
+          .join('')}</div>`;
+      $$('.hh').forEach((card) => {
+        const ch = card.dataset.ch;
+        const h = data.handhelds.find((x) => x.ch === ch);
+        const save = async (name) => {
+          try {
+            await api('/api/handhelds/' + ch, { method: 'PUT', body: { name, moment: sel[ch] ?? h.moment } });
+            toast(name ? `${ch} → ${name}` : `${ch} cleared`);
+            delete sel[ch];
+            data = await api('/api/handhelds');
+            draw();
+          } catch (e) {
+            fail(e);
+          }
+        };
+        $$('[data-m]', card).forEach(
+          (b) =>
+            (b.onclick = () => {
+              sel[ch] = (sel[ch] ?? h.moment) === b.dataset.m ? '' : b.dataset.m;
+              if (h.set) save(h.name);
+              else draw();
+            })
+        );
+        $('[data-p]', card).onchange = (e) => {
+          if (e.target.value === '__other') {
+            $('[data-otherrow]', card).hidden = false;
+            $('[data-other]', card).focus();
+          } else if (e.target.value) save(e.target.value);
+        };
+        $('[data-oksave]', card).onclick = () => {
+          const v = $('[data-other]', card).value.trim();
+          if (v) save(v);
+        };
+        const c = $('[data-clear]', card);
+        if (c) c.onclick = () => save('');
+      });
+    }
+    draw();
+    S.timers.push(
+      setInterval(async () => {
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hh select, .hh input')) return;
+        if (Object.keys(sel).length) return;
+        try {
+          data = await api('/api/handhelds');
+          draw();
+        } catch (e) {}
+      }, 5000)
+    );
+  }
+
   // ---------------- Accounts ----------------
   async function viewAccounts() {
     const [{ roles, perms }, accounts] = await Promise.all([api('/api/roles'), api('/api/accounts')]);
-    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)' };
+    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Handhelds (HH-1/HH-2)', admin: 'Everything (director / admin)' };
     const list = roles.map((r) => ({ ...r, positionsText: r.positions.join(', '), pin: '' }));
     app.innerHTML = `<h1>Roles &amp; PINs</h1>
       <p class="muted">Leaders sign in by picking the role they’re serving in that day and entering the role’s PIN. Share each PIN only with the people who serve in that role. Sign-ins end at midnight. If Planning Center has exactly one person in that role, their name shows on messages they send.</p>
@@ -1312,6 +1397,7 @@
     songs: viewSongs,
     schedule: viewSchedule,
     wireless: viewWireless,
+    handhelds: viewHandhelds,
     accounts: viewAccounts,
     settings: viewSettings,
   };

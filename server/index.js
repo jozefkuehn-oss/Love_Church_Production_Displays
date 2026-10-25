@@ -46,6 +46,21 @@ const auth = makeAuth(db, {
 
 // Bring profiles saved by older versions up to date: every room has a
 // Pre-Encounter and a Live layout, and one mode setting (auto / pre / live).
+// Roles saved by an earlier build: drop the unused Encounter Lead role, add
+// the director roles and the Floor Manager's handheld permission.
+(function migrateRoles() {
+  if ((db.data.rolesVersion || 1) >= 2) return;
+  const roles = db.data.roles || [];
+  db.data.roles = roles.filter((r) => r.id !== 'encounter-lead');
+  for (const def of dbDefaults.roles) {
+    const have = db.data.roles.find((r) => r.id === def.id);
+    if (!have) db.data.roles.push(structuredClone(def));
+    else if (def.id === 'floor-manager' || def.id === 'foh') have.perms = [...new Set([...(have.perms || []), 'handhelds'])];
+  }
+  db.data.rolesVersion = 2;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
@@ -479,9 +494,52 @@ app.put('/api/wireless-week', auth.requirePerm('wireless'), (req, res) => {
     const iem = String((v && v.iem) || '').slice(0, 20);
     if (mic || iem) byName[String(name).slice(0, 80)] = { ...(mic ? { mic } : {}), ...(iem ? { iem } : {}) };
   }
-  db.data.wirelessWeek = { date: plan.date, byName };
+  const keepHH = db.data.wirelessWeek && db.data.wirelessWeek.date === plan.date ? db.data.wirelessWeek.handhelds || {} : {};
+  db.data.wirelessWeek = { date: plan.date, byName, handhelds: keepHH };
   db.save();
   pushNow();
+  ok(res);
+});
+
+// Handhelds: the Floor Manager (or FOH) says who has HH-1 / HH-2 right now.
+const HANDHELDS = ['HH-1', 'HH-2'];
+function weekDoc() {
+  const plan = engine.getPlan();
+  if (!plan) return null;
+  if (!db.data.wirelessWeek || db.data.wirelessWeek.date !== plan.date) db.data.wirelessWeek = { date: plan.date, byName: {}, handhelds: {} };
+  db.data.wirelessWeek.handhelds = db.data.wirelessWeek.handhelds || {};
+  return db.data.wirelessWeek;
+}
+app.get('/api/handhelds', auth.requirePerm(['handhelds', 'wireless']), (req, res) => {
+  engine.snapshot();
+  const plan = engine.getPlan();
+  const wk = db.data.wirelessWeek && plan && db.data.wirelessWeek.date === plan.date ? db.data.wirelessWeek.handhelds || {} : {};
+  const rows = engine.wirelessRows();
+  const live = engine.wirelessChannels();
+  const norm = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const people = [...new Map(((plan && plan.people) || []).map((p) => [p.name, { name: p.name, position: p.position }])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  ok(res, {
+    date: plan ? plan.date : '',
+    people,
+    handhelds: HANDHELDS.map((ch) => {
+      const holder = rows.find((r) => norm(r.mic) === norm(ch));
+      const l = live[norm(ch)];
+      return { ch, name: holder ? holder.name : '', moment: (wk[ch] || {}).moment || '', set: !!(wk[ch] && wk[ch].name), by: (wk[ch] || {}).by || '', at: (wk[ch] || {}).at || 0, live: l ? { battery: l.battery, minutes: l.minutes, rf: l.rf, tx: l.tx, online: l.online } : null };
+    }),
+  });
+});
+app.put('/api/handhelds/:ch', auth.requirePerm(['handhelds', 'wireless']), (req, res) => {
+  const ch = HANDHELDS.find((x) => x.replace('-', '') === String(req.params.ch).toUpperCase().replace(/[^A-Z0-9]/g, ''));
+  if (!ch) return bad(res, 'Unknown handheld.');
+  const wk = weekDoc();
+  if (!wk) return bad(res, 'No plan loaded yet.');
+  const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const moment = String((req.body || {}).moment || '').trim().slice(0, 30);
+  if (name) wk.handhelds[ch] = { name, moment, by: req.account.name, at: Date.now() };
+  else delete wk.handhelds[ch];
+  db.save();
+  pushNow();
+  log(`${ch} → ${name || '(cleared)'}${moment ? ` for ${moment}` : ''} by ${req.account.name}`);
   ok(res);
 });
 

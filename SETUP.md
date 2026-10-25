@@ -112,7 +112,12 @@ Leaders don't need their own accounts. When they open the producer page (`http:/
 Admin page → **Roles & PINs**:
 
 - Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
-- Choose what each role can do: **Send messages**, **Live control**, and **Mics (This Sunday)**. By default, FOH Engineer can do all three; Service Producer and Broadcast Producer can send messages and use Live; Stage Manager, Floor Manager and Encounter Lead can send messages.
+- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Handhelds (HH-1/HH-2)** and **Everything (director / admin)**. Defaults:
+  - **Production Director, Technical Director, Broadcast Director:** everything, same as an admin.
+  - **FOH Engineer:** messages, Live, Mics and Handhelds.
+  - **Service Producer, Broadcast Producer:** messages and Live.
+  - **Floor Manager:** messages and Handhelds — their phone opens on the Handhelds screen to say who has HH-1 / HH-2 for preshow, the host moment, announcements…
+  - **Stage Manager:** messages.
 - **Planning Center positions** tells the app which scheduled positions count as the role. When exactly one person is scheduled in it, their name shows on the sign-in button and on the messages they send.
 - Add or remove roles as the team changes. Changing a PIN doesn't sign anyone out; removing a role does.
 - Five wrong PINs in a row locks that role for five minutes.

@@ -32,7 +32,8 @@ function parseCookies(header) {
   return out;
 }
 
-const PERMS = ['messages', 'live', 'wireless'];
+// admin = everything (directors). handhelds = say who has HH-1 / HH-2.
+const PERMS = ['messages', 'live', 'wireless', 'handhelds', 'admin'];
 
 function makeAuth(db, opts = {}) {
   const d = db.data;
@@ -120,13 +121,14 @@ function makeAuth(db, opts = {}) {
     if (s.roleId) {
       const r = (d.roles || []).find((x) => x.id === s.roleId);
       if (!r) return null;
+      const full = (r.perms || []).includes('admin');
       return {
         id: 'role:' + r.id,
         name: s.person ? `${s.person} (${r.name})` : r.name,
         pcoName: s.person || '',
-        role: 'role',
+        role: full ? 'admin' : 'role',
         roleName: r.name,
-        perms: r.perms || [],
+        perms: full ? PERMS.slice() : r.perms || [],
         isRole: true,
       };
     }
@@ -145,7 +147,7 @@ function makeAuth(db, opts = {}) {
   function publicAccount(a) {
     if (!a) return null;
     const out = { id: a.id, name: a.name, pcoName: a.pcoName, role: a.role };
-    if (a.isRole) Object.assign(out, { roleName: a.roleName, perms: a.perms });
+    if (a.isRole) Object.assign(out, { roleName: a.roleName, perms: a.perms, isRole: true });
     else out.perms = a.role === 'admin' ? PERMS.slice() : ['messages', 'live'];
     return out;
   }
@@ -165,10 +167,11 @@ function makeAuth(db, opts = {}) {
     next();
   };
 
+  // perm can be one permission or a list (any of them is enough).
   const requirePerm = (perm) => (req, res, next) => {
     const a = sessionAccount(req);
     if (!a) return res.status(401).json({ error: 'Please sign in.' });
-    if (!can(a, perm)) return res.status(403).json({ error: 'Your role can’t do that.' });
+    if (![].concat(perm).some((p) => can(a, p))) return res.status(403).json({ error: 'Your role can’t do that.' });
     req.account = a;
     next();
   };
