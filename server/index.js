@@ -60,6 +60,16 @@ const auth = makeAuth(db, {
   db.data.rolesVersion = 2;
   db.save();
 })();
+// Builds before the overall-administrator flag: the first admin account is it.
+(function migrateOwner() {
+  if (db.data.accounts.some((a) => a.owner)) return;
+  const first = db.data.accounts.find((a) => a.role === 'admin');
+  if (first) {
+    first.owner = true;
+    db.save();
+  }
+})();
+
 (function migrateRoles3() {
   if ((db.data.rolesVersion || 1) >= 3) return;
   const td = (db.data.roles || []).find((r) => r.id === 'technical-director');
@@ -176,6 +186,10 @@ app.post('/api/setup', (req, res) => {
   const { name, pin } = req.body || {};
   if (!name || !/^\d{4,8}$/.test(String(pin || ''))) return bad(res, 'Enter your name and a 4–8 digit PIN.');
   const a = auth.createAccount({ name, pcoName: req.body.pcoName || name, role: 'admin', pin });
+  // The first admin is the overall administrator: nobody else can change or
+  // remove this account, not even the Technical Director.
+  a.owner = true;
+  db.save();
   const token = auth.login(a.id, pin);
   setCookie(res, token);
   log(`First admin created: ${a.name}`);
@@ -677,6 +691,8 @@ app.post('/api/accounts', auth.requirePerm('roles'), (req, res) => {
 app.put('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
   const a = db.data.accounts.find((x) => x.id === req.params.id);
   if (!a) return bad(res, 'Account not found.', 404);
+  if (a.owner && req.account.id !== a.id) return bad(res, 'Only the overall administrator can change their own account.', 403);
+  if (a.owner && req.body && req.body.role && req.body.role !== 'admin') return bad(res, 'The overall administrator stays an admin.');
   const b = req.body || {};
   if (b.name) a.name = String(b.name);
   if (b.pcoName) a.pcoName = String(b.pcoName);
@@ -696,6 +712,7 @@ app.put('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
 app.delete('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
   const a = db.data.accounts.find((x) => x.id === req.params.id);
   if (!a) return bad(res, 'Account not found.', 404);
+  if (a.owner) return bad(res, 'The overall administrator account can’t be removed.', 403);
   if (a.role === 'admin' && db.data.accounts.filter((x) => x.role === 'admin').length === 1) return bad(res, 'Keep at least one admin.');
   db.data.accounts = db.data.accounts.filter((x) => x.id !== a.id);
   for (const [t, s] of Object.entries(db.data.sessions)) if (s.accountId === a.id) delete db.data.sessions[t];

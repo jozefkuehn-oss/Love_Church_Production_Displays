@@ -1232,11 +1232,11 @@
       <div class="list" id="rl"></div>
       <div class="row" style="margin-top:12px"><button class="small" id="radd">Add role</button><button class="primary" id="rsave">Save roles</button></div>
       <h2>Admins</h2>
-      <p class="muted">Admins have their own name and PIN and can change everything. They sign in from <em>Admin sign-in</em> at the bottom of the sign-in screen.</p>
+      <p class="muted">Admins have their own name and PIN and can change everything. They sign in from <em>Admin sign-in</em> at the bottom of the sign-in screen. The overall administrator’s account can only be changed by them and can’t be removed.</p>
       <div class="list">${accounts
         .map(
-          (a) => `<div class="msg"><div class="grow"><div class="t">${esc(a.name)}${a.role !== 'admin' ? ' <span class="dim">· older leader account</span>' : ''}</div><div class="m">Planning Center name: ${esc(a.pcoName)}</div></div>
-        <button class="small" data-pin="${a.id}">New PIN</button>${a.role !== 'admin' ? `<button class="small" data-role="${a.id}" data-r="admin">Make admin</button>` : ''}<button class="small danger" data-del="${a.id}">Remove</button></div>`
+          (a) => `<div class="msg"><div class="grow"><div class="t">${esc(a.name)}${a.owner ? ' <span class="dim">· overall administrator</span>' : a.role !== 'admin' ? ' <span class="dim">· older leader account</span>' : ''}</div><div class="m">Planning Center name: ${esc(a.pcoName)}</div></div>
+        ${a.owner && a.id !== S.me.id ? '' : `<button class="small" data-pin="${a.id}">New PIN</button>`}${a.role !== 'admin' ? `<button class="small" data-role="${a.id}" data-r="admin">Make admin</button>` : ''}${a.owner ? '' : `<button class="small danger" data-del="${a.id}">Remove</button>`}</div>`
         )
         .join('')}</div>
       <div class="card" style="margin-top:16px"><h2 style="margin:0">Add an admin</h2>

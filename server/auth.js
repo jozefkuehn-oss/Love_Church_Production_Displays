@@ -152,7 +152,7 @@ function makeAuth(db, opts = {}) {
 
   function publicAccount(a) {
     if (!a) return null;
-    const out = { id: a.id, name: a.name, pcoName: a.pcoName, role: a.role };
+    const out = { id: a.id, name: a.name, pcoName: a.pcoName, role: a.role, owner: !!a.owner };
     if (a.isRole) Object.assign(out, { roleName: a.roleName, perms: a.perms, isRole: true });
     else out.perms = a.role === 'admin' ? PERMS.slice() : ['messages', 'live'];
     return out;

@@ -122,7 +122,7 @@ Admin page → **Roles & PINs**:
 
 - Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
 - Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Handhelds (HH-1/HH-2)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
-  - **Technical Director:** everything, and the only role that can manage Roles & PINs and admin accounts.
+  - **Technical Director** (David): everything, and the only role that can manage Roles & PINs and admin accounts.
   - **Production Director, Broadcast Director:** everything except Roles & PINs.
   - **FOH Engineer:** messages, Live, Mics and Handhelds.
   - **Service Producer, Broadcast Producer:** messages and Live.
@@ -132,7 +132,7 @@ Admin page → **Roles & PINs**:
 - Add or remove roles as the team changes. Changing a PIN doesn't sign anyone out; removing a role does.
 - Five wrong PINs in a row locks that role for five minutes.
 
-**Admins** have their own name and PIN (**Admin sign-in** at the bottom of the sign-in screen) and can change everything. Add more admins on the same page.
+**Admins** have their own name and PIN (**Admin sign-in** at the bottom of the sign-in screen) and can change everything. Add more admins on the same page. The account created at first setup (Jozef) is the **overall administrator**: it outranks every role, including the Technical Director, and only its owner can change its PIN. It can't be removed.
 
 ## 9. Set the schedule
 
