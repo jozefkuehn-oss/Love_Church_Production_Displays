@@ -29,7 +29,7 @@
 <main>
   <div>
     <div class="kicker">LOVE CHURCH · PRODUCTION DISPLAYS</div>
-    <h1>Which room is this screen in?</h1>
+    <h1>Where is this screen?</h1>
     <div class="sub">Pick once. This screen remembers it and opens straight to that room from now on. Use the arrow keys and Enter on a remote, or tap.</div>
   </div>
   <div id="rooms" class="rooms" role="list"></div>
@@ -40,57 +40,101 @@
 </main>
 <script>
 (function () {
+  // Two steps: where is this screen (location), then which dashboard.
+  // URL options (for a TV's own launcher):
+  //   ?location=foh      jump straight to that location's dashboards
+  //   ?device=<id>       a stable id from the TV (else one is made and remembered)
+  //   ?name=FOH%20Left   a friendly name shown in Admin → Displays
+  //   ?lock=1            the dashboard can't be changed from the TV's remote
+  //   ?choose=1          show the picker even if this screen already has a room
   const DESC = {
     broadcast: 'Huddle brief before each Encounter, then run of show, timing and faces live.',
     dock: 'Who’s serving today, as a big photo wall, with where the Encounter is.',
-    greenroom: 'Countdowns, worship team mics and IEMs, and your go-to people.',
+    greenroom: 'Worship team mics and IEMs, timers and your go-to people.',
+    'greenroom-2': 'Big countdowns, the song on now and your go-to people.',
     foh: 'Run of show, keys, what’s coming up and wireless status.',
+    'foh-wireless': 'Every mic and IEM with faces, battery and RF.',
+    'foh-timers': 'Big timers, the song on now and producer messages.',
     stage: 'Confidence monitor: slides, song timer and messages.',
   };
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   };
-  let device = store.get('lcd_device');
-  if (!device) {
-    device = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
-    store.set('lcd_device', device);
-  }
-  document.getElementById('devname').textContent = 'Screen ' + device.slice(0, 4).toUpperCase();
-
   const params = new URLSearchParams(location.search);
+  const clean = (v) => String(v || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
+  let device = clean(params.get('device')) || store.get('lcd_device');
+  if (!device) device = clean(crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  store.set('lcd_device', device);
+  if (params.get('name')) store.set('lcd_name', params.get('name').slice(0, 40));
+  if (params.has('lock')) store.set('lcd_lock', params.get('lock') === '1' ? '1' : '');
+  document.getElementById('devname').textContent = store.get('lcd_name') || 'Screen ' + device.slice(0, 4).toUpperCase();
+
   const saved = store.get('lcd_room');
-  if (saved && !params.has('choose')) {
+  if (saved && !params.has('choose') && !params.has('location')) {
     location.replace('/display/' + encodeURIComponent(saved));
     return;
   }
 
   const wrap = document.getElementById('rooms');
-  fetch('/api/displays')
+  const h1 = document.querySelector('h1');
+  const sub = document.querySelector('.sub');
+  const esc = (t) => String(t).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  let locs = [];
+
+  function buttons(list, onPick, currentId) {
+    wrap.innerHTML = list
+      .map((d) => `<button class="room ${d.id === currentId ? 'current' : ''}" data-id="${esc(d.id)}" role="listitem">
+          ${d.id === currentId ? '<span class="tag">CURRENT</span>' : ''}
+          <span class="rn">${esc(d.name)}</span><span class="rd">${esc(d.desc || '')}</span></button>`)
+      .join('');
+    const btns = [...wrap.querySelectorAll('button.room')];
+    (btns.find((b) => b.dataset.id === currentId) || btns[0]).focus();
+    btns.forEach((b) => (b.onclick = () => onPick(b.dataset.id)));
+  }
+  // Arrow keys for TV remotes; Back returns to locations.
+  document.addEventListener('keydown', (e) => {
+    const btns = [...wrap.querySelectorAll('button.room')];
+    if (!btns.length) return;
+    const i = btns.indexOf(document.activeElement);
+    const cols = Math.max(1, Math.round(wrap.clientWidth / (btns[0].offsetWidth || 1)));
+    const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+    if (move) {
+      e.preventDefault();
+      btns[Math.max(0, Math.min(btns.length - 1, (i < 0 ? 0 : i) + move))].focus();
+    } else if (['Escape', 'Backspace', 'BrowserBack', 'GoBack'].includes(e.key) && wrap.dataset.step === 'dash') {
+      e.preventDefault();
+      showLocations();
+    }
+  });
+
+  function showLocations() {
+    wrap.dataset.step = 'loc';
+    h1.textContent = 'Where is this screen?';
+    sub.textContent = 'Pick the location, then the dashboard. This screen remembers it and opens straight to it from now on. Use the arrow keys and Enter on a remote, or tap.';
+    const cur = locs.find((l) => l.dashboards.some((d) => d.id === saved));
+    buttons(
+      locs.map((l) => ({ id: l.slug, name: l.name, desc: l.dashboards.length > 1 ? `${l.dashboards.length} dashboards` : DESC[l.dashboards[0].id] || '' })),
+      (slug) => showDashboards(locs.find((l) => l.slug === slug)),
+      cur && cur.slug
+    );
+  }
+  function showDashboards(loc) {
+    if (loc.dashboards.length === 1) return choose(loc.dashboards[0].id);
+    wrap.dataset.step = 'dash';
+    h1.textContent = loc.name + ' · which dashboard?';
+    sub.textContent = 'Each screen in ' + loc.name + ' can show a different dashboard. Back returns to locations.';
+    buttons(loc.dashboards.map((d) => ({ ...d, desc: DESC[d.id] || '' })), choose, saved);
+  }
+
+  fetch('/api/locations')
     .then((r) => r.json())
     .then((list) => {
-      wrap.innerHTML = list
-        .map(
-          (d) => `<button class="room ${d.id === saved ? 'current' : ''}" data-id="${d.id}" role="listitem">
-            ${d.id === saved ? '<span class="tag">CURRENT</span>' : ''}
-            <span class="rn">${d.name.replace(/[<>&]/g, '')}</span>
-            <span class="rd">${DESC[d.id] || 'Custom display'}</span>
-          </button>`
-        )
-        .join('');
-      const btns = [...wrap.querySelectorAll('button.room')];
-      (btns.find((b) => b.dataset.id === saved) || btns[0]).focus();
-      btns.forEach((b) => (b.onclick = () => choose(b.dataset.id)));
-      // Arrow-key navigation for TV remotes.
-      document.addEventListener('keydown', (e) => {
-        const i = btns.indexOf(document.activeElement);
-        const cols = Math.max(1, Math.round(wrap.clientWidth / (btns[0].offsetWidth || 1)));
-        const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
-        if (move) {
-          e.preventDefault();
-          btns[Math.max(0, Math.min(btns.length - 1, (i < 0 ? 0 : i) + move))].focus();
-        }
-      });
+      locs = list;
+      const want = (params.get('location') || '').toLowerCase();
+      const loc = locs.find((l) => l.slug === want || l.name.toLowerCase() === want);
+      if (loc) showDashboards(loc);
+      else showLocations();
     })
     .catch(() => (wrap.innerHTML = '<div class="err">Can’t reach the display server. Check this screen is on the church network.</div>'));
 
@@ -99,7 +143,7 @@
     fetch('/api/devices/' + encodeURIComponent(device) + '/choose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile: id }),
+      body: JSON.stringify({ profile: id, name: store.get('lcd_name') || undefined }),
     }).finally(() => location.replace('/display/' + encodeURIComponent(id)));
   }
 })();

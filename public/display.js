@@ -7,17 +7,27 @@
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   };
+  // URL options for a TV's own launcher (see docs/TV-INTEGRATION.md):
+  //   ?device=<id>  stable id from the TV   ?name=<text>  friendly name
+  //   ?lock=1       remote can't change the dashboard   ?preview=1  admin preview
+  const params = new URLSearchParams(location.search);
+  const preview = params.get('preview') === '1';
+  const clean = (v) => String(v || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
   // Each screen keeps an id so the admin page can see it and move it between rooms.
-  let device = store.get('lcd_device');
-  if (!device) {
-    device = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
+  let device = preview ? '' : clean(params.get('device')) || store.get('lcd_device');
+  if (!device && !preview) device = clean(crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  if (!preview) {
     store.set('lcd_device', device);
+    if (params.get('name')) store.set('lcd_name', params.get('name').slice(0, 40));
+    if (params.has('lock')) store.set('lcd_lock', params.get('lock') === '1' ? '1' : '');
+    store.set('lcd_room', profileId);
   }
-  store.set('lcd_room', profileId);
-  const changeRoom = () => location.assign('/display?choose=1');
+  const locked = preview || store.get('lcd_lock') === '1';
+  const changeRoom = () => !locked && location.assign('/display?choose=1');
 
   // Change rooms: R / Escape / Back on a keyboard or remote, or press and hold 3 s.
   document.addEventListener('keydown', (e) => {
+    if (locked) return;
     if (['r', 'R', 'Escape', 'Backspace', 'BrowserBack', 'GoBack'].includes(e.key)) {
       e.preventDefault();
       changeRoom();
@@ -93,18 +103,19 @@
   let ws;
   let lastMsg = 0;
   function connect() {
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}`);
+    const nm = store.get('lcd_name');
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}${nm ? '&name=' + encodeURIComponent(nm) : ''}`);
     ws.onmessage = (ev) => {
       lastMsg = Date.now();
       offline.hidden = true;
       const msg = JSON.parse(ev.data);
       if (msg.type === 'snapshot') render(msg);
-      else if (msg.type === 'assign' && msg.profile && msg.profile !== profileId) {
+      else if (msg.type === 'assign' && msg.profile && msg.profile !== profileId && !preview) {
         // An admin moved this screen to another room.
         store.set('lcd_room', msg.profile);
         location.replace('/display/' + encodeURIComponent(msg.profile));
       }
-      else if (msg.type === 'missing') screen.innerHTML = `<div class="missing" style="grid-column:1/-1;grid-row:1/-1;font-size:32px">No display profile called “${profileId}”. Press R to pick this screen’s room.</div>`;
+      else if (msg.type === 'missing') screen.innerHTML = `<div class="missing" style="grid-column:1/-1;grid-row:1/-1;font-size:32px">No display profile called “${profileId}”. ${locked ? 'Ask an admin to move this screen in Admin → Displays.' : 'Press R to pick this screen’s room.'}</div>`;
     };
     ws.onclose = () => {
       offline.hidden = false;

@@ -4,6 +4,8 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
 
 **Setting up the Mac mini? Start with [SETUP.md](SETUP.md).**
 
+For the TVs' own launchers, see [docs/TV-INTEGRATION.md](docs/TV-INTEGRATION.md).
+
 ## What it does
 
 - **Planning Center:** run of show, songs, keys, item lengths and everyone scheduled, with names and roles. Refreshes every few minutes.

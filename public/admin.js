@@ -412,7 +412,7 @@
       const m = Math.round((Date.now() - t) / 60000);
       return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
     };
-    app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New room</button></div>
+    app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New dashboard</button></div>
       <p class="muted">Every room has a <b>Pre-Encounter</b> screen and a <b>Live</b> screen. On Automatic, a room goes Live a few minutes before each Encounter and back to Pre-Encounter after its stream ends (timing is on the Schedule tab).</p>
       <div class="card"><div class="row sp"><strong>All rooms at once</strong></div>
         <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="live">All Live</button></div></div>
@@ -424,22 +424,31 @@
               .map(
                 (d) => `<div class="card"><div class="row sp"><input class="dn" data-dn="${esc(d.id)}" value="${esc(d.name)}" aria-label="Screen name" style="max-width:240px">
               <span class="status"><span class="dot ${d.online ? 'ok' : ''}"></span>${d.online ? 'Online' : 'Offline · seen ' + ago(d.lastSeen)}</span></div>
-              <div class="grid2"><label>Room<select data-dev="${esc(d.id)}">${Object.entries(profiles)
-                .map(([id, p]) => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${esc(p.name)}</option>`)
+              <div class="grid2"><label>Dashboard<select data-dev="${esc(d.id)}">${Object.entries(profiles)
+                .map(([id, p]) => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${esc((p.location || 'Other') + ' — ' + p.name)}</option>`)
                 .join('')}</select></label><div class="dim" style="align-self:end">${esc(d.address || '')}</div></div>
               <div class="row"><button class="small ghost" data-forget="${esc(d.id)}">Forget this screen</button></div></div>`
               )
               .join('')
           : '<div class="card dim">No screens have connected yet.</div>'
       }</div>
-      <h2>Rooms</h2>
+      <h2>Dashboards</h2>
       <div class="cards">${Object.entries(profiles)
         .map(
-          ([id, p]) => `<div class="card"><div class="row sp"><strong style="font-size:18px">${esc(p.name)}</strong><a href="/display/${id}" target="_blank">Open ↗</a></div>
+          ([id, p]) => `<div class="card"><div class="row sp"><div><div class="dim">${esc(p.location || 'Other')}</div><strong style="font-size:18px">${esc(p.name)}</strong></div><a href="/display/${id}?preview=1" target="_blank">Open ↗</a></div>
+        <label>Location<input data-loc="${id}" value="${esc(p.location || '')}" list="locl"></label>
         ${modeSel(id, p)}
         <div class="row"><button class="small" data-edit="${id}" data-l="pre">Edit Pre-Encounter</button><button class="small" data-edit="${id}" data-l="live">Edit Live</button></div></div>`
         )
-        .join('')}</div>`;
+        .join('')}</div>
+      <datalist id="locl">${[...new Set(Object.values(profiles).map((p) => p.location).filter(Boolean))].map((l) => `<option value="${esc(l)}">`).join('')}</datalist>`;
+    $$('[data-loc]').forEach(
+      (i) =>
+        (i.onchange = async () => {
+          await api('/api/profiles/' + i.dataset.loc, { method: 'PUT', body: { location: i.value } }).catch(fail);
+          toast('Location saved');
+        })
+    );
     $$('[data-mode]').forEach(
       (s) =>
         (s.onchange = async () => {
@@ -479,12 +488,13 @@
     );
     $$('[data-edit]').forEach((b) => (b.onclick = () => editLayout(b.dataset.edit, b.dataset.l, profiles)));
     $('#np').onclick = async () => {
-      const name = prompt('Name for the new room (for example “Lobby”)');
+      const name = prompt('Name for the new dashboard (for example “FOH · Lighting”)');
       if (!name) return;
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'display';
       const copy = prompt('Start from which room? (' + Object.keys(profiles).join(', ') + ') — leave empty for blank', 'greenroom');
       const base = profiles[copy] ? structuredClone(profiles[copy]) : { modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, live: { widgets: [] } } };
-      await api('/api/profiles/' + id, { method: 'PUT', body: { ...base, name } }).catch(fail);
+      const loc = prompt('Which location is it in? (' + [...new Set(Object.values(profiles).map((p) => p.location))].join(', ') + ')', base.location || '');
+      await api('/api/profiles/' + id, { method: 'PUT', body: { ...base, name, location: loc || base.location || 'Other' } }).catch(fail);
       viewDisplays();
     };
   }
@@ -501,7 +511,7 @@
         <label class="inline"><input type="checkbox" id="ek" ${prof.style.black ? 'checked' : ''}> Pure black</label>
       </div>
       <div class="editor"><div><div class="canvas" id="cv"><div class="gridline" id="gl"></div></div>
-        <h3>Preview</h3><iframe class="preview" id="pv" src="/display/${id}"></iframe></div>
+        <h3>Preview</h3><iframe class="preview" id="pv" src="/display/${id}?preview=1"></iframe></div>
         <div class="card" id="side"></div></div>`;
     const cv = $('#cv');
     const gl = $('#gl');

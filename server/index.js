@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Doc, PHOTO_DIR, DATA_DIR } = require('./store');
-const { configDefaults, dbDefaults } = require('./defaults');
+const { configDefaults, dbDefaults, LOCATIONS } = require('./defaults');
 const { makeAuth } = require('./auth');
 const { makeClock, parts, zoned } = require('./time');
 const { makeEngine } = require('./engine');
@@ -58,6 +58,20 @@ const auth = makeAuth(db, {
     else if (def.id === 'floor-manager' || def.id === 'foh') have.perms = [...new Set([...(have.perms || []), 'handhelds'])];
   }
   db.data.rolesVersion = 2;
+  db.save();
+})();
+
+// Displays saved by an earlier build: give every dashboard a location and
+// add the second Greenroom TV and the extra FOH monitors.
+(function migrateLocations() {
+  if ((db.data.profilesVersion || 1) >= 2) return;
+  for (const [id, def] of Object.entries(dbDefaults.profiles)) {
+    const cur = db.data.profiles[id];
+    if (!cur) db.data.profiles[id] = structuredClone(def);
+    else if (!cur.location) cur.location = def.location;
+  }
+  for (const p of Object.values(db.data.profiles)) if (!p.location) p.location = 'Other';
+  db.data.profilesVersion = 2;
   db.save();
 })();
 
@@ -111,8 +125,27 @@ const ok = (res, body = { ok: true }) => res.json(body);
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 
 // ---------- public ----------
-app.get('/api/displays', (req, res) => {
-  ok(res, Object.entries(db.data.profiles).map(([id, p]) => ({ id, name: p.name })));
+// Every dashboard, grouped by location, in room-picker order. Public so
+// screens (and the TVs' own launcher) can list them without signing in.
+function displayList() {
+  const rank = (l) => {
+    const i = LOCATIONS.indexOf(l);
+    return i < 0 ? LOCATIONS.length : i;
+  };
+  return Object.entries(db.data.profiles)
+    .map(([id, p], i) => ({ id, name: p.name, location: p.location || 'Other', i }))
+    .sort((a, b) => rank(a.location) - rank(b.location) || a.location.localeCompare(b.location) || a.i - b.i)
+    .map(({ i, ...d }) => ({ ...d, url: '/display/' + d.id }));
+}
+app.get('/api/displays', (req, res) => ok(res, displayList()));
+app.get('/api/locations', (req, res) => {
+  const out = [];
+  for (const d of displayList()) {
+    let l = out.find((x) => x.name === d.location);
+    if (!l) out.push((l = { name: d.location, slug: d.location.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), dashboards: [] }));
+    l.dashboards.push({ id: d.id, name: d.name, url: d.url });
+  }
+  ok(res, out);
 });
 
 // A screen picked its room on the picker page.
@@ -121,7 +154,8 @@ app.post('/api/devices/:id/choose', (req, res) => {
   const profile = (req.body || {}).profile;
   if (!id || !db.data.profiles[profile]) return bad(res, 'Unknown room.');
   const cur = db.data.devices[id] || {};
-  db.data.devices[id] = { ...cur, name: cur.name || 'Screen ' + id.slice(0, 4).toUpperCase(), profile, lastSeen: Date.now() };
+  const nm = String((req.body || {}).name || '').trim().slice(0, 40);
+  db.data.devices[id] = { ...cur, name: cur.name || nm || 'Screen ' + id.slice(0, 4).toUpperCase(), profile, lastSeen: Date.now() };
   db.save();
   ok(res);
 });
@@ -567,6 +601,7 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   db.data.profiles[id] = {
     ...cur,
     name: b.name ?? cur.name,
+    location: b.location != null ? String(b.location).trim().slice(0, 40) || 'Other' : cur.location || 'Other',
     modeSetting: ['auto', 'pre', 'live'].includes(b.modeSetting) ? b.modeSetting : cur.modeSetting || 'auto',
     style: b.style ?? cur.style,
     layouts: b.layouts ?? cur.layouts,
