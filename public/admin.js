@@ -892,8 +892,8 @@
         <label>Messages clear after (seconds, default)<input type="number" id="c_msgsec" value="${esc(c.messageDefaultSeconds)}"></label></div></div>
 
       <div class="card" style="margin-top:14px"><h2 style="margin:0">Planning Center</h2>
-        <p class="dim">A Planning Center admin creates a Personal Access Token at api.planningcenteronline.com (Developers → Personal Access Tokens) and enters the Application ID and Secret here. Read-only.</p>
-        <div class="grid2"><label>Application ID<input id="c_pid" value="${esc(c.pco.appId)}" autocomplete="off"></label>
+        <p class="dim">A Planning Center admin creates a Personal Access Token at api.planningcenteronline.com (Developers → Personal Access Tokens) and enters the Client ID (Application ID) and Secret here. The Secret starts with pco_pat_. Read-only.</p>
+        <div class="grid2"><label>Client ID (Application ID)<input id="c_pid" value="${esc(c.pco.appId)}" autocomplete="off"></label>
         <label>Secret<input id="c_psec" type="password" value="${esc(c.pco.secret)}" autocomplete="off"></label>
         <label>Service type ID<input id="c_pst" value="${esc(c.pco.serviceTypeId)}"></label>
         <label>Refresh every (minutes)<input type="number" id="c_prf" value="${esc(c.pco.refreshMinutes)}"></label></div></div>

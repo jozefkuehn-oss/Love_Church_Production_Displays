@@ -42,7 +42,7 @@ A Planning Center **organization admin** does this part.
 
 1. Go to https://api.planningcenteronline.com/oauth/applications while signed in to Planning Center.
 2. Under **Personal Access Tokens**, click **New Personal Access Token**. Name it "Production Displays".
-3. Copy the **Application ID** and the **Secret**.
+3. Copy the **Client ID** (also called Application ID) and the **Secret** (it starts with `pco_pat_`). The Secret is only shown once.
 4. In the admin page: **Settings → Planning Center**, paste both, and check the **Service type ID** (Sunday Encounters is `427029`).
 5. Turn **Sample mode** off and click **Save settings**. **Status** at the top of Settings should say *Planning Center: Connected*.
 
