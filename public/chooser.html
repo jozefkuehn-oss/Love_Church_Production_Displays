@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose a display</title>
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>Choose a display</h1>
+  <p class="muted">Open one of these on the screen or output it should run on. It stays live on its own.</p>
+  <div id="list" class="cards"></div>
+</main>
+<script>
+fetch('/api/displays').then(r => r.json()).then(list => {
+  document.getElementById('list').innerHTML = list.map(d =>
+    `<a class="card link" href="/display/${encodeURIComponent(d.id)}"><strong>${d.name}</strong><span class="muted">/display/${d.id}</span></a>`).join('');
+});
+</script>
+</body>
+</html>
