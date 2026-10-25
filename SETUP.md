@@ -101,25 +101,18 @@ The Shure Axient Digital receivers (the AD4D and the two AD4Qs in the wireless r
 
 The IEMs (Lectrosonics M2T transmitters and M2Ra packs) are one-way radio: the belt packs can't report their battery back, so the screens show IEM assignments without a battery bar.
 
-## 7. Send the screens to the hub
+## 7. Get the screens onto the TVs
 
-The Mac opens one full-screen Chrome window per output, listed in `scripts/screens.conf`:
+There are two ways a TV shows a dashboard:
 
-```
-broadcast  0     0
-greenroom  1920  0
-dock       3840  0
-```
+**Through the switcher / hub (Green Room, Broadcast Bottom, Broadcast Audio, the multiview).** Connect the Mac mini's HDMI outputs to the switcher as sources and route them like any other feed. `scripts/screens.conf` says which room opens on which output (copy `screens.example.conf`): output 1 = Broadcast Control, output 2 = Green Room. Check how many displays your Mac mini model supports (Apple → About This Mac → More Info → Displays); a model with three outputs can add a third room.
 
-1. Connect the Mac's outputs to the hub, then arrange them side by side in **System Settings → Displays → Arrange**.
-2. Edit `scripts/screens.conf` so each display lands on the right output. Use x = 0, 1920, 3840 for side-by-side 1080p outputs.
-3. Reopen the windows:
-   ```
-   bash scripts/start-screens.sh
-   ```
-4. Route each output to its TV through the hub like any other source.
+**Independent TVs (the Dock, Broadcast Top).** These aren't fed by the switcher, and neither an Apple TV nor a Roku TV can run a web page. Plug a small browser box into the TV's HDMI:
+- an Android-based streaming stick (for example a Fire TV Stick) with a kiosk browser app such as Fully Kiosk Browser set to open `http://<mac>:8080/display` at start-up, or
+- a Raspberry Pi set to open Chromium full screen at that address.
+The first time it opens, pick the room on the screen. It remembers it, and you can move it later from **Displays → Screens**.
 
-Any TV, stick or computer on the church network can also run a room directly. Open `http://<mac address>:8080/display` in its browser, full screen. The first time, it asks which room it's in. After that it remembers. To change it later, press **R** on a keyboard or remote, or press and hold the screen for 3 seconds. You can also move it from **Admin → Displays → Screens**.
+The TVs' own web browsers (Samsung Internet, LG webOS) can open the address for a quick test, but they go to sleep and don't reopen it after a power cut, so don't rely on them every Sunday.
 
 ## 8. Set the role PINs
 
