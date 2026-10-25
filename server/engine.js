@@ -304,7 +304,8 @@ function makeEngine({ config, db, clock, log }) {
     // Real receivers win. Mics come from the Shure receivers by channel name.
     // IEMs are one-way radio (the belt packs can't report back), so in live
     // mode they show the assignment only, with no battery or RF.
-    const real = receiverHosts().length > 0;
+    // In sample mode, keep the demo numbers until a receiver actually answers.
+    const real = receiverHosts().length > 0 && (!cfg().sampleMode || shure.status().some((r) => r.connected));
     let mic, iem;
     if (real) {
       const ch = shure.channels();

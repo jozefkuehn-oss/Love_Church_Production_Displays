@@ -2,10 +2,10 @@
 //
 // Each receiver speaks Shure's ASCII command protocol on TCP port 2202:
 //   send  < GET 1 CHAN_NAME >        reply  < REP 1 CHAN_NAME {VOX-4                          } >
-//   send  < SET 1 METER_RATE 01000 > then the receiver streams
-//         < SAMPLE 1 ALL 005 000 045 062 BB 31 099 31 085 >  once a second.
+//   send  < GET 0 TX_BATT_MINS >     reply  < REP 1 TX_BATT_MINS 00312 > (one per channel)
 // We keep one connection per receiver, ask for the transmitter battery every
-// few seconds and read RF/link quality from the metering samples.
+// few seconds and link quality every two. Metering samples are used too if the
+// receiver happens to send them, but we never change its metering rate.
 //
 // Everything is keyed by the channel name set on the receiver (VOX-4,
 // PASTOR…), so the Wireless tab just uses those names.
@@ -14,6 +14,10 @@ const net = require('net');
 
 const PORT = 2202;
 const POLL_PARAMS = ['CHAN_NAME', 'TX_MODEL', 'TX_BATT_BARS', 'TX_BATT_CHARGE_PERCENT', 'TX_BATT_MINS', 'TX_MUTE_MODE_STATUS', 'FREQUENCY'];
+// Asked more often: link quality (RF). We read it with GET rather than turning
+// on metering, because METER_RATE is a receiver-wide setting that other
+// controllers (Bitfocus Companion, Wireless Workbench) also use.
+const FAST_PARAMS = ['CHAN_QUALITY'];
 
 function makeReceiver(host) {
   const st = {
@@ -29,6 +33,7 @@ function makeReceiver(host) {
   let retryT = null;
   let stopped = false;
   let backoff = 2000;
+  let tick = 0;
 
   const ch = (n) => (st.channels[n] = st.channels[n] || { n, name: '', rssi: [] });
   const send = (s) => sock && !sock.destroyed && sock.write(s + '\r\n');
@@ -55,6 +60,7 @@ function makeReceiver(host) {
       return;
     }
     const c = ch(n);
+    c.repAt = Date.now();
     const v = rest.replace(/[{}]/g, '').trim();
     switch (key) {
       case 'CHAN_NAME': c.name = v; break;
@@ -70,7 +76,8 @@ function makeReceiver(host) {
   const num3 = (v) => { const x = Number(v); return Number.isFinite(x) && x !== 255 ? x : null; };
 
   function poll() {
-    for (const p of POLL_PARAMS) send(`< GET 0 ${p} >`);
+    for (const p of FAST_PARAMS) send(`< GET 0 ${p} >`);
+    if (tick++ % 3 === 0) for (const p of POLL_PARAMS) send(`< GET 0 ${p} >`);
   }
 
   function connect() {
@@ -84,10 +91,10 @@ function makeReceiver(host) {
       st.error = '';
       backoff = 2000;
       send('< GET 0 MODEL >');
+      tick = 0;
       poll();
-      for (let i = 1; i <= 4; i++) send(`< SET ${i} METER_RATE 01000 >`);
       clearInterval(pollT);
-      pollT = setInterval(poll, 5000);
+      pollT = setInterval(poll, 2000);
     });
     sock.on('data', (d) => {
       buf += d;
@@ -99,7 +106,7 @@ function makeReceiver(host) {
       }
       if (buf.length > 10000) buf = '';
     });
-    // No traffic for 15 s (metering is every second) means the link is dead.
+    // No reply for 15 s (we ask every 2 s) means the link is dead.
     sock.on('timeout', () => sock.destroy(new Error('No response')));
     sock.on('error', (e) => (st.error = e.code === 'ECONNREFUSED' ? 'Refused (is third-party control on?)' : e.code === 'EHOSTUNREACH' || e.code === 'ETIMEDOUT' ? 'Can’t reach it on the network' : e.message));
     sock.on('close', () => {
@@ -145,7 +152,7 @@ function makeShure() {
     for (const r of receivers) {
       for (const c of Object.values(r.st.channels)) {
         if (!c.name) continue;
-        const fresh = r.st.connected && c.sampleAt && now - c.sampleAt < 10000;
+        const fresh = r.st.connected && Math.max(c.sampleAt || 0, c.repAt || 0) > now - 10000;
         const txOn = !!c.txModel && c.txModel !== 'UNKNOWN';
         const battery = c.battPct != null ? c.battPct : c.battBars != null ? c.battBars * 20 : null;
         out[norm(c.name)] = {
@@ -159,7 +166,7 @@ function makeShure() {
           minutes: txOn ? c.battMins : null,
           quality: c.quality,
           // RF is good when the transmitter is on and the link quality is up.
-          rf: fresh && txOn && (c.quality == null || c.quality > 0),
+          rf: fresh && txOn ? c.quality == null || c.quality > 0 : null,
           rssi: c.rssi,
           muted: !!c.muted,
           freq: c.freq || '',

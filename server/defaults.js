@@ -28,7 +28,12 @@ const configDefaults = {
   },
   // Shure Axient Digital receivers (AD4D / AD4Q) on the network, e.g.
   // { label: 'AD4Q #1', host: '192.168.10.61', enabled: true }
-  wireless: { receivers: [] },
+  wireless: {
+    receivers: [
+      { label: 'AD4D · Belt packs', host: '192.168.10.202', enabled: true },
+      { label: 'AD4Q · Handhelds', host: '192.168.10.243', enabled: true },
+    ],
+  },
   leaderRoles: LEADER_ROLES,
   // When true, a leader account can send messages only on days that person is
   // scheduled in one of the leaderRoles in Planning Center. Admins can always send.
