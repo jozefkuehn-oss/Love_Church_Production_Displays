@@ -430,6 +430,31 @@ app.get('/api/wireless-live', auth.requireAdmin, (req, res) => {
     channels: Object.values(engine.wirelessChannels()),
   });
 });
+// This Sunday: who has which mic/IEM on the current plan.
+app.get('/api/wireless-week', auth.requireAdmin, (req, res) => {
+  engine.snapshot();
+  const plan = engine.getPlan();
+  const wk = db.data.wirelessWeek && plan && db.data.wirelessWeek.date === plan.date ? db.data.wirelessWeek.byName || {} : {};
+  ok(res, {
+    date: plan ? plan.date : '',
+    rows: engine.wirelessRows().map((r) => ({ ...r, pickMic: (wk[r.name] || {}).mic || '', pickIem: (wk[r.name] || {}).iem || '' })),
+  });
+});
+app.put('/api/wireless-week', auth.requireAdmin, (req, res) => {
+  const plan = engine.getPlan();
+  if (!plan) return bad(res, 'No plan loaded yet.');
+  const byName = {};
+  for (const [name, v] of Object.entries((req.body || {}).byName || {})) {
+    const mic = String((v && v.mic) || '').slice(0, 20);
+    const iem = String((v && v.iem) || '').slice(0, 20);
+    if (mic || iem) byName[String(name).slice(0, 80)] = { ...(mic ? { mic } : {}), ...(iem ? { iem } : {}) };
+  }
+  db.data.wirelessWeek = { date: plan.date, byName };
+  db.save();
+  pushNow();
+  ok(res);
+});
+
 app.put('/api/wireless-receivers', auth.requireAdmin, (req, res) => {
   const ip = /^[A-Za-z0-9.-]{1,64}$/;
   const list = ((req.body || {}).receivers || [])

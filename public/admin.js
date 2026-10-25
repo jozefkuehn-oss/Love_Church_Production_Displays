@@ -962,17 +962,23 @@
 
   // ---------------- Wireless ----------------
   async function viewWireless() {
-    const [w, live] = await Promise.all([api('/api/wireless'), api('/api/wireless-live')]);
+    const [w, live, week] = await Promise.all([api('/api/wireless'), api('/api/wireless-live'), api('/api/wireless-week')]);
+    const MICS = ['VOX 1', 'VOX 2', 'VOX 3', 'VOX 4', 'VOX 5', 'HH-1', 'HH-2', 'TEACH', 'BP-1', 'BP-2'];
+    const picks = Object.fromEntries(week.rows.map((r) => [r.name, { mic: r.pickMic, iem: r.pickIem }]));
     const rows = Object.entries(w).map(([k, v]) => ({ k, mic: v.mic || '', iem: v.iem || '' }));
     const recv = live.receivers.length ? live.receivers.map((r) => ({ ...r })) : [{ label: '', host: '', enabled: true }];
     app.innerHTML = `<h1>Wireless</h1>
-      <div class="card"><h2 style="margin:0">Mic receivers</h2>
+      <div class="card"><h2 style="margin:0">This Sunday${week.date ? ` · ${esc(week.date)}` : ''}</h2>
+        <p class="dim" style="margin:0">Who has which mic on this plan. Leave a mic on <em>Standard</em> to use the assignment below. Picks reset when the next plan loads.</p>
+        <div style="overflow-x:auto"><table id="wk"></table></div>
+        <div class="row"><button class="primary" id="wks">Save this Sunday</button><span class="dim" id="wkw"></span></div></div>
+      <div class="card" style="margin-top:14px"><h2 style="margin:0">Mic receivers</h2>
         <p class="dim" style="margin:0">Shure Axient Digital (AD4D, AD4Q). Enter each receiver’s IP address (on the receiver: Menu → Network). Battery, runtime and RF come straight from the receivers. IEM packs are one-way radio, so they show their assignment only.</p>
         <div id="rcv"></div>
         <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>
         <div id="rst"></div></div>
-      <h2>Assignments</h2>
-      <p class="muted">Which mic and IEM go with each Planning Center position. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
+      <h2>Standard assignments</h2>
+      <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
       <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>
       <datalist id="chl"></datalist>`;
 
@@ -1006,6 +1012,38 @@
       $('#rst').innerHTML = recvHtml + table;
       $('#chl').innerHTML = chans.map((c) => `<option value="${esc(c.name)}">`).join('') + '<option value="WIRED">';
     }
+    function drawWeek() {
+      const names = new Set([...MICS, ...live.channels.map((c) => c.name), 'WIRED']);
+      const eff = (r) => picks[r.name].mic || r.defMic;
+      const counts = {};
+      week.rows.forEach((r) => { const m = eff(r); if (m && m !== 'WIRED') counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] = (counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] || 0) + 1; });
+      const dup = (m) => m && m !== 'WIRED' && counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] > 1;
+      $('#wk').innerHTML = week.rows.length
+        ? `<tr><th>Person</th><th>Mic</th><th>IEM</th></tr>${week.rows
+            .map(
+              (r, i) => `<tr><td><strong>${esc(r.name)}</strong><br><span class="dim">${esc(r.role || r.position || '')}</span></td>
+              <td><select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">Standard${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
+                .map((m) => `<option ${picks[r.name].mic === m ? 'selected' : ''}>${esc(m)}</option>`)
+                .join('')}</select></td>
+              <td><input data-w="${i}" data-f="iem" value="${esc(picks[r.name].iem)}" placeholder="${esc(r.defIem || '—')}"></td></tr>`
+            )
+            .join('')}`
+        : '<tr><td class="dim">Nobody on this plan uses wireless yet.</td></tr>';
+      const d = Object.keys(counts).filter((k) => counts[k] > 1);
+      $('#wkw').textContent = d.length ? 'Heads up: the same mic is picked twice (highlighted).' : '';
+      $$('#wk [data-w]').forEach((el) => (el.oninput = el.onchange = () => {
+        picks[week.rows[el.dataset.w].name][el.dataset.f] = el.value.trim();
+        if (el.tagName === 'SELECT') drawWeek();
+      }));
+    }
+    $('#wks').onclick = async () => {
+      try {
+        await api('/api/wireless-week', { method: 'PUT', body: { byName: picks } });
+        toast('Saved — the screens update now');
+      } catch (e) {
+        fail(e);
+      }
+    };
     function drawRows() {
       $('#wt').innerHTML = `<tr><th>Position</th><th>Mic</th><th>IEM</th><th></th></tr>${rows
         .map(
@@ -1030,6 +1068,7 @@
       rows.filter((r) => r.k).forEach((r) => (body[r.k] = { mic: r.mic, ...(r.iem ? { iem: r.iem } : {}) }));
       await api('/api/wireless', { method: 'PUT', body }).then(() => toast('Saved')).catch(fail);
     };
+    drawWeek();
     drawRecv();
     drawRows();
     drawLive(live);

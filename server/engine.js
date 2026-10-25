@@ -93,6 +93,7 @@ function makeEngine({ config, db, clock, log }) {
   const bc = makeProPresenter('broadcast');
   const wireless = makeWireless();
   const shure = makeShure();
+  let lastWirelessRows = [];
   const receiverHosts = () => ((cfg().wireless || {}).receivers || []).filter((r) => r && r.host && r.enabled !== false).map((r) => r.host);
   const tracking = { encLabel: null, index: null, startedAt: null };
   let anchor = null; // last ProPresenter match { enc, index, at }
@@ -291,10 +292,16 @@ function makeEngine({ config, db, clock, log }) {
   // ---- wireless ----
   function buildWireless(people) {
     const assign = d().wireless || {};
+    // This Sunday's picks (Wireless tab) override the standing assignments,
+    // but only for the plan they were made for.
+    const wk = d().wirelessWeek && plan && d().wirelessWeek.date === plan.date ? d().wirelessWeek.byName || {} : {};
     const rows = [];
     const add = (c, key) => {
       const a = assign[key] || assign[c.position] || {};
-      rows.push({ name: c.name, role: c.role, photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic: a.mic || '', iem: a.iem || '' });
+      const w = wk[c.name] || {};
+      const mic = w.mic != null && w.mic !== '' ? w.mic : a.mic || '';
+      const iem = w.iem != null && w.iem !== '' ? w.iem : a.iem || '';
+      rows.push({ name: c.name, role: c.role, position: c.position, photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic, iem, defMic: a.mic || '', defIem: a.iem || '' });
     };
     (people.stage || []).forEach((c) => add(c, c.slot || c.position));
     const n = {};
@@ -328,6 +335,7 @@ function makeEngine({ config, db, clock, log }) {
     } else {
       mic = iem = (name) => ({ ch: name, battery: null, rf: null });
     }
+    lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem }));
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
 
@@ -641,7 +649,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };
