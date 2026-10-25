@@ -962,24 +962,78 @@
 
   // ---------------- Wireless ----------------
   async function viewWireless() {
-    const w = await api('/api/wireless');
+    const [w, live] = await Promise.all([api('/api/wireless'), api('/api/wireless-live')]);
     const rows = Object.entries(w).map(([k, v]) => ({ k, mic: v.mic || '', iem: v.iem || '' }));
-    function draw() {
-      app.innerHTML = `<h1>Wireless assignments</h1>
-        <p class="muted">Which mic and IEM go with each Planning Center position. For positions with more than one person (Frontline, Encounter Host), number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics. Battery and RF are sample numbers until the receivers are connected.</p>
-        <div class="card"><div style="overflow-x:auto"><table><tr><th>Position</th><th>Mic</th><th>IEM</th><th></th></tr>
-        ${rows.map((r, i) => `<tr><td><input data-i="${i}" data-f="k" value="${esc(r.k)}"></td><td><input data-i="${i}" data-f="mic" value="${esc(r.mic)}"></td><td><input data-i="${i}" data-f="iem" value="${esc(r.iem)}"></td><td><button class="small danger" data-d="${i}">✕</button></td></tr>`).join('')}
-        </table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save</button></div></div>`;
-      $$('[data-f]').forEach((i) => (i.oninput = () => (rows[i.dataset.i][i.dataset.f] = i.value)));
-      $$('[data-d]').forEach((b) => (b.onclick = () => (rows.splice(b.dataset.d, 1), draw())));
-      $('#wa').onclick = () => (rows.push({ k: '', mic: '', iem: '' }), draw());
-      $('#ws').onclick = async () => {
-        const body = {};
-        rows.filter((r) => r.k).forEach((r) => (body[r.k] = { mic: r.mic, ...(r.iem ? { iem: r.iem } : {}) }));
-        await api('/api/wireless', { method: 'PUT', body }).then(() => toast('Saved')).catch(fail);
-      };
+    const recv = live.receivers.length ? live.receivers.map((r) => ({ ...r })) : [{ label: '', host: '', enabled: true }];
+    app.innerHTML = `<h1>Wireless</h1>
+      <div class="card"><h2 style="margin:0">Mic receivers</h2>
+        <p class="dim" style="margin:0">Shure Axient Digital (AD4D, AD4Q). Enter each receiver’s IP address (on the receiver: Menu → Network). Battery, runtime and RF come straight from the receivers. IEM packs are one-way radio, so they show their assignment only.</p>
+        <div id="rcv"></div>
+        <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>
+        <div id="rst"></div></div>
+      <h2>Assignments</h2>
+      <p class="muted">Which mic and IEM go with each Planning Center position. Type the mic exactly as the receiver channel is named (like <code>VOX-4</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
+      <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>
+      <datalist id="chl"></datalist>`;
+
+    function drawRecv() {
+      $('#rcv').innerHTML = recv
+        .map(
+          (r, i) => `<div class="row nowrap" style="margin-bottom:8px"><input data-r="${i}" data-f="label" value="${esc(r.label)}" placeholder="AD4Q #1" style="max-width:160px">
+            <input data-r="${i}" data-f="host" value="${esc(r.host)}" placeholder="192.168.10.60" inputmode="decimal">
+            <label class="inline" style="flex:none"><input type="checkbox" data-r="${i}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}> On</label>
+            <button class="small danger" data-rd="${i}">✕</button></div>`
+        )
+        .join('');
+      $$('#rcv [data-f]').forEach((el) => (el.oninput = () => (recv[el.dataset.r][el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value.trim())));
+      $$('#rcv [data-rd]').forEach((b) => (b.onclick = () => (recv.splice(b.dataset.rd, 1), drawRecv())));
     }
-    draw();
+    function drawLive(l) {
+      const st = (ok, txt) => `<span class="status"><span class="dot ${ok ? 'ok' : 'bad'}"></span>${esc(txt)}</span>`;
+      const recvHtml = l.status
+        .map((r) => `<div>${st(r.connected, (r.connected ? 'Connected' : r.error || 'Connecting…') + ' · ' + r.host)}${r.channels.length ? ` <span class="dim">— ${esc(r.channels.join(', '))}</span>` : ''}</div>`)
+        .join('');
+      const chans = l.channels.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const table = chans.length
+        ? `<div style="overflow-x:auto"><table><tr><th>Channel</th><th>Transmitter</th><th>Battery</th><th>RF</th><th>Freq</th></tr>${chans
+            .map(
+              (c) => `<tr><td><strong>${esc(c.name)}</strong></td><td>${c.tx ? esc(c.txModel) : '<span class="dim">Off</span>'}${c.muted ? ' · muted' : ''}</td>
+              <td>${c.battery == null ? '—' : c.battery + '%'}${c.minutes != null ? ` · ${Math.floor(c.minutes / 60)}h ${c.minutes % 60}m` : ''}</td>
+              <td>${!c.online ? '—' : c.rf ? st(true, 'Good' + (c.quality != null ? ` (${c.quality}/5)` : '')) : c.tx ? st(false, 'Drop') : '—'}</td><td class="dim">${esc(c.freq)}</td></tr>`
+            )
+            .join('')}</table></div>`
+        : '';
+      $('#rst').innerHTML = recvHtml + table;
+      $('#chl').innerHTML = chans.map((c) => `<option value="${esc(c.name)}">`).join('') + '<option value="WIRED">';
+    }
+    function drawRows() {
+      $('#wt').innerHTML = `<tr><th>Position</th><th>Mic</th><th>IEM</th><th></th></tr>${rows
+        .map(
+          (r, i) => `<tr><td><input data-i="${i}" data-f="k" value="${esc(r.k)}"></td><td><input data-i="${i}" data-f="mic" value="${esc(r.mic)}" list="chl"></td><td><input data-i="${i}" data-f="iem" value="${esc(r.iem)}"></td><td><button class="small danger" data-d="${i}">✕</button></td></tr>`
+        )
+        .join('')}`;
+      $$('#wt [data-f]').forEach((i) => (i.oninput = () => (rows[i.dataset.i][i.dataset.f] = i.value)));
+      $$('#wt [data-d]').forEach((b) => (b.onclick = () => (rows.splice(b.dataset.d, 1), drawRows())));
+    }
+    $('#ra').onclick = () => (recv.push({ label: '', host: '', enabled: true }), drawRecv());
+    $('#rs').onclick = async () => {
+      try {
+        await api('/api/wireless-receivers', { method: 'PUT', body: { receivers: recv.filter((r) => r.host) } });
+        toast('Saved — connecting to receivers');
+      } catch (e) {
+        fail(e);
+      }
+    };
+    $('#wa').onclick = () => (rows.push({ k: '', mic: '', iem: '' }), drawRows());
+    $('#ws').onclick = async () => {
+      const body = {};
+      rows.filter((r) => r.k).forEach((r) => (body[r.k] = { mic: r.mic, ...(r.iem ? { iem: r.iem } : {}) }));
+      await api('/api/wireless', { method: 'PUT', body }).then(() => toast('Saved')).catch(fail);
+    };
+    drawRecv();
+    drawRows();
+    drawLive(live);
+    S.timers.push(setInterval(() => api('/api/wireless-live').then(drawLive).catch(() => {}), 3000));
   }
 
   // ---------------- Accounts ----------------

@@ -26,7 +26,9 @@ const configDefaults = {
     broadcast: { host: '192.168.10.237', port: 65181, enabled: true }, // broadcast ProPresenter machine
     pollMs: 1000,
   },
-  wireless: { mode: 'sample' },
+  // Shure Axient Digital receivers (AD4D / AD4Q) on the network, e.g.
+  // { label: 'AD4Q #1', host: '192.168.10.61', enabled: true }
+  wireless: { receivers: [] },
   leaderRoles: LEADER_ROLES,
   // When true, a leader account can send messages only on days that person is
   // scheduled in one of the leaderRoles in Planning Center. Admins can always send.

@@ -8,6 +8,7 @@ const { fetchPlan } = require('./sources/pco');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
+const { makeShure } = require('./sources/shure');
 const sample = require('./seed/sample');
 const photos = require('./photos');
 
@@ -91,6 +92,8 @@ function makeEngine({ config, db, clock, log }) {
   const aud = makeProPresenter('auditorium');
   const bc = makeProPresenter('broadcast');
   const wireless = makeWireless();
+  const shure = makeShure();
+  const receiverHosts = () => ((cfg().wireless || {}).receivers || []).filter((r) => r && r.host && r.enabled !== false).map((r) => r.host);
   const tracking = { encLabel: null, index: null, startedAt: null };
   let anchor = null; // last ProPresenter match { enc, index, at }
   const propChange = { name: '', at: 0 }; // when the auditorium presentation last changed
@@ -156,6 +159,11 @@ function makeEngine({ config, db, clock, log }) {
     setInterval(() => refreshPhotos(), Math.max(1, cfg().slack.refreshHours || 12) * 3600e3);
     aud.start(() => cfg().propresenter.auditorium, cfg().propresenter.pollMs || 1000);
     bc.start(() => cfg().propresenter.broadcast, (cfg().propresenter.pollMs || 1000) * 2);
+    shure.configure(receiverHosts());
+  }
+
+  function restartWireless() {
+    shure.configure(receiverHosts());
   }
 
   function restartProPresenter() {
@@ -293,10 +301,30 @@ function makeEngine({ config, db, clock, log }) {
         n[c.position] = (n[c.position] || 0) + 1;
         add(c, assign[`${c.position}#${n[c.position]}`] ? `${c.position}#${n[c.position]}` : c.position);
       });
-    wireless.seed(rows.flatMap((r) => [r.mic, r.iem]));
-    const live = wireless.tick();
-    const dev = (ch) => (ch && ch !== 'WIRED' && live[ch] ? { ch, battery: live[ch].battery, rf: live[ch].rf } : { ch, battery: null, rf: true });
-    return rows.map((r) => ({ ...r, mic: dev(r.mic), iem: r.iem ? dev(r.iem) : null }));
+    // Real receivers win. Mics come from the Shure receivers by channel name.
+    // IEMs are one-way radio (the belt packs can't report back), so in live
+    // mode they show the assignment only, with no battery or RF.
+    const real = receiverHosts().length > 0;
+    let mic, iem;
+    if (real) {
+      const ch = shure.channels();
+      mic = (name) => {
+        if (!name || name === 'WIRED') return { ch: name, battery: null, rf: null };
+        const c = ch[shure.norm(name)];
+        if (!c) return { ch: name, battery: null, rf: null, missing: true };
+        if (!c.online) return { ch: c.name, battery: null, rf: null };
+        if (!c.tx) return { ch: c.name, battery: null, rf: null, off: true };
+        return { ch: c.name, battery: c.battery, minutes: c.minutes, rf: c.rf, muted: c.muted };
+      };
+      iem = (name) => ({ ch: name, battery: null, rf: null });
+    } else if (cfg().sampleMode) {
+      wireless.seed(rows.flatMap((r) => [r.mic, r.iem]));
+      const live = wireless.tick();
+      mic = iem = (name) => (name && name !== 'WIRED' && live[name] ? { ch: name, battery: live[name].battery, rf: live[name].rf } : { ch: name, battery: null, rf: null });
+    } else {
+      mic = iem = (name) => ({ ch: name, battery: null, rf: null });
+    }
+    return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
 
   // ---- the snapshot ----
@@ -605,10 +633,11 @@ function makeEngine({ config, db, clock, log }) {
       plan: { source: planSource, error: planError, fetchedAt: planFetchedAt, title: plan && plan.title, date: plan && plan.date },
       slack: { error: slackError, syncedAt: slackSyncedAt, photos: Object.keys(slackPhotos).length, connected: !!cfg().slack.botToken },
       propresenter: { auditorium: { ...aud.status, current: undefined, next: undefined }, broadcast: { ...bc.status, current: undefined, next: undefined } },
+      wireless: { receivers: shure.status() },
     };
   }
 
-  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

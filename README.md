@@ -13,7 +13,7 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
   - The **broadcast** machine feeds the graphics status box.
 - **Schedule:** stream start and end times for each Encounter, which drive the stream-end countdowns and the projected finish.
 - **Song bank:** Feel, progression, notes and camera cues for each song.
-- **Wireless:** mic and IEM assignments by position, with battery and RF status. These are sample values until the receivers are connected.
+- **Wireless:** mic and IEM assignments by position. Mic battery (percent and runtime), transmitter on/off and RF come live from the Shure Axient Digital receivers (AD4D/AD4Q) over the network. The Lectrosonics Duet IEM packs are one-way radio, so IEMs show their assignment only. Sample values are shown until a receiver is added.
 - **Producer messages:** each leader signs in with their own name and PIN. They can target any screens, choose an urgency (info, heads-up or urgent), and set the message to clear itself or stay until cleared.
 
 ## Displays

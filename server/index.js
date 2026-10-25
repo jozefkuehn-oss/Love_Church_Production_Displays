@@ -422,6 +422,28 @@ app.put('/api/wireless', auth.requireAdmin, (req, res) => {
   ok(res);
 });
 
+// Networked mic receivers (Shure Axient Digital) and what they report live.
+app.get('/api/wireless-live', auth.requireAdmin, (req, res) => {
+  ok(res, {
+    receivers: (config.data.wireless || {}).receivers || [],
+    status: engine.health().wireless.receivers,
+    channels: Object.values(engine.wirelessChannels()),
+  });
+});
+app.put('/api/wireless-receivers', auth.requireAdmin, (req, res) => {
+  const ip = /^[A-Za-z0-9.-]{1,64}$/;
+  const list = ((req.body || {}).receivers || [])
+    .map((r) => ({ label: String(r.label || '').slice(0, 40), host: String(r.host || '').trim(), enabled: r.enabled !== false }))
+    .filter((r) => r.host);
+  if (list.some((r) => !ip.test(r.host))) return bad(res, 'Use the receiver’s IP address, like 192.168.10.60.');
+  config.data.wireless = { ...(config.data.wireless || {}), receivers: list };
+  config.saveNow();
+  engine.restartWireless();
+  log(`Wireless receivers updated by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
 // Display profiles + layouts
 app.get('/api/profiles', auth.requireAdmin, (req, res) => ok(res, db.data.profiles));
 app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {

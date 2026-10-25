@@ -75,6 +75,16 @@ Both machines are already filled in: **auditorium 192.168.10.204, port 51090** a
 - If ProPresenter is closed or unreachable, the screens fall back to planned timing. A leader can also set the position by hand from the **Live** tab.
 - The auditorium playlist is built by hand each week, so presentations are matched to Planning Center items by name. Songs usually match on their own. If the **Live** tab says "Not matched", pick the plan item it belongs to. That link is saved for future Sundays. Keeping presentation names close to the Planning Center item names makes this almost automatic.
 
+## 6b. Connect the wireless mic receivers
+
+The Shure Axient Digital receivers (the AD4D and the two AD4Qs in the wireless rack) report each transmitter's battery, runtime and RF over the network.
+
+1. On each receiver, open **Menu → Network** and note its IP address. It must be on the same network as the Mac. A fixed (static or reserved) address is best so it doesn't change.
+2. Admin page → **Wireless → Mic receivers** → add each receiver's IP → **Save receivers**. Each one should turn green within a few seconds and list its channel names (VOX-4, VOX-5…).
+3. Under **Assignments**, type each position's mic as the receiver channel name. The mic box suggests the names it found.
+
+The IEMs (Lectrosonics M2T transmitters and M2Ra packs) are one-way radio: the belt packs can't report their battery back, so the screens show IEM assignments without a battery bar.
+
 ## 7. Send the screens to the hub
 
 The Mac opens one full-screen Chrome window per output, listed in `scripts/screens.conf`:

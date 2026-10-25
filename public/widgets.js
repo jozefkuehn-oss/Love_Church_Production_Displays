@@ -83,13 +83,17 @@
   }
 
   // ---------- device row ----------
+  // d: { ch, battery (0-100|null), minutes (runtime|null), rf (true|false|null = unknown), off }
+  const battText = (d) => (d.minutes != null ? `${Math.floor(d.minutes / 60)}h${String(d.minutes % 60).padStart(2, '0')}` : d.battery + '%');
+  const rfClass = (d) => (d.rf === false ? 'drop' : d.rf ? '' : 'none');
   function devRow(d) {
     if (!d) return '';
-    if (d.battery == null) return `<div class="dev"><span class="ch">${esc(d.ch || '—')}</span><span class="b"></span><span class="p"></span><span class="rf none"></span></div>`;
+    if (d.off) return `<div class="dev"><span class="ch">${esc(d.ch)}</span><span class="b"></span><span class="p" style="color:var(--dim)">OFF</span><span class="rf none"></span></div>`;
+    if (d.battery == null) return `<div class="dev"><span class="ch">${esc(d.ch || '—')}</span><span class="b"></span><span class="p"></span><span class="rf ${rfClass(d)}"></span></div>`;
     const col = d.battery < 20 ? 'var(--red)' : d.battery < 35 ? 'var(--yellow)' : 'var(--green)';
-    return `<div class="dev"><span class="ch">${esc(d.ch)}</span><span class="b"><i style="width:${d.battery}%;background:${col}"></i></span><span class="p" style="color:${d.battery < 35 ? col : '#fff'}">${d.battery}%</span><span class="rf ${d.rf ? '' : 'drop'}"></span></div>`;
+    return `<div class="dev"><span class="ch">${esc(d.ch)}</span><span class="b"><i style="width:${d.battery}%;background:${col}"></i></span><span class="p" style="color:${d.battery < 35 ? col : '#fff'}">${battText(d)}</span><span class="rf ${rfClass(d)}"></span></div>`;
   }
-  const devAlert = (d) => d && d.battery != null && (d.battery < 20 || !d.rf);
+  const devAlert = (d) => d && !d.off && ((d.battery != null && d.battery < 20) || d.rf === false);
   const devWarn = (d) => d && d.battery != null && d.battery < 35;
 
   // ---------- widgets ----------
@@ -289,8 +293,8 @@
           <span class="av">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
           <span class="grow" style="font-size:17px;font-weight:600;line-height:1.1">${esc(r.name)}</span>
           <span style="width:56px;height:10px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${d.battery || 0}%;background:${col}"></i></span>
-          <span style="width:44px;text-align:right;font-size:17px;font-weight:700;color:${d.battery < 35 ? col : '#fff'}">${d.battery == null ? '' : d.battery + '%'}</span>
-          <span class="rf ${d.rf ? '' : 'drop'}"></span></div>`;
+          <span style="width:52px;text-align:right;font-size:17px;font-weight:700;color:${d.off ? 'var(--dim)' : d.battery < 35 ? col : '#fff'}">${d.off ? 'OFF' : d.battery == null ? '' : battText(d)}</span>
+          <span class="rf ${rfClass(d)}"></span></div>`;
       })
       .join('');
     return `<div class="panel" style="height:100%;gap:8px"><div class="row"><div class="label grow">WIRELESS</div><div style="font-size:14px;color:var(--dim)">Battery · RF</div></div>${html}</div>`;
