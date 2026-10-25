@@ -9,6 +9,7 @@ const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
 const { makeShure } = require('./sources/shure');
+const { parseMicNotes } = require('./micnotes');
 const sample = require('./seed/sample');
 const photos = require('./photos');
 
@@ -290,18 +291,35 @@ function makeEngine({ config, db, clock, log }) {
   }
 
   // ---- wireless ----
+  let notesCache = { key: null, out: {} };
+  function notesMics(people) {
+    if (!plan || !plan.notes) return {};
+    const list = [...(people.stage || []), ...(people.communicators || [])];
+    const nameMap = d().nameMap || {};
+    const key = plan.notes + '|' + list.map((c) => c.name).join(',');
+    if (notesCache.key !== key) {
+      const ppl = [...new Map(list.map((c) => [c.name, { name: c.name, aliases: [nameMap[c.name]].filter(Boolean) }])).values()];
+      notesCache = { key, out: parseMicNotes(plan.notes, ppl) };
+    }
+    return notesCache.out;
+  }
+
   function buildWireless(people) {
     const assign = d().wireless || {};
     // This Sunday's picks (Wireless tab) override the standing assignments,
     // but only for the plan they were made for.
     const wk = d().wirelessWeek && plan && d().wirelessWeek.date === plan.date ? d().wirelessWeek.byName || {} : {};
+    // Assignments written in the plan's notes come next; standard ones last.
+    const nm = notesMics(people);
     const rows = [];
     const add = (c, key) => {
-      const a = assign[key] || assign[c.position] || {};
+      const std = assign[key] || assign[c.position] || {};
+      const n = nm[c.name] || {};
+      const a = { mic: n.mic || std.mic || '', iem: n.iem || std.iem || '' };
       const w = wk[c.name] || {};
-      const mic = w.mic != null && w.mic !== '' ? w.mic : a.mic || '';
-      const iem = w.iem != null && w.iem !== '' ? w.iem : a.iem || '';
-      rows.push({ name: c.name, role: c.role, position: c.position, photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic, iem, defMic: a.mic || '', defIem: a.iem || '' });
+      const mic = w.mic != null && w.mic !== '' ? w.mic : a.mic;
+      const iem = w.iem != null && w.iem !== '' ? w.iem : a.iem;
+      rows.push({ name: c.name, role: c.role, position: c.position, photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic, iem, defMic: a.mic, defIem: a.iem, fromNotes: { mic: !!n.mic, iem: !!n.iem } });
     };
     (people.stage || []).forEach((c) => add(c, c.slot || c.position));
     const n = {};
@@ -335,7 +353,7 @@ function makeEngine({ config, db, clock, log }) {
     } else {
       mic = iem = (name) => ({ ch: name, battery: null, rf: null });
     }
-    lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem }));
+    lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem, fromNotes: r.fromNotes }));
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
 

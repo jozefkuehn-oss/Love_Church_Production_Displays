@@ -969,7 +969,7 @@
     const recv = live.receivers.length ? live.receivers.map((r) => ({ ...r })) : [{ label: '', host: '', enabled: true }];
     app.innerHTML = `<h1>Wireless</h1>
       <div class="card"><h2 style="margin:0">This Sunday${week.date ? ` · ${esc(week.date)}` : ''}</h2>
-        <p class="dim" style="margin:0">Who has which mic on this plan. Leave a mic on <em>Standard</em> to use the assignment below. Picks reset when the next plan loads.</p>
+        <p class="dim" style="margin:0">Who has which mic on this plan. If the plan’s notes in Planning Center list mic assignments, they’re filled in automatically (<em>Plan notes</em>); otherwise each person starts on their <em>Standard</em> mic below. Change anyone here. Picks reset when the next plan loads.</p>
         <div style="overflow-x:auto"><table id="wk"></table></div>
         <div class="row"><button class="primary" id="wks">Save this Sunday</button><span class="dim" id="wkw"></span></div></div>
       <div class="card" style="margin-top:14px"><h2 style="margin:0">Mic receivers</h2>
@@ -1022,7 +1022,7 @@
         ? `<tr><th>Person</th><th>Mic</th><th>IEM</th></tr>${week.rows
             .map(
               (r, i) => `<tr><td><strong>${esc(r.name)}</strong><br><span class="dim">${esc(r.role || r.position || '')}</span></td>
-              <td><select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">Standard${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
+              <td><select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">${r.fromNotes && r.fromNotes.mic ? 'Plan notes' : 'Standard'}${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
                 .map((m) => `<option ${picks[r.name].mic === m ? 'selected' : ''}>${esc(m)}</option>`)
                 .join('')}</select></td>
               <td><input data-w="${i}" data-f="iem" value="${esc(picks[r.name].iem)}" placeholder="${esc(r.defIem || '—')}"></td></tr>`

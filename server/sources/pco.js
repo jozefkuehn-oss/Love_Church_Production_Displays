@@ -56,11 +56,19 @@ async function fetchPlan(cfg, todayKey, tz) {
   if (!p) throw new Error('No upcoming plan found in Planning Center for this service type.');
   const planId = p.id;
 
-  const [times, items, people] = await Promise.all([
+  const [times, items, people, notes] = await Promise.all([
     getAll(cfg, `/service_types/${st}/plans/${planId}/plan_times?per_page=50`),
-    getAll(cfg, `/service_types/${st}/plans/${planId}/items?include=song,key&per_page=100`),
+    getAll(cfg, `/service_types/${st}/plans/${planId}/items?include=song,key,item_notes&per_page=100`),
     getAll(cfg, `/service_types/${st}/plans/${planId}/team_members?include=team&per_page=100`),
+    // Plan notes (and item notes, below) sometimes carry the mic assignments.
+    getAll(cfg, `/service_types/${st}/plans/${planId}/notes?per_page=100`).catch(() => ({ data: [], included: [] })),
   ]);
+  const noteText = [
+    ...notes.data.map((n) => `${n.attributes.category_name || ''}: ${n.attributes.content || ''}`),
+    ...items.included.filter((x) => x.type === 'ItemNote').map((n) => `${n.attributes.category_name || ''}: ${n.attributes.content || ''}`),
+  ]
+    .map((t) => t.replace(/<[^>]+>/g, '\n').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&'))
+    .join('\n');
 
   const teams = {};
   people.included.filter((x) => x.type === 'Team').forEach((t) => (teams[t.id] = t.attributes.name));
@@ -77,6 +85,7 @@ async function fetchPlan(cfg, todayKey, tz) {
     id: planId,
     title: [p.attributes.series_title, p.attributes.title].filter(Boolean).join(' · ') || p.attributes.dates,
     date,
+    notes: noteText,
     times: serviceTimes.map((t) => {
       const start = hhmm(t.attributes.starts_at, tz);
       return { label: label(start), start };
