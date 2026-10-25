@@ -372,12 +372,32 @@ function makeEngine({ config, db, clock, log }) {
       const links = d().presentationLinks || {};
       const linked = links[ap.presentation];
       const k = songKey(ap.presentation);
-      let hit = linked ? items.findIndex((i) => songKey(i.title) === songKey(linked)) : -1;
-      if (hit < 0 && k) {
-        hit = items.findIndex((i) => {
-          const ik = songKey(i.title);
-          return ik && (ik === k || (ik.length > 3 && (ik.includes(k) || k.includes(ik))));
+      const flat = (x) => x.replace(/\s+/g, '');
+      const hiddenPres = hide.includes(String(ap.presentation).toLowerCase());
+      // Score every plan item against the presentation name: an explicit link
+      // or an exact title wins, then one name containing the other (spaces
+      // ignored, so "PRESHOW" finds "Online Pre-Show"). Ties go to the item
+      // nearest after where we already are, so a presentation reused for two
+      // segments (e.g. "Host Moment") walks forward instead of jumping back.
+      let hit = -1;
+      if (!hiddenPres) {
+        const from = anchor && anchor.enc === (enc && enc.label) ? anchor.index : 0;
+        let best = { score: 0, dist: Infinity, i: -1 };
+        items.forEach((it, i) => {
+          const ik = songKey(it.title);
+          let score = 0;
+          if (linked && songKey(linked) === ik) score = 4;
+          else if (ik && ik === k) score = 3;
+          else if (ik && k && flat(ik) === flat(k)) score = 3;
+          else if (ik && k && ik.length > 3 && (flat(ik).includes(flat(k)) || flat(k).includes(flat(ik)))) score = 1 + (it.isSong ? 0.5 : 0);
+          // Generic presentations reused every week ("Video Element") match the
+          // week's item of the same kind ("Video | Orange Bible Story").
+          else if (ik && k && k.split(' ')[0].length > 3 && ik.split(' ')[0] === k.split(' ')[0] && !it.isSong) score = 0.5;
+          if (!score) return;
+          const dist = i >= from ? i - from : 1000 + (from - i);
+          if (score > best.score || (score === best.score && dist < best.dist)) best = { score, dist, i };
         });
+        hit = best.i;
       }
       if (hit >= 0) {
         index = hit;
