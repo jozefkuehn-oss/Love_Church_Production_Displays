@@ -317,8 +317,10 @@ function makeEngine({ config, db, clock, log }) {
       const n = nm[c.name] || {};
       const a = { mic: n.mic || std.mic || '', iem: n.iem || std.iem || '' };
       const w = wk[c.name] || {};
-      const mic = w.mic != null && w.mic !== '' ? w.mic : a.mic;
-      const iem = w.iem != null && w.iem !== '' ? w.iem : a.iem;
+      // 'N/A' = this person has no mic / IEM this week.
+      const pick = (v, dflt) => (v === 'N/A' ? '' : v != null && v !== '' ? v : dflt);
+      const mic = pick(w.mic, a.mic);
+      const iem = pick(w.iem, a.iem);
       rows.push({ name: c.name, role: c.role, position: c.position, photo: c.photo, focusX: c.focusX, focusY: c.focusY, zoom: c.zoom, initials: c.initials, mic, iem, defMic: a.mic, defIem: a.iem, fromNotes: { mic: !!n.mic, iem: !!n.iem } });
     };
     (people.stage || []).forEach((c) => add(c, c.slot || c.position));

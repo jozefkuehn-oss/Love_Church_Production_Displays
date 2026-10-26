@@ -130,3 +130,4 @@ code { background: var(--panel-2); padding: 2px 6px; border-radius: 6px; }
 .hhwho { font-size: 22px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .hhm { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: var(--pink); padding: 3px 8px; border-radius: 6px; }
 [hidden] { display: none !important; }
+.hhres { display: flex; flex-direction: column; gap: 6px; }

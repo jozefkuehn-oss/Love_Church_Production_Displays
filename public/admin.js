@@ -1074,18 +1074,18 @@
       $('#chl').innerHTML = chans.map((c) => `<option value="${esc(c.name)}">`).join('') + '<option value="WIRED">';
     }
     function drawWeek() {
-      const names = new Set([...MICS, ...live.channels.map((c) => c.name), 'WIRED']);
+      const names = new Set([...MICS, ...live.channels.map((c) => c.name)].filter((m) => m !== 'WIRED'));
       const eff = (r) => picks[r.name].mic || r.defMic;
       const counts = {};
-      week.rows.forEach((r) => { const m = eff(r); if (m && m !== 'WIRED') counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] = (counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] || 0) + 1; });
-      const dup = (m) => m && m !== 'WIRED' && counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] > 1;
+      week.rows.forEach((r) => { const m = eff(r); if (m && m !== 'WIRED' && m !== 'N/A') counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] = (counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] || 0) + 1; });
+      const dup = (m) => m && m !== 'WIRED' && m !== 'N/A' && counts[m.toUpperCase().replace(/[^A-Z0-9]/g, '')] > 1;
       $('#wk').innerHTML = week.rows.length
         ? week.rows
             .map(
               (r, i) => `<div class="wkrow"><div class="wkn"><strong>${esc(r.name)}</strong><span class="dim">${esc(r.role || r.position || '')}</span></div>
               <label class="wkf">Mic<select data-w="${i}" data-f="mic" style="${dup(eff(r)) ? 'outline:2px solid var(--yellow)' : ''}"><option value="">${r.fromNotes && r.fromNotes.mic ? 'Plan notes' : 'Standard'}${r.defMic ? ' (' + esc(r.defMic) + ')' : ''}</option>${[...names]
                 .map((m) => `<option ${picks[r.name].mic === m ? 'selected' : ''}>${esc(m)}</option>`)
-                .join('')}</select></label>
+                .join('')}<option value="WIRED" ${picks[r.name].mic === 'WIRED' ? 'selected' : ''}>MD / Wired</option><option value="N/A" ${picks[r.name].mic === 'N/A' ? 'selected' : ''}>N/A — no mic</option></select></label>
               <label class="wkf">IEM<input data-w="${i}" data-f="iem" value="${esc(picks[r.name].iem)}" placeholder="${esc(r.defIem || '—')}"></label></div>`
             )
             .join('')
@@ -1163,12 +1163,8 @@
               <div class="hhwho">${h.name ? esc(h.name) : '<span class="dim">Nobody yet</span>'}${h.moment ? `<span class="hhm">${esc(h.moment)}</span>` : ''}</div>
               ${h.by ? `<div class="dim">Set by ${esc(h.by)} at ${fmtTime(h.at)}</div>` : h.name ? '<div class="dim">From the mic plan</div>' : ''}
               <div class="chips">${MOMENTS.map((x) => `<button class="chip ${m === x ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-              <label>Who has it<select data-p>
-                <option value="">— Pick a person —</option>
-                ${data.people.map((p) => `<option value="${esc(p.name)}" ${p.name === h.name ? 'selected' : ''}>${esc(p.name)}${p.position ? ' · ' + esc(p.position) : ''}</option>`).join('')}
-                <option value="__other" ${h.name && !known ? 'selected' : ''}>Someone else…</option>
-              </select></label>
-              <div class="row nowrap" data-otherrow ${h.name && !known ? '' : 'hidden'}><input data-other placeholder="Their name" value="${h.name && !known ? esc(h.name) : ''}"><button class="primary small" data-oksave>Set</button></div>
+              <label>Who has it<input data-q placeholder="Search a name…" autocomplete="off" autocapitalize="words"></label>
+              <div class="hhres" data-res></div>
               ${h.set ? '<button class="small ghost" data-clear style="align-self:flex-start">Clear (back to the mic plan)</button>' : ''}
             </div>`;
           })
@@ -1195,15 +1191,25 @@
               else draw();
             })
         );
-        $('[data-p]', card).onchange = (e) => {
-          if (e.target.value === '__other') {
-            $('[data-otherrow]', card).hidden = false;
-            $('[data-other]', card).focus();
-          } else if (e.target.value) save(e.target.value);
+        // Search: type part of a name, tap a match. Anyone not on the plan
+        // can be typed in full and set with the last button.
+        const q = $('[data-q]', card);
+        const res = $('[data-res]', card);
+        const showRes = () => {
+          const t = q.value.trim().toLowerCase();
+          if (!t) return (res.innerHTML = '');
+          const hits = data.people.filter((p) => p.name.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || p.name.toLowerCase().includes(t)).slice(0, 8);
+          res.innerHTML =
+            hits.map((p) => `<button class="item" data-pick="${esc(p.name)}"><span class="grow"><strong>${esc(p.name)}</strong>${p.position ? ` <span class="dim">· ${esc(p.position)}</span>` : ''}</span></button>`).join('') +
+            (hits.some((p) => p.name.toLowerCase() === t) ? '' : `<button class="item" data-pick="${esc(q.value.trim())}"><span class="grow">Use “${esc(q.value.trim())}” <span class="dim">· not on the plan</span></span></button>`);
+          $$('[data-pick]', res).forEach((b) => (b.onclick = () => save(b.dataset.pick)));
         };
-        $('[data-oksave]', card).onclick = () => {
-          const v = $('[data-other]', card).value.trim();
-          if (v) save(v);
+        q.oninput = showRes;
+        q.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            const first = $('[data-pick]', res);
+            if (first) save(first.dataset.pick);
+          }
         };
         const c = $('[data-clear]', card);
         if (c) c.onclick = () => save('');
@@ -1212,7 +1218,7 @@
     draw();
     S.timers.push(
       setInterval(async () => {
-        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hh select, .hh input')) return;
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hh input')) return;
         if (Object.keys(sel).length) return;
         try {
           data = await api('/api/handhelds');
