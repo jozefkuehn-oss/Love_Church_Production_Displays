@@ -43,7 +43,7 @@ const configDefaults = {
 };
 
 // Order locations appear in on a screen's room picker.
-const LOCATIONS = ['Broadcast Control', 'The Dock', 'Greenroom', 'FOH', 'Stage'];
+const LOCATIONS = ['Broadcast Control', 'The Dock', 'Greenroom', 'FOH', 'Preshow', 'Stage'];
 
 // Preshow dashboards start as a copy of the Live one with the item timer
 // swapped for "Encounter starts in" (the preshow timer tile is already there
@@ -203,6 +203,42 @@ const profiles = {
           w('wd', 'worshipDirection', 6, 4, 11, 7, { compact: true }),
           w('wl', 'wirelessList', 17, 2, 7, 9, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
+    },
+  },
+  // Confidence monitor for the online preshow hosts (replaces the timer on
+  // the Broadcast ProPresenter stage display). Big preshow countdown, what's
+  // on the stream, and producer messages.
+  'preshow-confidence': {
+    name: 'Preshow Confidence',
+    location: 'Preshow',
+    modeSetting: 'auto',
+    style: { black: true },
+    layouts: {
+      pre: {
+        widgets: [
+          w('et', 'encountersToday', 0, 0, 18, 1, { compact: true }),
+          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
+          w('ps', 'preshow', 0, 1, 24, 8, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
+          w('mb', 'messageBar', 0, 9, 24, 3, { big: true }),
+        ],
+      },
+      preshow: {
+        widgets: [
+          w('ps', 'preshow', 0, 0, 15, 7, { huge: true }),
+          w('c', 'clock', 15, 0, 9, 3, { seconds: true }),
+          w('es', 'countdown', 15, 3, 9, 4, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }),
+          w('sp', 'slidePreview', 0, 7, 24, 3, { source: 'broadcast', label: 'ON THE STREAM' }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+        ],
+      },
+      live: {
+        widgets: [
+          w('nn', 'nowNext', 0, 0, 18, 1, { compact: true }),
+          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
+          w('se', 'countdown', 0, 1, 24, 7, { target: 'streamEnd', label: 'STREAM ENDS IN', huge: true }),
+          w('mb', 'messageBar', 0, 8, 24, 4, { big: true }),
         ],
       },
     },

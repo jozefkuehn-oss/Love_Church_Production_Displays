@@ -207,13 +207,14 @@
       return fb ? fb(o.fallbackOpts || {}, s, ctx) : `<div class="stat"><div class="k">PRESHOW</div><div class="v" style="color:var(--dim)">—</div></div>`;
     }
     const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
+    const big = o.huge ? 'huge' : '';
     if (p.state === 'waiting') {
       const left = p.startMs - s.now;
-      if (left <= 10000) return `<div class="stat flashwarn"><div class="k">${label} STARTS IN</div><div class="v">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
-      return `<div class="stat"><div class="k">${label} STARTS IN</div><div class="v">${dur(left)}</div></div>`;
+      if (left <= 10000) return `<div class="stat ${big} flashwarn"><div class="k">${label} STARTS IN</div><div class="v">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
+      return `<div class="stat ${big}"><div class="k">${label} STARTS IN</div><div class="v">${dur(left)}</div></div>`;
     }
-    if (p.state === 'running') return `<div class="stat accent"><div class="k">${label}</div><div class="v">${dur(p.remainingMs)}</div></div>`;
-    return `<div class="stat flashred"><div class="k">${label} · OVER</div><div class="v">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
+    if (p.state === 'running') return `<div class="stat ${big} accent"><div class="k">${label}</div><div class="v">${dur(p.remainingMs)}</div></div>`;
+    return `<div class="stat ${big} flashred"><div class="k">${label} · OVER</div><div class="v">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
   };
 
   W.runOfShow = (o, s, ctx) => {

@@ -147,6 +147,14 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Preshow Confidence dashboard (for the online preshow hosts).
+(function migratePreshowConfidence() {
+  if ((db.data.profilesVersion || 1) >= 7) return;
+  if (!db.data.profiles['preshow-confidence']) db.data.profiles['preshow-confidence'] = structuredClone(dbDefaults.profiles['preshow-confidence']);
+  db.data.profilesVersion = 7;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
