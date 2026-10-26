@@ -101,9 +101,9 @@ const profiles = {
           w('ps', 'preshow', 16, 0, 8, 2, {}),
           w('enc', 'encountersToday', 0, 2, 24, 1, { compact: true }),
           w('ros', 'runOfShowDay', 0, 3, 6, 8, {}),
-          w('cm', 'faces', 6, 3, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
-          w('wd', 'worshipDirection', 6, 6, 9, 5, {}),
-          w('mic', 'worshipMics', 15, 3, 9, 8, {}),
+          w('st', 'faces', 6, 3, 9, 4, { group: 'stage', label: 'WHO YOU’LL SEE ON STAGE' }),
+          w('cm', 'faces', 6, 7, 9, 4, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('wd', 'worshipDirection', 15, 3, 9, 8, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Pre-encounter · switches to Live automatically before each Encounter' }),
         ],
       },
@@ -121,6 +121,31 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
+    },
+  },
+  'broadcast-audio': {
+    name: 'Broadcast Audio',
+    location: 'Broadcast',
+    modeSetting: 'auto',
+    style: {},
+    layouts: {
+      pre: {
+        widgets: [
+          w('t', 'title', 0, 0, 4, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 4, 0, 4, 2, { seconds: true }),
+          w('pos', 'countdown', 8, 0, 4, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
+          w('fs', 'countdown', 12, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN', accent: true }),
+          w('ps', 'preshow', 16, 0, 8, 2, {}),
+          w('enc', 'encountersToday', 0, 2, 24, 1, { compact: true }),
+          w('ros', 'runOfShowDay', 0, 3, 6, 8, {}),
+          w('cm', 'faces', 6, 3, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('wd', 'worshipDirection', 6, 6, 9, 5, {}),
+          w('mic', 'worshipMics', 15, 3, 9, 8, {}),
+          w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Pre-encounter · switches to Live automatically before each Encounter' }),
+        ],
+      },
+      // Placeholder until designed: same as Pre-Encounter.
+      live: null,
     },
   },
   dock: {
@@ -485,12 +510,14 @@ const dbDefaults = {
   live: { manualIndex: null, manualSetAt: null },
 };
 
+for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.live) p.layouts.live = JSON.parse(JSON.stringify(p.layouts.pre));
 for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.layouts.preshow = preshowFrom(p.layouts.live);
 
 // Dashboards designed with Jozef in the Dashboard Builder. Bumping a number
 // pushes that default layout to existing installs once, replacing what's there.
 const LAYOUT_REVISIONS = {
-  'broadcast.pre': 2,
+  'broadcast.pre': 3,
+  'broadcast-audio.pre': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
