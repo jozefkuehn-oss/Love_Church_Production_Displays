@@ -411,22 +411,25 @@ function makeEngine({ config, db, clock, log }) {
       };
     });
 
-    // Each Encounter's live window runs from a few minutes before it starts
-    // until a few minutes after its stream ends. Inside a window the
-    // Encounter is "live"; outside, displays on Automatic show Pre-Encounter
-    // for the next one.
+    // Three phases per Encounter:
+    //   Pre-Encounter  until preshow (5 min before the Encounter start)
+    //   Preshow        5 min before start → start
+    //   Live           start → a few minutes after the stream ends (or 75 min)
+    // Displays on Automatic switch their dashboard to match.
     const sched0 = d().schedule;
-    const lead = (sched0.liveLeadMinutes ?? 5) * 60e3;
+    const psLead = (sched0.preshowLeadMinutes ?? 5) * 60e3;
     const tail = (sched0.liveTailMinutes ?? 5) * 60e3;
     encs.forEach((e) => {
-      // Live from whichever comes first, the stream or the Encounter itself.
-      e.liveFrom = Math.min(e.startMs, e.streamStartMs ?? e.startMs) - lead;
+      e.preshowFrom = e.startMs - psLead;
+      e.liveFrom = e.startMs;
       e.liveUntil = (e.streamEndMs ?? e.startMs + 75 * 60e3) + tail;
     });
-    const liveEnc = encs.find((e) => now >= e.liveFrom && now <= e.liveUntil) || null;
-    const upcoming = encs.find((e) => e.liveFrom > now) || null;
-    let enc = liveEnc || upcoming || encs[encs.length - 1] || null;
-    const nextEnc = liveEnc ? upcoming : enc && enc.liveFrom > now ? enc : null;
+    const activeEnc = encs.find((e) => now >= e.preshowFrom && now <= e.liveUntil) || null;
+    const liveEnc = activeEnc && now >= activeEnc.liveFrom ? activeEnc : null;
+    const preshowEnc = activeEnc && !liveEnc ? activeEnc : null;
+    const upcoming = encs.find((e) => e.preshowFrom > now) || null;
+    let enc = activeEnc || upcoming || encs[encs.length - 1] || null;
+    const nextEnc = activeEnc ? upcoming : enc && enc.preshowFrom > now ? enc : null;
 
     // Items for this Encounter.
     const hide = (cfg().hideItems || ['Washed (Remix)', 'T.I.P. Time [PA]', 'Team Huddles']).map((s) => s.toLowerCase());
@@ -689,11 +692,11 @@ function makeEngine({ config, db, clock, log }) {
       nextBandToStage: nextEnc ? nextEnc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
     };
 
-    // Display modes: Automatic follows the live windows; Pre / Live are fixed.
+    // Display modes: Automatic follows the phases; Pre / Preshow / Live are fixed.
     const modes = {};
     for (const [id, pr] of Object.entries(d().profiles)) {
       const setting = pr.modeSetting || 'auto';
-      let mode = setting === 'auto' ? (liveEnc ? 'live' : 'pre') : setting;
+      let mode = setting === 'auto' ? (liveEnc ? 'live' : preshowEnc ? 'preshow' : 'pre') : setting;
       if (!pr.layouts[mode]) mode = pr.layouts.live ? 'live' : Object.keys(pr.layouts)[0];
       modes[id] = mode;
     }
@@ -708,9 +711,10 @@ function makeEngine({ config, db, clock, log }) {
       encounters: encs.map((e) => ({ label: e.label, start: e.start, streamEnd: e.streamEnd, startMs: e.startMs, streamEndMs: e.streamEndMs })),
       encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs } : null,
       isLive: !!liveEnc,
+      isPreshow: !!preshowEnc,
       nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs } : null,
       preshow,
-      encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
+      encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : e === preshowEnc ? 'preshow' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
       items: items.map(({ id, title, key, length, isSong, status, position }) => ({ id, title, key, length, isSong, status, position })),
       index,
       indexSource,

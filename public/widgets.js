@@ -104,7 +104,7 @@
     let sub = '';
     if (o.sub === 'live') {
       const src = s.indexSource === 'propresenter' ? 'following Auditorium ProPresenter' : s.indexSource === 'manual' ? 'manual position' : 'planned timing';
-      sub = `<div class="sub"><span class="dot"></span><span>Live · ${src}</span></div>`;
+      sub = `<div class="sub"><span class="dot"></span><span>${s.isPreshow ? "Preshow" : "Live"} · ${src}</span></div>`;
     } else if (o.sub === 'date') sub = `<div class="sub">${esc(s.date.label)}</div>`;
     else if (o.sub === 'encounters') sub = `<div class="sub">Encounters ${esc((s.encounters || []).map((e) => e.label).join(' · '))}</div>`;
     return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(fill(o.kicker, s))}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
@@ -141,7 +141,7 @@
   W.encountersToday = (o, s) => {
     const st = s.encounterStates || [];
     if (!st.length) return `<div class="et"><span class="n2">No Encounters scheduled today</span></div>`;
-    const tag = { live: 'LIVE', next: 'NEXT', done: 'DONE', later: '' };
+    const tag = { live: 'LIVE', preshow: 'PRESHOW', next: 'NEXT', done: 'DONE', later: '' };
     return `<div class="et ${o.compact ? 'compact' : ''}"><span class="lab">TODAY</span>${st
       .map((e) => `<span class="enc ${e.state}">${tag[e.state] ? `<b>${tag[e.state]}</b>` : ''}${esc(e.label)}</span>`)
       .join('')}</div>`;

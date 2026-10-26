@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Doc, PHOTO_DIR, DATA_DIR } = require('./store');
-const { configDefaults, dbDefaults, LOCATIONS } = require('./defaults');
+const { configDefaults, dbDefaults, LOCATIONS, preshowFrom } = require('./defaults');
 const { makeAuth } = require('./auth');
 const { makeClock, parts, zoned } = require('./time');
 const { makeEngine } = require('./engine');
@@ -171,6 +171,17 @@ const auth = makeAuth(db, {
       delete p.mode;
       changed = true;
     }
+  }
+  // Third phase: a Preshow dashboard for every room (starts as a copy of Live).
+  for (const p of Object.values(db.data.profiles)) {
+    if (!p.layouts.preshow) {
+      p.layouts.preshow = preshowFrom(p.layouts.live);
+      changed = true;
+    }
+  }
+  if (db.data.schedule && db.data.schedule.preshowLeadMinutes == null) {
+    db.data.schedule.preshowLeadMinutes = 5;
+    changed = true;
   }
   if (!db.data.devices) {
     db.data.devices = {};
@@ -722,12 +733,12 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
   const id = req.params.id;
   if (!/^[a-z0-9-]{1,30}$/.test(id)) return bad(res, 'Profile ids are lowercase letters, numbers and dashes.');
   const b = req.body || {};
-  const cur = db.data.profiles[id] || { name: id, modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, live: { widgets: [] } } };
+  const cur = db.data.profiles[id] || { name: id, modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, preshow: { widgets: [] }, live: { widgets: [] } } };
   db.data.profiles[id] = {
     ...cur,
     name: b.name ?? cur.name,
     location: b.location != null ? String(b.location).trim().slice(0, 40) || 'Other' : cur.location || 'Other',
-    modeSetting: ['auto', 'pre', 'live'].includes(b.modeSetting) ? b.modeSetting : cur.modeSetting || 'auto',
+    modeSetting: ['auto', 'pre', 'preshow', 'live'].includes(b.modeSetting) ? b.modeSetting : cur.modeSetting || 'auto',
     style: b.style ?? cur.style,
     layouts: b.layouts ?? cur.layouts,
   };
@@ -737,7 +748,7 @@ app.put('/api/profiles/:id', auth.requireAdmin, (req, res) => {
 });
 app.post('/api/profiles-mode', auth.requirePerm('live'), (req, res) => {
   const m = (req.body || {}).modeSetting;
-  if (!['auto', 'pre', 'live'].includes(m)) return bad(res, 'Pick auto, pre or live.');
+  if (!['auto', 'pre', 'preshow', 'live'].includes(m)) return bad(res, 'Pick auto, pre, preshow or live.');
   for (const p of Object.values(db.data.profiles)) p.modeSetting = m;
   db.save();
   log(`All displays set to ${m} by ${req.account.name}`);

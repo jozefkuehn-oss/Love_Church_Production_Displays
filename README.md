@@ -1,6 +1,6 @@
 # Love Church Production Displays
 
-Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control, the Dock, the Greenroom, FOH, and the stage confidence monitor. Each room has a Pre-Encounter screen and a Live screen. Leaders sign in by role and send producer messages to any screen from their phones.
+Auto-updating, configurable displays for the Love Church Elkhorn South production spaces: Broadcast Control, the Dock, the Greenroom, FOH, and the stage confidence monitor. Each room has three dashboards: Pre-Encounter (until 5 minutes before each Encounter), Preshow (the 5 minutes before) and Live (from the Encounter start). Leaders sign in by role and send producer messages to any screen from their phones.
 
 **Setting up the Mac mini? Start with [SETUP.md](SETUP.md).**
 

@@ -45,6 +45,24 @@ const configDefaults = {
 // Order locations appear in on a screen's room picker.
 const LOCATIONS = ['Broadcast Control', 'The Dock', 'Greenroom', 'FOH', 'Stage'];
 
+// Preshow dashboards start as a copy of the Live one with the item timer
+// swapped for "Encounter starts in" (the preshow timer tile is already there
+// where Live has one). Edit them in Admin → Displays.
+function preshowFrom(live) {
+  const widgets = JSON.parse(JSON.stringify((live && live.widgets) || []));
+  for (const x of widgets) {
+    if (x.type === 'itemRemaining') {
+      x.type = 'countdown';
+      x.opts = { target: 'encounterStart', label: 'ENCOUNTER STARTS IN', accent: true, compact: !!(x.opts && x.opts.compact) };
+    }
+  }
+  if (!widgets.some((x) => x.type === 'preshow')) {
+    const big = widgets.find((x) => x.type === 'countdown' && x.opts && x.opts.target === 'streamEnd');
+    if (big) Object.assign(big, { type: 'preshow', opts: { compact: !!(big.opts && big.opts.compact) } });
+  }
+  return { widgets };
+}
+
 function w(id, type, x, y, wd, h, opts = {}) {
   return { id, type, x, y, w: wd, h, opts };
 }
@@ -358,6 +376,7 @@ const dbDefaults = {
     // before each Encounter starts, and back to Pre-Encounter this many minutes
     // after that Encounter's stream ends.
     preshowSeconds: 270, // 4:30
+    preshowLeadMinutes: 5, // preshow dashboards come up this long before each Encounter
     liveLeadMinutes: 5,
     liveTailMinutes: 5,
     bandToStageMinutes: 4, // greenroom "band to stage" = this many minutes before each Encounter
@@ -412,4 +431,6 @@ const dbDefaults = {
   live: { manualIndex: null, manualSetAt: null },
 };
 
-module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS };
+for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.layouts.preshow = preshowFrom(p.layouts.live);
+
+module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, preshowFrom };

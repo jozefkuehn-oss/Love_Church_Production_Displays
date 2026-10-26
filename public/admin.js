@@ -420,17 +420,18 @@
   async function viewDisplays() {
     const [profiles, devices] = await Promise.all([api('/api/profiles'), api('/api/devices').catch(() => [])]);
     const modeSel = (id, p) => `<label>Shows<select data-mode="${id}">
-        <option value="auto" ${p.modeSetting === 'auto' ? 'selected' : ''}>Automatic (Pre → Live)</option>
+        <option value="auto" ${p.modeSetting === 'auto' ? 'selected' : ''}>Automatic (Pre → Preshow → Live)</option>
         <option value="pre" ${p.modeSetting === 'pre' ? 'selected' : ''}>Pre-Encounter only</option>
+        <option value="preshow" ${p.modeSetting === 'preshow' ? 'selected' : ''}>Preshow only</option>
         <option value="live" ${p.modeSetting === 'live' ? 'selected' : ''}>Live only</option></select></label>`;
     const ago = (t) => {
       const m = Math.round((Date.now() - t) / 60000);
       return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
     };
     app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New dashboard</button></div>
-      <p class="muted">Every room has a <b>Pre-Encounter</b> screen and a <b>Live</b> screen. On Automatic, a room goes Live a few minutes before each Encounter and back to Pre-Encounter after its stream ends (timing is on the Schedule tab).</p>
+      <p class="muted">Every room has three dashboards: <b>Pre-Encounter</b> (until preshow), <b>Preshow</b> (5 minutes before each Encounter) and <b>Live</b> (from the Encounter start until shortly after its stream ends). On Automatic, rooms switch by themselves (timing is on the Schedule tab).</p>
       <div class="card"><div class="row sp"><strong>All rooms at once</strong></div>
-        <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="live">All Live</button></div></div>
+        <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="preshow">All Preshow</button><button class="small" data-all="live">All Live</button></div></div>
       <h2>Screens</h2>
       <p class="muted">Every TV or output that opens <b>${location.origin}/display</b> asks which room it’s in and shows up here. Move a screen to a different room from here and it switches within a second.</p>
       <div class="list">${
@@ -453,7 +454,7 @@
           ([id, p]) => `<div class="card"><div class="row sp"><div><div class="dim">${esc(p.location || 'Other')}</div><strong style="font-size:18px">${esc(p.name)}</strong></div><a href="/display/${id}?preview=1" target="_blank">Open ↗</a></div>
         <label>Location<input data-loc="${id}" value="${esc(p.location || '')}" list="locl"></label>
         ${modeSel(id, p)}
-        <div class="row"><button class="small" data-edit="${id}" data-l="pre">Edit Pre-Encounter</button><button class="small" data-edit="${id}" data-l="live">Edit Live</button></div></div>`
+        <div class="row"><button class="small" data-edit="${id}" data-l="pre">Edit Pre-Encounter</button><button class="small" data-edit="${id}" data-l="preshow">Edit Preshow</button><button class="small" data-edit="${id}" data-l="live">Edit Live</button></div></div>`
         )
         .join('')}</div>
       <datalist id="locl">${[...new Set(Object.values(profiles).map((p) => p.location).filter(Boolean))].map((l) => `<option value="${esc(l)}">`).join('')}</datalist>`;
@@ -507,7 +508,7 @@
       if (!name) return;
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'display';
       const copy = prompt('Start from which room? (' + Object.keys(profiles).join(', ') + ') — leave empty for blank', 'greenroom');
-      const base = profiles[copy] ? structuredClone(profiles[copy]) : { modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, live: { widgets: [] } } };
+      const base = profiles[copy] ? structuredClone(profiles[copy]) : { modeSetting: 'auto', style: {}, layouts: { pre: { widgets: [] }, preshow: { widgets: [] }, live: { widgets: [] } } };
       const loc = prompt('Which location is it in? (' + [...new Set(Object.values(profiles).map((p) => p.location))].join(', ') + ')', base.location || '');
       await api('/api/profiles/' + id, { method: 'PUT', body: { ...base, name, location: loc || base.location || 'Other' } }).catch(fail);
       viewDisplays();
@@ -518,7 +519,7 @@
     const prof = structuredClone(profiles[id]);
     const layout = prof.layouts[which];
     let sel = null;
-    app.innerHTML = `<div class="row sp"><div><h1 style="margin-bottom:0">${esc(prof.name)}</h1><div class="dim">${which === 'pre' ? 'Pre-Encounter screen' : 'Live screen'} · drag to move, drag the corner to resize</div></div>
+    app.innerHTML = `<div class="row sp"><div><h1 style="margin-bottom:0">${esc(prof.name)}</h1><div class="dim">${{ pre: 'Pre-Encounter screen', preshow: 'Preshow screen', live: 'Live screen' }[which] || which} · drag to move, drag the corner to resize</div></div>
       <div class="row"><button class="ghost" id="eb">Back</button><button class="primary" id="es">Save</button></div></div>
       <div class="row" style="margin:12px 0">
         <label class="grow">Display name<input id="en" value="${esc(prof.name)}"></label>
@@ -1002,7 +1003,7 @@
         <p class="muted">The normal Sunday. When the Planning Center plan has service times, those start times are used and the stream windows here are matched to them. The stream countdowns use these times. Leave both stream times blank for an Encounter that isn’t streamed.</p>
         <div class="card"><h2 style="margin:0">Every Sunday</h2>${table(s.encounters, 'default')}
           <div class="grid2"><label>Positions (huddle countdown)<input type="time" id="s_pos" value="${esc(s.positions || '')}"></label>
-          <label>Rooms go Live (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.liveLeadMinutes ?? 5)}"></label>
+          <label>Preshow dashboards start (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.preshowLeadMinutes ?? 5)}"></label>
           <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
           <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
@@ -1027,7 +1028,7 @@
       };
       $('#s_save').onclick = async () => {
         s.positions = $('#s_pos').value;
-        s.liveLeadMinutes = Math.max(0, Math.min(60, Number($('#s_lead').value) || 0));
+        s.preshowLeadMinutes = Math.max(0, Math.min(60, Number($('#s_lead').value) || 0));
         s.liveTailMinutes = Math.max(0, Math.min(60, Number($('#s_tail').value) || 0));
         s.bandToStageMinutes = Number($('#s_bs').value) || 4;
         const pl = /^(\d{1,2}):(\d{2})$/.exec($('#s_pl').value.trim());
