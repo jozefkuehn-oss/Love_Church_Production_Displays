@@ -20,6 +20,7 @@
     const f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', second: seconds ? '2-digit' : undefined, hour12: true });
     return f.format(new Date(ms)).replace(/\s?[AP]M$/i, '');
   }
+  const ampm = (ms, tz) => (/PM/i.test(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: true }).format(new Date(ms))) ? 'PM' : 'AM');
 
   const fill = (tpl, s) =>
     String(tpl || '')
@@ -109,7 +110,7 @@
     return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(fill(o.kicker, s))}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
   };
 
-  W.clock = (o, s) => `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v">${clockText(s.now, s.tz, o.seconds && !o.compact)}</div></div>`;
+  W.clock = (o, s) => `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v">${clockText(s.now, s.tz, o.seconds && !o.compact)}<span class="ampm">${ampm(s.now, s.tz)}</span></div></div>`;
 
   const COUNT_LABELS = { streamEnd: 'STREAM ENDS IN', encounterStart: 'ENCOUNTER STARTS IN', bandToStage: 'BAND TO STAGE IN', positions: 'POSITIONS IN', firstStream: 'FIRST STREAM IN', nextEncounter: 'NEXT ENCOUNTER IN', streamStart: 'STREAM STARTS IN' };
   W.countdown = (o, s) => {

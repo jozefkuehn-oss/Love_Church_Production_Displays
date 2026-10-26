@@ -59,6 +59,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .stat { background: var(--panel); border-radius: 16px; padding: 14px 24px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
 .stat .k { font-size: 15px; letter-spacing: 0.12em; font-weight: 700; color: var(--muted); }
 .stat .v { font-size: 58px; font-weight: 700; line-height: 1.05; }
+.stat .v .ampm { font-size: 0.45em; font-weight: 700; margin-left: 0.25em; letter-spacing: 0.02em; }
 .stat .v small { font-size: 20px; color: var(--muted); font-weight: 600; margin-left: 10px; }
 .stat.accent { background: var(--pink); }
 .stat.accent .k { color: #fff; }
