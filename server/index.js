@@ -374,7 +374,7 @@ app.put('/api/config', auth.requireAdmin, (req, res) => {
   for (const k of allowed) if (k in body) config.data[k] = body[k];
   config.saveNow();
   engine.restartProPresenter();
-  if (wasSample !== config.data.sampleMode || body.pco) engine.refreshPlan().then(engine.refreshPhotos);
+  if (wasSample !== config.data.sampleMode || body.pco) engine.refreshPlan().then(engine.refreshPhotos).then(engine.refreshHosts);
   log(`Settings updated by ${req.account.name}`);
   ok(res);
 });
@@ -567,6 +567,10 @@ function weekDoc() {
   db.data.wirelessWeek.handhelds = db.data.wirelessWeek.handhelds || {};
   return db.data.wirelessWeek;
 }
+// Floor Manager list: today's communicators, the usual Encounter/Online
+// hosts, and anyone who has had a handheld before — alphabetical by first name.
+// "everyone" (for search) adds the whole plan and the serving roster.
+const byFirst = (a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' });
 app.get('/api/handhelds', auth.requirePerm(['handhelds', 'wireless']), (req, res) => {
   engine.snapshot();
   const plan = engine.getPlan();
@@ -574,14 +578,18 @@ app.get('/api/handhelds', auth.requirePerm(['handhelds', 'wireless']), (req, res
   const rows = engine.wirelessRows();
   const live = engine.wirelessChannels();
   const norm = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const people = [...new Map(((plan && plan.people) || []).map((p) => [p.name, { name: p.name, position: p.position }])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  const planPeople = (plan && plan.people) || [];
+  const communicators = planPeople.filter((p) => /communicator/i.test(p.team || '')).map((p) => p.name);
+  const quick = [...new Set([...communicators, ...engine.getHosts(), ...(db.data.handheldHistory || [])])].sort(byFirst);
+  const everyone = [...new Set([...quick, ...planPeople.map((p) => p.name), ...photos.roster()])].sort(byFirst);
   ok(res, {
     date: plan ? plan.date : '',
-    people,
+    quick,
+    everyone,
     handhelds: HANDHELDS.map((ch) => {
       const holder = rows.find((r) => norm(r.mic) === norm(ch));
       const l = live[norm(ch)];
-      return { ch, name: holder ? holder.name : '', moment: (wk[ch] || {}).moment || '', set: !!(wk[ch] && wk[ch].name), by: (wk[ch] || {}).by || '', at: (wk[ch] || {}).at || 0, live: l ? { battery: l.battery, minutes: l.minutes, rf: l.rf, tx: l.tx, online: l.online } : null };
+      return { ch, name: holder ? holder.name : '', set: !!(wk[ch] && wk[ch].name), by: (wk[ch] || {}).by || '', at: (wk[ch] || {}).at || 0, live: l ? { battery: l.battery, minutes: l.minutes, rf: l.rf, tx: l.tx, online: l.online } : null };
     }),
   });
 });
@@ -591,12 +599,27 @@ app.put('/api/handhelds/:ch', auth.requirePerm(['handhelds', 'wireless']), (req,
   const wk = weekDoc();
   if (!wk) return bad(res, 'No plan loaded yet.');
   const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-  const moment = String((req.body || {}).moment || '').trim().slice(0, 30);
-  if (name) wk.handhelds[ch] = { name, moment, by: req.account.name, at: Date.now() };
-  else delete wk.handhelds[ch];
+  if (name) {
+    wk.handhelds[ch] = { name, by: req.account.name, at: Date.now() };
+    // Remember who has held a handheld, so they're in the quick list next time.
+    db.data.handheldHistory = [...new Set([name, ...(db.data.handheldHistory || [])])].slice(0, 60);
+    // Tell every screen except the Dock, flashing red/yellow, for 45 seconds.
+    const targets = Object.entries(db.data.profiles).filter(([, p]) => (p.location || '') !== 'The Dock').map(([id]) => id);
+    db.data.messages.push({
+      id: crypto.randomUUID(),
+      text: `${ch} → ${name}`,
+      level: 'urgent',
+      flash: true,
+      targets,
+      from: req.account.name,
+      at: Date.now(),
+      expiresAt: Date.now() + 45000,
+      cleared: false,
+    });
+  } else delete wk.handhelds[ch];
   db.save();
   pushNow();
-  log(`${ch} → ${name || '(cleared)'}${moment ? ` for ${moment}` : ''} by ${req.account.name}`);
+  log(`${ch} → ${name || '(cleared)'} by ${req.account.name}`);
   ok(res);
 });
 

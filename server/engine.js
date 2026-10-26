@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { parts, zoned } = require('./time');
-const { fetchPlan } = require('./sources/pco');
+const { fetchPlan, fetchHosts } = require('./sources/pco');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
@@ -143,6 +143,18 @@ function makeEngine({ config, db, clock, log }) {
     }
   }
 
+  // Usual Encounter / Online hosts from Planning Center (refreshed with photos).
+  let hosts = [];
+  async function refreshHosts() {
+    const p = cfg().pco;
+    if (cfg().sampleMode || !p.appId || !p.secret) return;
+    try {
+      hosts = await fetchHosts(p);
+    } catch (e) {
+      log('Planning Center hosts list failed: ' + e.message);
+    }
+  }
+
   async function refreshPhotos() {
     const token = cfg().slack.botToken;
     if (!token || !plan) return;
@@ -159,7 +171,8 @@ function makeEngine({ config, db, clock, log }) {
   }
 
   function startLoops() {
-    refreshPlan().then(refreshPhotos);
+    refreshPlan().then(refreshPhotos).then(refreshHosts);
+    setInterval(() => refreshHosts(), 6 * 3600e3);
     setInterval(() => refreshPlan(), Math.max(1, cfg().pco.refreshMinutes || 5) * 60e3);
     setInterval(() => refreshPhotos(), Math.max(1, cfg().slack.refreshHours || 12) * 3600e3);
     aud.start(() => cfg().propresenter.auditorium, cfg().propresenter.pollMs || 1000);
@@ -621,7 +634,7 @@ function makeEngine({ config, db, clock, log }) {
     const messages = (d().messages || [])
       .filter((m) => !m.cleared && (!m.expiresAt || m.expiresAt > realNow))
       .slice(-5)
-      .map((m) => ({ id: m.id, text: m.text, level: m.level, targets: m.targets, from: m.from, at: m.at }));
+      .map((m) => ({ id: m.id, text: m.text, level: m.level, flash: !!m.flash, targets: m.targets, from: m.from, at: m.at }));
 
     // Countdown targets.
     const sched = d().schedule;
@@ -705,7 +718,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

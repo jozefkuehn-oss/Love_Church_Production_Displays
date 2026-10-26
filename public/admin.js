@@ -1141,76 +1141,72 @@
   }
 
   // ---------------- Handhelds ----------------
-  // Floor Manager / FOH: who has HH-1 and HH-2 right now (preshow, host
-  // moment…). Picking a person saves straight away and the screens follow.
+  // Floor Manager / FOH: who has HH-1 and HH-2. Pick from the list (today's
+  // communicators + usual hosts, A–Z by first name) or search everyone; a
+  // search with no match is used as typed. Save pushes a flashing alert to
+  // every screen except the Dock.
   async function viewHandhelds() {
-    const MOMENTS = ['Preshow', 'Host moment', 'Announcements'];
-    const sel = {}; // ch → chosen moment while editing
     let data = await api('/api/handhelds');
+    const pending = {}; // ch → name chosen but not saved yet
     const fmtMin = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+    function status(l) {
+      if (!l) return '';
+      if (!l.online) return '<span class="dim">Receiver offline</span>';
+      if (!l.tx) return '<span class="dim">Mic off</span>';
+      return `<span class="status"><span class="dot ${l.rf === false ? 'bad' : 'ok'}"></span>${l.battery != null ? l.battery + '%' : ''}${l.minutes != null ? ' · ' + fmtMin(l.minutes) : ''}</span>`;
+    }
     function draw() {
       app.innerHTML = `<h1>Handhelds</h1>
-        <p class="muted">Who has each handheld right now. Pick the moment, then the person — it saves straight away and the screens update.</p>
         <div class="hhgrid">${data.handhelds
           .map((h) => {
-            const m = sel[h.ch] ?? h.moment;
-            const l = h.live;
-            const status = !l ? '' : !l.online ? '<span class="dim">Receiver offline</span>' : !l.tx ? '<span class="dim">Transmitter off</span>'
-              : `<span class="status"><span class="dot ${l.rf === false ? 'bad' : 'ok'}"></span>${l.battery != null ? l.battery + '%' : ''}${l.minutes != null ? ' · ' + fmtMin(l.minutes) : ''}</span>`;
-            const known = data.people.some((p) => p.name === h.name);
+            const pick = pending[h.ch];
             return `<div class="card hh" data-ch="${h.ch}">
-              <div class="row sp"><div class="hhch">${h.ch}</div>${status}</div>
-              <div class="hhwho">${h.name ? esc(h.name) : '<span class="dim">Nobody yet</span>'}${h.moment ? `<span class="hhm">${esc(h.moment)}</span>` : ''}</div>
-              ${h.by ? `<div class="dim">Set by ${esc(h.by)} at ${fmtTime(h.at)}</div>` : h.name ? '<div class="dim">From the mic plan</div>' : ''}
-              <div class="chips">${MOMENTS.map((x) => `<button class="chip ${m === x ? 'on' : ''}" data-m="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-              <label>Who has it<input data-q placeholder="Search a name…" autocomplete="off" autocapitalize="words"></label>
+              <div class="row sp"><div class="hhch">${h.ch}</div>${status(h.live)}</div>
+              <div class="hhwho">${h.name ? esc(h.name) : '<span class="dim">Nobody</span>'}</div>
+              <select data-p aria-label="Choose who has ${h.ch}"><option value="">Choose a person…</option>${data.quick.map((n) => `<option ${pick === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+              <input data-q placeholder="…or search everyone" autocomplete="off" autocapitalize="words" value="${pick && !data.quick.includes(pick) ? esc(pick) : ''}">
               <div class="hhres" data-res></div>
-              ${h.set ? '<button class="small ghost" data-clear style="align-self:flex-start">Clear (back to the mic plan)</button>' : ''}
+              <button class="primary hhsave" data-save ${pick && pick !== h.name ? '' : 'disabled'}>${pick && pick !== h.name ? `Save: ${esc(h.ch)} → ${esc(pick)}` : 'Save'}</button>
+              ${h.set ? '<button class="small ghost" data-clear style="align-self:flex-start">Clear</button>' : ''}
             </div>`;
           })
           .join('')}</div>`;
       $$('.hh').forEach((card) => {
         const ch = card.dataset.ch;
-        const h = data.handhelds.find((x) => x.ch === ch);
+        const choose = (n) => {
+          pending[ch] = n;
+          draw();
+        };
+        $('[data-p]', card).onchange = (e) => e.target.value && choose(e.target.value);
+        const q = $('[data-q]', card);
+        const res = $('[data-res]', card);
+        q.oninput = () => {
+          const t = q.value.trim().toLowerCase();
+          if (!t) return (res.innerHTML = '');
+          const hits = data.everyone.filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || n.toLowerCase().startsWith(t)).slice(0, 6);
+          res.innerHTML = hits.length
+            ? hits.map((n) => `<button class="item" data-pick="${esc(n)}">${esc(n)}</button>`).join('')
+            : `<button class="item" data-pick="${esc(q.value.trim())}">Use “${esc(q.value.trim())}”</button>`;
+          $$('[data-pick]', res).forEach((b) => (b.onclick = () => choose(b.dataset.pick)));
+        };
+        q.onkeydown = (e) => {
+          if (e.key !== 'Enter') return;
+          const first = $('[data-pick]', res);
+          if (first) choose(first.dataset.pick);
+          else if (q.value.trim()) choose(q.value.trim());
+        };
         const save = async (name) => {
           try {
-            await api('/api/handhelds/' + ch, { method: 'PUT', body: { name, moment: sel[ch] ?? h.moment } });
-            toast(name ? `${ch} → ${name}` : `${ch} cleared`);
-            delete sel[ch];
+            await api('/api/handhelds/' + ch, { method: 'PUT', body: { name } });
+            toast(name ? `${ch} → ${name} · sent to the screens` : `${ch} cleared`);
+            delete pending[ch];
             data = await api('/api/handhelds');
             draw();
           } catch (e) {
             fail(e);
           }
         };
-        $$('[data-m]', card).forEach(
-          (b) =>
-            (b.onclick = () => {
-              sel[ch] = (sel[ch] ?? h.moment) === b.dataset.m ? '' : b.dataset.m;
-              if (h.set) save(h.name);
-              else draw();
-            })
-        );
-        // Search: type part of a name, tap a match. Anyone not on the plan
-        // can be typed in full and set with the last button.
-        const q = $('[data-q]', card);
-        const res = $('[data-res]', card);
-        const showRes = () => {
-          const t = q.value.trim().toLowerCase();
-          if (!t) return (res.innerHTML = '');
-          const hits = data.people.filter((p) => p.name.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || p.name.toLowerCase().includes(t)).slice(0, 8);
-          res.innerHTML =
-            hits.map((p) => `<button class="item" data-pick="${esc(p.name)}"><span class="grow"><strong>${esc(p.name)}</strong>${p.position ? ` <span class="dim">· ${esc(p.position)}</span>` : ''}</span></button>`).join('') +
-            (hits.some((p) => p.name.toLowerCase() === t) || (hits.length && !/\s/.test(t)) ? '' : `<button class="item" data-pick="${esc(q.value.trim())}"><span class="grow">Use “${esc(q.value.trim())}” <span class="dim">· not on the plan</span></span></button>`);
-          $$('[data-pick]', res).forEach((b) => (b.onclick = () => save(b.dataset.pick)));
-        };
-        q.oninput = showRes;
-        q.onkeydown = (e) => {
-          if (e.key === 'Enter') {
-            const first = $('[data-pick]', res);
-            if (first) save(first.dataset.pick);
-          }
-        };
+        $('[data-save]', card).onclick = () => pending[ch] && save(pending[ch]);
         const c = $('[data-clear]', card);
         if (c) c.onclick = () => save('');
       });
@@ -1218,8 +1214,8 @@
     draw();
     S.timers.push(
       setInterval(async () => {
-        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hh input')) return;
-        if (Object.keys(sel).length) return;
+        if (Object.keys(pending).length) return;
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.hh')) return;
         try {
           data = await api('/api/handhelds');
           draw();

@@ -410,7 +410,7 @@
     const sample = s.sampleMode ? '<span class="sample-tag">Sample mode</span>' : '';
     if (!m) return `<div class="mb idle ${o.big ? 'big' : ''}"><span class="badge">MESSAGE</span><span class="txt">${esc(o.idleText || '')}</span>${legend}${sample}</div>`;
     const badge = m.level === 'urgent' ? 'URGENT' : m.level === 'heads' ? 'HEADS UP' : 'PRODUCER';
-    return `<div class="mb ${m.level} ${o.big ? 'big' : ''}"><span class="badge">${badge}</span><span class="txt">${esc(m.text)}</span><span class="from">— ${esc(m.from)}</span>${sample}</div>`;
+    return `<div class="mb ${m.level} ${m.flash ? 'flash' : ''} ${o.big ? 'big' : ''}"><span class="badge">${m.flash ? 'MIC CHANGE' : badge}</span><span class="txt">${esc(m.text)}</span><span class="from">— ${esc(m.from)}</span>${sample}</div>`;
   };
 
   W.text = (o) => `<div class="panel" style="height:100%"><div class="label">${esc(o.label || '')}</div><div style="font-size:${o.size || 24}px;font-weight:600;white-space:pre-line">${esc(o.text || '')}</div></div>`;

@@ -112,4 +112,27 @@ async function fetchPlan(cfg, todayKey, tz) {
   };
 }
 
-module.exports = { fetchPlan };
+// Everyone assigned to the hosting positions (Encounter Host / Co-Host,
+// Online Host / Co-Host) on the Communicators team, whether or not they're on
+// this week's plan. Used for the Floor Manager's handheld list.
+async function fetchHosts(cfg) {
+  const st = cfg.serviceTypeId;
+  const pos = await getAll(cfg, `/service_types/${st}/team_positions?include=team&per_page=100`);
+  const teams = {};
+  pos.included.filter((x) => x.type === 'Team').forEach((t) => (teams[t.id] = t.attributes.name));
+  const hostPositions = pos.data.filter((tp) => {
+    const team = teams[tp.relationships && tp.relationships.team && tp.relationships.team.data && tp.relationships.team.data.id] || '';
+    return /communicators/i.test(team) && /^(encounter|online)\s+(co-?\s*)?host$/i.test(tp.attributes.name.trim());
+  });
+  const names = new Set();
+  for (const tp of hostPositions) {
+    const a = await getAll(cfg, `/service_types/${st}/team_positions/${tp.id}/person_team_position_assignments?include=person&per_page=100`);
+    a.included.filter((x) => x.type === 'Person').forEach((p) => {
+      const n = p.attributes.full_name || [p.attributes.first_name, p.attributes.last_name].filter(Boolean).join(' ');
+      if (n) names.add(n.trim());
+    });
+  }
+  return [...names];
+}
+
+module.exports = { fetchPlan, fetchHosts };
