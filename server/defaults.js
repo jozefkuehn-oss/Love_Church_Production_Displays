@@ -79,19 +79,16 @@ const profiles = {
     layouts: {
       live: {
         widgets: [
-          w('t', 'title', 0, 0, 5, 2, { kicker: 'BROADCAST CONTROL', title: '{encounter} Encounter', sub: 'live' }),
-          w('c', 'clock', 5, 0, 4, 2, { seconds: true }),
-          w('ir', 'itemRemaining', 9, 0, 5, 2, {}),
-          w('se', 'countdown', 14, 0, 5, 2, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }),
-          w('pf', 'projected', 19, 0, 5, 2, {}),
-          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
-          w('sn', 'songNow', 6, 2, 11, 4, { showFeel: true, showProgression: true }),
-          w('nx', 'songNext', 6, 6, 5, 2, {}),
-          w('gr', 'slidePreview', 11, 6, 6, 2, { source: 'broadcast' }),
-          w('bt', 'faces', 6, 8, 11, 3, { group: 'broadcast', label: 'BROADCAST TEAM', size: 'small' }),
-          w('st', 'faces', 17, 2, 7, 5, { group: 'stage', label: 'ON STAGE' }),
-          w('cm', 'faces', 17, 7, 7, 4, { group: 'communicators', label: 'COMMUNICATORS' }),
-          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+          w('t', 'title', 0, 0, 4, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 4, 0, 4, 2, { seconds: true }),
+          w('ir', 'itemRemaining', 8, 0, 4, 2, {}),
+          w('se', 'countdown', 12, 0, 4, 2, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }),
+          w('pf', 'projected', 16, 0, 8, 2, { label: 'ENCOUNTER RUNNING' }),
+          w('ros', 'runOfShow', 0, 2, 6, 10, {}),
+          w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
+          w('st', 'faces', 6, 6, 9, 6, { group: 'stage', label: 'ON STAGE' }),
+          w('nx', 'songNext', 15, 2, 9, 3, {}),
+          w('cm', 'faces', 15, 5, 9, 7, { group: 'communicators', label: 'COMMUNICATORS' }),
         ],
       },
       pre: {
@@ -494,6 +491,7 @@ for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.la
 const LAYOUT_REVISIONS = {
   'broadcast.pre': 1,
   'broadcast.preshow': 1,
+  'broadcast.live': 1,
 };
 
 module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
