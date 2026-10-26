@@ -1201,7 +1201,7 @@
           const hits = data.people.filter((p) => p.name.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) || p.name.toLowerCase().includes(t)).slice(0, 8);
           res.innerHTML =
             hits.map((p) => `<button class="item" data-pick="${esc(p.name)}"><span class="grow"><strong>${esc(p.name)}</strong>${p.position ? ` <span class="dim">· ${esc(p.position)}</span>` : ''}</span></button>`).join('') +
-            (hits.some((p) => p.name.toLowerCase() === t) ? '' : `<button class="item" data-pick="${esc(q.value.trim())}"><span class="grow">Use “${esc(q.value.trim())}” <span class="dim">· not on the plan</span></span></button>`);
+            (hits.some((p) => p.name.toLowerCase() === t) || (hits.length && !/\s/.test(t)) ? '' : `<button class="item" data-pick="${esc(q.value.trim())}"><span class="grow">Use “${esc(q.value.trim())}” <span class="dim">· not on the plan</span></span></button>`);
           $$('[data-pick]', res).forEach((b) => (b.onclick = () => save(b.dataset.pick)));
         };
         q.oninput = showRes;
