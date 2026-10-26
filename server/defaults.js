@@ -109,6 +109,20 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Pre-encounter · switches to Live automatically before each Encounter' }),
         ],
       },
+      preshow: {
+        widgets: [
+          w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
+          w('es', 'countdown', 12, 0, 6, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN', accent: true }),
+          w('ps', 'preshow', 18, 0, 6, 2, {}),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
+          w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
+          w('st', 'faces', 6, 6, 9, 5, { group: 'stage', label: 'ON STAGE' }),
+          w('fu', 'firstUp', 15, 2, 9, 3, {}),
+          w('cm', 'faces', 15, 5, 9, 6, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
     },
   },
   dock: {
@@ -479,6 +493,7 @@ for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.la
 // pushes that default layout to existing installs once, replacing what's there.
 const LAYOUT_REVISIONS = {
   'broadcast.pre': 1,
+  'broadcast.preshow': 1,
 };
 
 module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
