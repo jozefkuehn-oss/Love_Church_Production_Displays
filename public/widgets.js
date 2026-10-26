@@ -177,6 +177,25 @@
     return `<div class="stat ${cls}"><div class="k">PROJECTED FINISH</div><div class="v">${v}</div></div>`;
   };
 
+  // Preshow countdown (4:30 by default, ending at the Schedule's "Preshow
+  // ends" time). Runs over into a negative count that flashes red. When no
+  // preshow is near, shows the fallback widget (e.g. projected finish).
+  W.preshow = (o, s, ctx) => {
+    const p = s.preshow;
+    const near = p && (p.state !== 'waiting' || p.startMs - s.now < (o.showBeforeMin ?? 15) * 60e3);
+    if (!near) {
+      const fb = o.fallback && W[o.fallback];
+      return fb ? fb(o.fallbackOpts || {}, s, ctx) : `<div class="stat"><div class="k">PRESHOW</div><div class="v" style="color:var(--dim)">—</div></div>`;
+    }
+    const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
+    if (p.state === 'waiting') {
+      const at = new Intl.DateTimeFormat('en-US', { timeZone: s.tz, hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(new Date(p.startMs));
+      return `<div class="stat"><div class="k">${label} · STARTS ${esc(at)}</div><div class="v" style="color:var(--muted)">${dur(p.remainingMs)}</div></div>`;
+    }
+    if (p.state === 'running') return `<div class="stat accent"><div class="k">${label}</div><div class="v">${dur(p.remainingMs)}</div></div>`;
+    return `<div class="stat flashred"><div class="k">${label} · OVER</div><div class="v">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
+  };
+
   W.runOfShow = (o, s, ctx) => {
     const all = s.items || [];
     const fits = Math.max(4, Math.floor(((ctx ? ctx.h : 800) - 70) / 44));

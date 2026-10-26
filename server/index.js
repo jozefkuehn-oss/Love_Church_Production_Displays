@@ -120,6 +120,25 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Preshow: 4:30 ending 8:44:30 and 9:59:30, shown in the projected-finish
+// tiles on Broadcast Control and FOH Timers.
+(function migratePreshow() {
+  if ((db.data.profilesVersion || 1) >= 5) return;
+  const sch = db.data.schedule;
+  const ends = { '08:30': '08:44:30', '10:00': '09:59:30' };
+  for (const e of sch.encounters || []) if (!e.preshowEnd && ends[e.start]) e.preshowEnd = ends[e.start];
+  if (sch.preshowSeconds == null) sch.preshowSeconds = 270;
+  for (const [id, lay] of [['broadcast', 'live'], ['foh-timers', 'live'], ['foh', 'live']]) {
+    const w = db.data.profiles[id] && db.data.profiles[id].layouts[lay].widgets.find((x) => x.type === 'projected');
+    if (w) {
+      w.opts = { fallback: 'projected', fallbackOpts: { ...(w.opts || {}) } };
+      w.type = 'preshow';
+    }
+  }
+  db.data.profilesVersion = 5;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
@@ -429,9 +448,11 @@ app.get('/api/schedule', auth.requireAdmin, (req, res) => ok(res, db.data.schedu
 app.put('/api/schedule', auth.requireAdmin, (req, res) => {
   const s = req.body || {};
   const hm = /^\d{2}:\d{2}$/;
-  for (const e of s.encounters || []) {
+  for (const e of [...(s.encounters || []), ...Object.values(s.overrides || {}).flatMap((o) => o.encounters || [])]) {
     if (!hm.test(e.start) || (e.streamStart && !hm.test(e.streamStart)) || (e.streamEnd && !hm.test(e.streamEnd))) return bad(res, 'Times must be HH:MM (24-hour).');
+    if (e.preshowEnd && !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) return bad(res, 'Preshow end must be a time like 08:44:30.');
   }
+  if (s.preshowSeconds != null) s.preshowSeconds = Math.max(30, Math.min(1800, Number(s.preshowSeconds) || 270));
   db.data.schedule = { ...db.data.schedule, ...s };
   db.save();
   pushNow();

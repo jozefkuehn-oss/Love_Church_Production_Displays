@@ -349,14 +349,15 @@ const dbDefaults = {
     encounters: [
       // Broadcast windows: 8:15–9:40 and 9:45–11:40. 11:45 isn't streamed
       // (blank stream times).
-      { label: '8:30', start: '08:30', streamStart: '08:15', streamEnd: '09:40' },
-      { label: '10:00', start: '10:00', streamStart: '09:45', streamEnd: '11:40' },
+      { label: '8:30', start: '08:30', streamStart: '08:15', streamEnd: '09:40', preshowEnd: '08:44:30' },
+      { label: '10:00', start: '10:00', streamStart: '09:45', streamEnd: '11:40', preshowEnd: '09:59:30' },
       { label: '11:45', start: '11:45', streamStart: '', streamEnd: '' },
     ],
     positions: '08:15', // "Positions in" countdown (optional widget)
     // Displays set to Automatic switch to their Live layout this many minutes
     // before each Encounter starts, and back to Pre-Encounter this many minutes
     // after that Encounter's stream ends.
+    preshowSeconds: 270, // 4:30
     liveLeadMinutes: 5,
     liveTailMinutes: 5,
     bandToStageMinutes: 4, // greenroom "band to stage" = this many minutes before each Encounter

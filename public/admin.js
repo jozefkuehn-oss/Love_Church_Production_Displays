@@ -378,6 +378,7 @@
   const WIDGETS = {
     title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'live', 'date', 'encounters']], ['compact', 'bool']] },
     clock: { name: 'Time of day', opts: [['label', 'text'], ['seconds', 'bool'], ['compact', 'bool']] },
+    preshow: { name: 'Preshow countdown', opts: [['label', 'text'], ['fallback', ['', 'projected', 'clock', 'itemRemaining']], ['showBeforeMin', 'number']] },
     countdown: { name: 'Countdown', opts: [['target', ['nextStart', 'nextStreamStart', 'nextBandToStage', 'streamEnd', 'encounterStart', 'bandToStage', 'streamStart', 'positions', 'firstStream', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool'], ['huge', 'bool']] },
     encountersToday: { name: 'Today’s Encounters strip', opts: [['compact', 'bool']] },
     firstUp: { name: 'First up (next Encounter)', opts: [] },
@@ -978,10 +979,11 @@
         .map(
           (e, i) => `<tr><td><input data-k="${key}" data-i="${i}" data-f="label" value="${esc(e.label)}"></td><td><input type="time" data-k="${key}" data-i="${i}" data-f="start" value="${esc(e.start)}"></td>
         <td><input type="time" data-k="${key}" data-i="${i}" data-f="streamStart" value="${esc(e.streamStart || '')}"></td><td><input type="time" data-k="${key}" data-i="${i}" data-f="streamEnd" value="${esc(e.streamEnd || '')}"></td>
+        <td><input type="time" step="1" data-k="${key}" data-i="${i}" data-f="preshowEnd" value="${esc(e.preshowEnd || '')}"></td>
         <td><button class="small danger" data-del="${key}" data-i="${i}">✕</button></td></tr>`
         )
         .join('');
-    const table = (list, key) => `<div style="overflow-x:auto"><table><tr><th>Encounter</th><th>Starts</th><th>Stream starts</th><th>Stream ends</th><th></th></tr>${encRows(list, key)}</table></div>
+    const table = (list, key) => `<div style="overflow-x:auto"><table><tr><th>Encounter</th><th>Starts</th><th>Stream starts</th><th>Stream ends</th><th>Preshow ends</th><th></th></tr>${encRows(list, key)}</table></div>
       <button class="small" data-add="${key}">Add Encounter</button>`;
     function draw() {
       app.innerHTML = `<h1>Schedule</h1>
@@ -990,7 +992,9 @@
           <div class="grid2"><label>Positions (huddle countdown)<input type="time" id="s_pos" value="${esc(s.positions || '')}"></label>
           <label>Rooms go Live (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.liveLeadMinutes ?? 5)}"></label>
           <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
-          <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label></div></div>
+          <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
+          <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
+          <p class="dim" style="margin:0">Preshow counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow). If it runs over, the screens count negative and flash red until ProPresenter leaves the PRESHOW presentation.</p></div>
         <h2>Special Sundays</h2><p class="dim">Different times for one date (holidays, baptism Sunday). Replaces the normal schedule that day.</p>
         ${Object.entries(s.overrides || {})
           .map(([d, o]) => `<div class="card" style="margin-bottom:12px"><div class="row sp"><strong>${esc(d)}</strong><button class="small danger" data-rmo="${esc(d)}">Remove</button></div>${table(o.encounters, 'o:' + d)}</div>`)
@@ -1014,6 +1018,8 @@
         s.liveLeadMinutes = Math.max(0, Math.min(60, Number($('#s_lead').value) || 0));
         s.liveTailMinutes = Math.max(0, Math.min(60, Number($('#s_tail').value) || 0));
         s.bandToStageMinutes = Number($('#s_bs').value) || 4;
+        const pl = /^(\d{1,2}):(\d{2})$/.exec($('#s_pl').value.trim());
+        if (pl) s.preshowSeconds = Number(pl[1]) * 60 + Number(pl[2]);
         await api('/api/schedule', { method: 'PUT', body: s }).then(() => toast('Schedule saved')).catch(fail);
       };
     }

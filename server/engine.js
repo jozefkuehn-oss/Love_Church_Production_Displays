@@ -97,6 +97,7 @@ function makeEngine({ config, db, clock, log }) {
   let lastWirelessRows = [];
   const receiverHosts = () => ((cfg().wireless || {}).receivers || []).filter((r) => r && r.host && r.enabled !== false).map((r) => r.host);
   const tracking = { encLabel: null, index: null, startedAt: null };
+  let preshowSeenAt = 0;
   let anchor = null; // last ProPresenter match { enc, index, at }
   const propChange = { name: '', at: 0 }; // when the auditorium presentation last changed
 
@@ -641,6 +642,28 @@ function makeEngine({ config, db, clock, log }) {
       .slice(-5)
       .map((m) => ({ id: m.id, text: m.text, level: m.level, flash: !!m.flash, targets: m.targets, from: m.from, at: m.at }));
 
+    // Preshow: a fixed-length countdown (default 4:30) ending at each
+    // Encounter's "Preshow ends" time. After that it counts negative (screens
+    // flash red) until ProPresenter leaves the PRESHOW presentation, or 10
+    // minutes pass.
+    const preshow = (() => {
+      const sch = d().schedule;
+      const len = (sch.preshowSeconds ?? 270) * 1000;
+      const onPreshow = aud.status.connected && /pre\s*-?\s*show/i.test(aud.status.presentation || '');
+      if (onPreshow) preshowSeenAt = now;
+      for (const e of encs) {
+        if (!e.preshowEnd || !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) continue;
+        const endMs = zoned(dateKey, e.preshowEnd.slice(0, 5), tz) + (Number(e.preshowEnd.slice(6, 8)) || 0) * 1000;
+        const startMs = endMs - len;
+        // ProPresenter moved on from PRESHOW after the end → this one is done.
+        const left = now >= endMs && aud.status.connected && !onPreshow && preshowSeenAt > startMs - 5 * 60e3;
+        if (now >= endMs + 10 * 60e3 || left) continue;
+        const state = now < startMs ? 'waiting' : now < endMs ? 'running' : 'over';
+        return { label: e.label, state, startMs, endMs, remainingMs: state === 'waiting' ? len : endMs - now };
+      }
+      return null;
+    })();
+
     // Countdown targets.
     const sched = d().schedule;
     const first = encs[0];
@@ -679,6 +702,7 @@ function makeEngine({ config, db, clock, log }) {
       encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs } : null,
       isLive: !!liveEnc,
       nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs } : null,
+      preshow,
       encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
       items: items.map(({ id, title, key, length, isSong, status, position }) => ({ id, title, key, length, isSong, status, position })),
       index,
