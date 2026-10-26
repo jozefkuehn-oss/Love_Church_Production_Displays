@@ -63,6 +63,9 @@ function preshowFrom(live) {
   return { widgets };
 }
 
+// The preshow host's talking points (edit in Admin → Displays → Preshow Confidence).
+const PRESHOW_POINTS = '• Welcome\n• 1, 2, 5\n• Take A Next Step!\n• Pitch to :30 Countdown';
+
 function w(id, type, x, y, wd, h, opts = {}) {
   return { id, type, x, y, w: wd, h, opts };
 }
@@ -216,21 +219,22 @@ const profiles = {
     modeSetting: 'auto',
     style: { black: true },
     layouts: {
+      // Same look as the old ProPresenter preshow stage display: live time on
+      // top, the host's talking points, then the big 4:30 countdown.
       pre: {
         widgets: [
-          w('et', 'encountersToday', 0, 0, 18, 1, { compact: true }),
-          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
-          w('ps', 'preshow', 0, 1, 24, 8, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
-          w('mb', 'messageBar', 0, 9, 24, 3, { big: true }),
+          w('c', 'clock', 0, 0, 24, 2, { seconds: true }),
+          w('pts', 'text', 0, 2, 24, 4, { label: 'PRESHOW POINTS', text: PRESHOW_POINTS, size: 46 }),
+          w('ps', 'preshow', 0, 6, 24, 4, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
         ],
       },
       preshow: {
         widgets: [
-          w('ps', 'preshow', 0, 0, 15, 7, { huge: true }),
-          w('c', 'clock', 15, 0, 9, 3, { seconds: true }),
-          w('es', 'countdown', 15, 3, 9, 4, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }),
-          w('sp', 'slidePreview', 0, 7, 24, 3, { source: 'broadcast', label: 'ON THE STREAM' }),
-          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+          w('c', 'clock', 0, 0, 24, 2, { seconds: true }),
+          w('pts', 'text', 0, 2, 24, 4, { label: 'PRESHOW POINTS', text: PRESHOW_POINTS, size: 46 }),
+          w('ps', 'preshow', 0, 6, 24, 5, { huge: true }),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
       live: {

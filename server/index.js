@@ -155,6 +155,18 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Preshow Confidence: match the old ProPresenter preshow stage display.
+(function migratePreshowConfidence2() {
+  if ((db.data.profilesVersion || 1) >= 8) return;
+  const p = db.data.profiles['preshow-confidence'];
+  if (p && p.layouts.preshow && p.layouts.preshow.widgets.some((x) => x.type === 'slidePreview')) {
+    p.layouts.pre = structuredClone(dbDefaults.profiles['preshow-confidence'].layouts.pre);
+    p.layouts.preshow = structuredClone(dbDefaults.profiles['preshow-confidence'].layouts.preshow);
+  }
+  db.data.profilesVersion = 8;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
