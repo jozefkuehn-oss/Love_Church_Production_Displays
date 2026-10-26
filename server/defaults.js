@@ -66,7 +66,7 @@ const profiles = {
           w('ros', 'runOfShow', 0, 2, 6, 9, {}),
           w('sn', 'songNow', 6, 2, 11, 4, { showFeel: true, showProgression: true }),
           w('nx', 'songNext', 6, 6, 5, 2, {}),
-          w('gr', 'graphics', 11, 6, 6, 2, {}),
+          w('gr', 'slidePreview', 11, 6, 6, 2, { source: 'broadcast' }),
           w('bt', 'faces', 6, 8, 11, 3, { group: 'broadcast', label: 'BROADCAST TEAM', size: 'small' }),
           w('st', 'faces', 17, 2, 7, 5, { group: 'stage', label: 'ON STAGE' }),
           w('cm', 'faces', 17, 7, 7, 4, { group: 'communicators', label: 'COMMUNICATORS' }),

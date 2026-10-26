@@ -110,7 +110,12 @@
     return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(fill(o.kicker, s))}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
   };
 
-  W.clock = (o, s) => `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v">${clockText(s.now, s.tz, o.seconds && !o.compact)}<span class="ampm">${ampm(s.now, s.tz)}</span></div></div>`;
+  W.clock = (o, s, ctx) => {
+    const secs = o.seconds && !o.compact;
+    // Shrink the digits in narrow boxes so the AM/PM always fits.
+    const fs = !o.compact && ctx && ctx.w ? Math.min(58, Math.floor((ctx.w - 48) / (secs ? 5.4 : 4.1))) : null;
+    return `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v" style="white-space:nowrap;${fs ? `font-size:${fs}px` : ''}">${clockText(s.now, s.tz, secs)}<span class="ampm">${ampm(s.now, s.tz)}</span></div></div>`;
+  };
 
   const COUNT_LABELS = { streamEnd: 'STREAM ENDS IN', encounterStart: 'ENCOUNTER STARTS IN', bandToStage: 'BAND TO STAGE IN', positions: 'POSITIONS IN', firstStream: 'FIRST STREAM IN', nextEncounter: 'NEXT ENCOUNTER IN', streamStart: 'STREAM STARTS IN' };
   W.countdown = (o, s) => {
@@ -401,6 +406,23 @@
     const text = (sl && sl.text) || '';
     if (o.which === 'next') return `<div class="slide next"><span class="lab">NEXT</span><span>${esc(text)}</span></div>`;
     return `<div class="slide current">${esc(text) || '<span class="wait">(blank slide)</span>'}</div>`;
+  };
+
+  // What's on screen now / next, as ProPresenter's own slide pictures.
+  // opts: source auditorium|broadcast, label, showNext (default true).
+  W.slidePreview = (o, s) => {
+    const src = o.source || 'broadcast';
+    const p = s.propresenter && s.propresenter[src];
+    const label = esc(o.label || (src === 'broadcast' ? 'BROADCAST GRAPHICS' : 'AUDITORIUM SCREENS'));
+    if (!p || !p.enabled) return `<div class="panel" style="height:100%"><div class="label">${label}</div><div class="dim">ProPresenter isn’t set up yet</div></div>`;
+    if (!p.connected) return `<div class="panel" style="height:100%"><div class="label">${label}</div><div style="color:var(--yellow)">Waiting for ProPresenter…</div></div>`;
+    const t = p.thumb;
+    const pic = (which, idx, text) =>
+      `<div class="sp-box"><span class="sp-tag ${which}">${which === 'cur' ? 'LIVE' : 'NEXT'}</span>${
+        t ? `<img src="/prop-thumb/${src}/${encodeURIComponent(t.uuid)}/${idx}" alt="" onerror="this.style.display='none'">` : ''
+      }<span class="sp-txt">${esc((text || '').split('\n')[0])}</span></div>`;
+    return `<div class="panel sp" style="height:100%"><div class="row"><div class="label grow">${label}</div><span class="dim ell" style="max-width:50%">${esc(p.presentation || '')}</span></div>
+      <div class="sp-row">${pic('cur', t ? t.current : 0, p.current && p.current.text)}${o.showNext === false ? '' : pic('nxt', t ? t.next : 0, p.next && p.next.text)}</div></div>`;
   };
 
   // ProPresenter timers (and the stage message), live from the machine.

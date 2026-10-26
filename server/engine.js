@@ -704,13 +704,23 @@ function makeEngine({ config, db, clock, log }) {
       // isn't connected is simulated.
       propresenter: {
         auditorium: aud.status.connected || !sampleProP
-          ? { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers, stageMessage: aud.status.stageMessage }
+          ? { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers, stageMessage: aud.status.stageMessage, thumb: thumbKeys(aud.status) }
           : sampleProP.auditorium,
         broadcast: bc.status.connected || !sampleProP
-          ? { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next, timers: bc.status.timers, stageMessage: bc.status.stageMessage }
+          ? { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next, timers: bc.status.timers, stageMessage: bc.status.stageMessage, thumb: thumbKeys(bc.status) }
           : sampleProP.broadcast,
       },
     };
+  }
+
+  // Thumbnail ids for the current and next slide (null when unknown).
+  function thumbKeys(st) {
+    if (!st.connected || !st.presentationUuid || st.slideIndex == null) return null;
+    return { uuid: st.presentationUuid, current: st.slideIndex, next: st.slideIndex + 1 };
+  }
+  async function propThumbnail(source, uuid, index) {
+    const m = source === 'broadcast' ? bc : aud;
+    return m.thumbnail(uuid, index);
   }
 
   function health() {
@@ -723,7 +733,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

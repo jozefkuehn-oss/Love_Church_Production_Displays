@@ -15,6 +15,7 @@ function makeProPresenter(name) {
     slideIndex: null,
     timers: [],
     stageMessage: '',
+    presentationUuid: '',
   };
   let timer = null;
   let tick = 0;
@@ -61,10 +62,12 @@ function makeProPresenter(name) {
         if (active.status === 'fulfilled' && active.value) {
           const pr = active.value.presentation || active.value;
           status.presentation = (pr.id && pr.id.name) || pr.name || '';
+          status.presentationUuid = (pr.id && pr.id.uuid) || pr.uuid || '';
         }
         if (idx.status === 'fulfilled' && idx.value) {
           const pi = idx.value.presentation_index || idx.value;
           status.slideIndex = typeof pi.index === 'number' ? pi.index : null;
+          if (pi.presentation_id && pi.presentation_id.uuid) status.presentationUuid = pi.presentation_id.uuid;
         }
       }
       status.connected = true;
@@ -80,6 +83,7 @@ function makeProPresenter(name) {
     stop();
     const loop = async () => {
       const cfg = getCfg();
+      lastCfg = cfg;
       status.enabled = !!(cfg && cfg.enabled && cfg.host);
       if (status.enabled) await poll(cfg);
       else status.connected = false;
@@ -91,7 +95,31 @@ function makeProPresenter(name) {
     clearTimeout(timer);
   }
 
-  return { status, start, stop };
+  // A slide's thumbnail image from ProPresenter (JPEG), for the slide
+  // preview widget. Small in-memory cache keyed by presentation + slide.
+  const thumbs = new Map();
+  let lastCfg = null;
+  async function thumbnail(uuid, index) {
+    const key = `${uuid}:${index}`;
+    if (thumbs.has(key)) return thumbs.get(key);
+    if (!lastCfg || !uuid || index == null || index < 0) return null;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    try {
+      const res = await fetch(`http://${lastCfg.host}:${lastCfg.port}/v1/presentation/${encodeURIComponent(uuid)}/thumbnail/${index}?quality=480`, { signal: ctl.signal });
+      if (!res.ok) return null;
+      const img = { type: res.headers.get('content-type') || 'image/jpeg', body: Buffer.from(await res.arrayBuffer()) };
+      thumbs.set(key, img);
+      if (thumbs.size > 40) thumbs.delete(thumbs.keys().next().value);
+      return img;
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  return { status, start, stop, thumbnail };
 }
 
 module.exports = { makeProPresenter };

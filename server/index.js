@@ -106,6 +106,20 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Broadcast Control: show ProPresenter slide pictures instead of the text-only
+// graphics box (only if that box hasn't been moved).
+(function migrateSlidePreview() {
+  if ((db.data.profilesVersion || 1) >= 4) return;
+  const live = db.data.profiles.broadcast && db.data.profiles.broadcast.layouts && db.data.profiles.broadcast.layouts.live;
+  const g = live && live.widgets.find((w) => w.id === 'gr' && w.type === 'graphics' && w.x === 11 && w.y === 6);
+  if (g) {
+    g.type = 'slidePreview';
+    g.opts = { source: 'broadcast' };
+  }
+  db.data.profilesVersion = 4;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
@@ -169,6 +183,17 @@ function displayList() {
     .map(({ i, ...d }) => ({ ...d, url: '/display/' + d.id }));
 }
 app.get('/api/displays', (req, res) => ok(res, displayList()));
+// Slide thumbnails from ProPresenter, for the slide preview widget.
+app.get('/prop-thumb/:source/:uuid/:index', async (req, res) => {
+  const idx = Number(req.params.index);
+  if (!['auditorium', 'broadcast'].includes(req.params.source) || !/^[A-Za-z0-9-]{8,64}$/.test(req.params.uuid) || !Number.isInteger(idx)) return res.status(400).end();
+  const img = await engine.propThumbnail(req.params.source, req.params.uuid, idx);
+  if (!img) return res.status(404).end();
+  res.setHeader('Content-Type', img.type);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.end(img.body);
+});
+
 app.get('/api/locations', (req, res) => {
   const out = [];
   for (const d of displayList()) {
