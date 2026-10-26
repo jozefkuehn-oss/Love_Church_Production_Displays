@@ -236,6 +236,7 @@ function displayList() {
     return i < 0 ? LOCATIONS.length : i;
   };
   return Object.entries(db.data.profiles)
+    .filter(([, p]) => !String(p.location || '').startsWith('_')) // _Mock etc. stay out of the room picker
     .map(([id, p], i) => ({ id, name: p.name, location: p.location || 'Other', i }))
     .sort((a, b) => rank(a.location) - rank(b.location) || a.location.localeCompare(b.location) || a.i - b.i)
     .map(({ i, ...d }) => ({ ...d, url: '/display/' + d.id }));

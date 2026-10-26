@@ -428,7 +428,7 @@
       const m = Math.round((Date.now() - t) / 60000);
       return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
     };
-    app.innerHTML = `<div class="row sp"><h1>Displays</h1><button id="np">New dashboard</button></div>
+    app.innerHTML = `<div class="row sp"><h1>Displays</h1><div class="row"><button class="primary" id="mb">Mock builder</button><button id="np">New dashboard</button></div></div>
       <p class="muted">Every room has three dashboards: <b>Pre-Encounter</b> (until preshow), <b>Preshow</b> (5 minutes before each Encounter) and <b>Live</b> (from the Encounter start until shortly after its stream ends). On Automatic, rooms switch by themselves (timing is on the Schedule tab).</p>
       <div class="card"><div class="row sp"><strong>All rooms at once</strong></div>
         <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="preshow">All Preshow</button><button class="small" data-all="live">All Live</button></div></div>
@@ -441,6 +441,7 @@
                 (d) => `<div class="card"><div class="row sp"><input class="dn" data-dn="${esc(d.id)}" value="${esc(d.name)}" aria-label="Screen name" style="max-width:240px">
               <span class="status"><span class="dot ${d.online ? 'ok' : ''}"></span>${d.online ? 'Online' : 'Offline · seen ' + ago(d.lastSeen)}</span></div>
               <div class="grid2"><label>Dashboard<select data-dev="${esc(d.id)}">${Object.entries(profiles)
+                .filter(([, p]) => !String(p.location || '').startsWith('_'))
                 .map(([id, p]) => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${esc((p.location || 'Other') + ' — ' + p.name)}</option>`)
                 .join('')}</select></label><div class="dim" style="align-self:end">${esc(d.address || '')}</div></div>
               <div class="row"><button class="small ghost" data-forget="${esc(d.id)}">Forget this screen</button></div></div>`
@@ -450,6 +451,7 @@
       }</div>
       <h2>Dashboards</h2>
       <div class="cards">${Object.entries(profiles)
+        .filter(([, p]) => !String(p.location || '').startsWith('_'))
         .map(
           ([id, p]) => `<div class="card"><div class="row sp"><div><div class="dim">${esc(p.location || 'Other')}</div><strong style="font-size:18px">${esc(p.name)}</strong></div><a href="/display/${id}?preview=1" target="_blank">Open ↗</a></div>
         <label>Location<input data-loc="${id}" value="${esc(p.location || '')}" list="locl"></label>
@@ -503,6 +505,7 @@
         })
     );
     $$('[data-edit]').forEach((b) => (b.onclick = () => editLayout(b.dataset.edit, b.dataset.l, profiles)));
+    $('#mb').onclick = () => mockBuilder(profiles);
     $('#np').onclick = async () => {
       const name = prompt('Name for the new dashboard (for example “FOH · Lighting”)');
       if (!name) return;
@@ -513,6 +516,216 @@
       await api('/api/profiles/' + id, { method: 'PUT', body: { ...base, name, location: loc || base.location || 'Other' } }).catch(fail);
       viewDisplays();
     };
+  }
+
+  // ---------------- Mock builder ----------------
+  // Tick the blocks you want; the app lays them out on the 24 × 12 grid and
+  // shows it live. Save it to any dashboard + phase, then fine-tune by
+  // dragging in the normal editor.
+  const MOCK_BLOCKS = [
+    // [n, key, label, type, opts, kind]  kind: tile | strip | col | body | bar
+    [1, 'clock', 'Time of day', 'clock', { seconds: true }, 'tile'],
+    [2, 'cd-start', 'Countdown · Encounter starts in', 'countdown', { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }, 'tile'],
+    [2, 'cd-next', 'Countdown · next Encounter starts in', 'countdown', { target: 'nextStart', label: '{next} STARTS IN' }, 'tile'],
+    [2, 'cd-streamend', 'Countdown · stream ends in', 'countdown', { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }, 'tile'],
+    [2, 'cd-streamstart', 'Countdown · stream starts in', 'countdown', { target: 'nextStreamStart', label: 'STREAM STARTS IN' }, 'tile'],
+    [2, 'cd-band', 'Countdown · band to stage', 'countdown', { target: 'nextBandToStage', label: 'BAND TO STAGE IN' }, 'tile'],
+    [3, 'preshow', 'Preshow countdown', 'preshow', {}, 'tile'],
+    [4, 'item', 'Item remaining', 'itemRemaining', {}, 'tile'],
+    [5, 'projected', 'Projected finish', 'projected', {}, 'tile'],
+    [5, 'running', 'Encounter running (ahead / behind)', 'projected', { label: 'ENCOUNTER RUNNING' }, 'tile'],
+    [24, 'title', 'Title', 'title', { kicker: 'ROOM NAME', title: '{encounter} Encounter', sub: 'live' }, 'tile'],
+    [6, 'encounters', "Today's Encounters strip", 'encountersToday', { compact: true }, 'strip'],
+    [9, 'nownext', 'Now / next strip', 'nowNext', {}, 'strip'],
+    [7, 'ros', 'Run of show (live)', 'runOfShow', {}, 'col'],
+    [8, 'rosday', 'Run of show (full day)', 'runOfShowDay', {}, 'col'],
+    [10, 'songnow', 'Song now', 'songNow', { showFeel: true, showProgression: true }, 'body'],
+    [11, 'next', 'Next item', 'songNext', {}, 'body'],
+    [12, 'firstup', 'First up', 'firstUp', {}, 'body'],
+    [13, 'keys', 'Set keys', 'keys', {}, 'body'],
+    [14, 'needs', 'Coming up · needs', 'needs', {}, 'body'],
+    [15, 'direction', 'Worship direction', 'worshipDirection', {}, 'body'],
+    [16, 'faces-stage', 'Face cards · stage', 'faces', { group: 'stage', label: 'ON STAGE' }, 'body'],
+    [16, 'faces-comm', 'Face cards · communicators', 'faces', { group: 'communicators', label: 'COMMUNICATORS' }, 'body'],
+    [16, 'faces-bc', 'Face cards · broadcast team', 'faces', { group: 'broadcast', label: 'BROADCAST TEAM' }, 'body'],
+    [16, 'faces-lead', 'Face cards · leadership', 'faces', { group: 'leadership', label: 'LEADERSHIP' }, 'body'],
+    [16, 'faces-all', 'Face cards · everyone (collage)', 'faces', { group: 'leadership+stage+communicators', collage: true }, 'body'],
+    [17, 'mics', 'Worship team mics & IEMs', 'worshipMics', {}, 'body'],
+    [18, 'goto', 'Go-to people', 'goto', {}, 'col'],
+    [19, 'wireless', 'Wireless list', 'wirelessList', {}, 'col'],
+    [20, 'slide', 'ProPresenter slide (text) · current', 'slide', { which: 'current', source: 'auditorium' }, 'body'],
+    [20, 'slidenext', 'ProPresenter slide (text) · next', 'slide', { which: 'next', source: 'auditorium' }, 'body'],
+    [21, 'preview-bc', 'Slide preview · Broadcast', 'slidePreview', { source: 'broadcast' }, 'body'],
+    [21, 'preview-aud', 'Slide preview · Auditorium', 'slidePreview', { source: 'auditorium', label: 'AUDITORIUM SCREENS' }, 'body'],
+    [22, 'proptimers', 'ProPresenter timers + stage message', 'propTimers', { source: 'auditorium' }, 'body'],
+    [23, 'graphics', 'Broadcast graphics (text)', 'graphics', {}, 'body'],
+    [26, 'text', 'Text', 'text', { label: 'NOTES', text: 'Type here…', size: 32 }, 'body'],
+    [27, 'image', 'Image', 'image', {}, 'body'],
+    [25, 'msg', 'Message bar', 'messageBar', {}, 'bar'],
+    [25, 'msgbig', 'Message bar (big)', 'messageBar', { big: true }, 'bar'],
+  ];
+  // Preferred height (rows) of body blocks, and width (columns) of side columns.
+  const BODY_H = { songNow: 4, songNext: 2, firstUp: 3, keys: 2, needs: 4, worshipDirection: 8, faces: 5, worshipMics: 7, slide: 5, slidePreview: 3, propTimers: 4, graphics: 2, text: 3, image: 4 };
+  const COL_W = { runOfShow: 6, runOfShowDay: 6, goto: 7, wirelessList: 7 };
+
+  function autoLayout(keys, optsFor = {}) {
+    const pick = MOCK_BLOCKS.filter((b) => keys.includes(b[1])).sort((a, b) => (b[3] === 'title') - (a[3] === 'title'));
+    const of = (k) => pick.filter((b) => b[5] === k);
+    const widgets = [];
+    const add = (b, x, y, w, h) => widgets.push({ id: b[1], type: b[3], x, y, w: Math.max(1, w), h: Math.max(1, h), opts: structuredClone(optsFor[b[1]] || b[4]) });
+    let top = 0;
+    let bottom = 12;
+    // Top row: tiles share 24 columns, 2 rows tall.
+    const tiles = of('tile');
+    if (tiles.length) {
+      const base = Math.floor(24 / tiles.length);
+      let x = 0;
+      tiles.forEach((b, i) => {
+        const w = i === tiles.length - 1 ? 24 - x : base;
+        add(b, x, 0, w, 2);
+        x += w;
+      });
+      top = 2;
+    }
+    // Strips: one row each, full width.
+    for (const b of of('strip')) add(b, 0, top++, 24, 1);
+    // Message bar at the bottom.
+    const bar = of('bar')[0];
+    if (bar) {
+      const h = bar[4].big ? 2 : 1;
+      bottom -= h;
+      add(bar, 0, bottom, 24, h);
+    }
+    const H = bottom - top;
+    if (H <= 0) return { widgets };
+    // Side columns: run of show on the left, people/wireless on the right.
+    const cols = of('col');
+    const left = cols.filter((b) => /runOfShow/.test(b[3]));
+    const right = cols.filter((b) => !/runOfShow/.test(b[3]));
+    const body = of('body');
+    const stretch = body.length ? 1 : 24 / Math.max(1, cols.reduce((n, b) => n + COL_W[b[3]], 0));
+    let xl = 0;
+    for (const b of left) {
+      const w = Math.round(COL_W[b[3]] * stretch);
+      add(b, xl, top, w, H);
+      xl += w;
+    }
+    let xr = 24;
+    for (const b of right) {
+      const w = Math.round(COL_W[b[3]] * stretch);
+      xr -= w;
+      add(b, xr, top, w, H);
+    }
+    if (!body.length) return { widgets };
+    // Middle: stack body blocks; split into two columns if they don't fit.
+    const midW = xr - xl;
+    const want = body.reduce((n, b) => n + (BODY_H[b[3]] || 3), 0);
+    const ncol = want > H * 1.35 && midW >= 12 ? 2 : 1;
+    const groups = [[]];
+    if (ncol === 2) {
+      let acc = 0;
+      for (const b of body) {
+        if (acc >= want / 2 && groups.length < 2) groups.push([]);
+        groups[groups.length - 1].push(b);
+        acc += BODY_H[b[3]] || 3;
+      }
+    } else groups[0] = body;
+    const cw = Math.floor(midW / groups.length);
+    groups.forEach((g, gi) => {
+      const x = xl + gi * cw;
+      const w = gi === groups.length - 1 ? xr - x : cw;
+      const sum = g.reduce((n, b) => n + (BODY_H[b[3]] || 3), 0);
+      let y = top;
+      g.forEach((b, i) => {
+        const h = i === g.length - 1 ? bottom - y : Math.max(1, Math.round(((BODY_H[b[3]] || 3) * H) / sum));
+        add(b, x, y, w, h);
+        y += h;
+      });
+    });
+    return { widgets };
+  }
+
+  async function mockBuilder(profiles) {
+    clearTimers();
+    const real = Object.entries(profiles).filter(([, p]) => !String(p.location || '').startsWith('_'));
+    const st = { keys: ['clock', 'item', 'cd-streamend', 'ros', 'songnow', 'msg'], phase: 'live', target: real[0][0], opts: {} };
+    app.innerHTML = `<div class="row sp"><div><h1 style="margin-bottom:0">Mock builder</h1><div class="dim">Tick blocks — the dashboard builds itself. Numbers match the block pictures.</div></div>
+        <button class="ghost" id="mbk">Back</button></div>
+      <div class="editor" style="margin-top:12px"><div>
+          <div class="row" style="margin-bottom:8px"><label class="grow">Phase to preview<select id="mph"><option value="pre">Pre-Encounter</option><option value="preshow">Preshow</option><option value="live" selected>Live</option></select></label>
+            <label class="grow">Start from<select id="mfrom"><option value="">— blank —</option>${real.map(([id, p]) => `<option value="${id}">${esc(p.location || '')} — ${esc(p.name)}</option>`).join('')}</select></label></div>
+          <iframe class="preview" id="mpv" src="about:blank"></iframe>
+          <div class="card" style="margin-top:12px"><h3 style="margin:0">Save this layout</h3>
+            <div class="row"><label class="grow">Dashboard<select id="mto">${real.map(([id, p]) => `<option value="${id}">${esc(p.location || '')} — ${esc(p.name)}</option>`).join('')}</select></label>
+            <label>Phase<select id="mtp"><option value="pre">Pre-Encounter</option><option value="preshow">Preshow</option><option value="live" selected>Live</option></select></label></div>
+            <div class="row"><button class="primary" id="msv">Save to dashboard</button><button id="med">Save + fine-tune (drag & resize)</button></div></div>
+        </div>
+        <div class="card" id="mlist" style="max-height:80vh;overflow:auto"></div></div>`;
+    function list() {
+      $('#mlist').innerHTML = MOCK_BLOCKS.map(
+        (b) => `<label class="inline" style="font-size:14px"><input type="checkbox" data-k="${b[1]}" ${st.keys.includes(b[1]) ? 'checked' : ''}> <b style="color:var(--pink-text);min-width:28px">#${b[0]}</b> ${esc(b[2])}</label>`
+      ).join('');
+      $$('#mlist [data-k]').forEach(
+        (c) =>
+          (c.onchange = () => {
+            st.keys = c.checked ? [...st.keys, c.dataset.k] : st.keys.filter((k) => k !== c.dataset.k);
+            // Keep list order = the order blocks were ticked (tiles left→right).
+            push();
+          })
+      );
+    }
+    let t;
+    function push() {
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        const lay = autoLayout(st.keys, st.opts);
+        await api('/api/profiles/mock', { method: 'PUT', body: { name: 'Mock', location: '_Mock', modeSetting: st.phase, style: {}, layouts: { pre: lay, preshow: lay, live: lay } } }).catch(fail);
+        const f = $('#mpv');
+        if (f && !/\/display\/mock/.test(f.src)) f.src = '/display/mock?preview=1';
+      }, 250);
+    }
+    $('#mph').onchange = (e) => {
+      st.phase = e.target.value;
+      $('#mtp').value = st.phase;
+      push();
+    };
+    $('#mfrom').onchange = (e) => {
+      const p = profiles[e.target.value];
+      if (!p) return;
+      const lay = p.layouts[st.phase] || p.layouts.live;
+      // Map that dashboard's blocks back to the checklist (closest match).
+      st.keys = [];
+      st.opts = {};
+      for (const w of lay.widgets) {
+        const m = MOCK_BLOCKS.find((b) => b[3] === w.type && JSON.stringify(Object.entries(b[4]).filter(([k]) => ['target', 'group', 'which', 'source', 'big'].includes(k))) === JSON.stringify(Object.entries(w.opts || {}).filter(([k]) => ['target', 'group', 'which', 'source', 'big'].includes(k)))) || MOCK_BLOCKS.find((b) => b[3] === w.type);
+        if (m && !st.keys.includes(m[1])) {
+          st.keys.push(m[1]);
+          st.opts[m[1]] = structuredClone(w.opts || {}); // keep its labels, room name, etc.
+        }
+      }
+      $('#mto').value = e.target.value;
+      list();
+      push();
+    };
+    const save = async (thenEdit) => {
+      const id = $('#mto').value;
+      const phase = $('#mtp').value;
+      const fresh = await api('/api/profiles');
+      const prof = fresh[id];
+      const layouts = { ...prof.layouts, [phase]: autoLayout(st.keys, st.opts) };
+      try {
+        await api('/api/profiles/' + id, { method: 'PUT', body: { layouts } });
+        toast(`Saved to ${prof.name} · ${{ pre: 'Pre-Encounter', preshow: 'Preshow', live: 'Live' }[phase]}`);
+        if (thenEdit) editLayout(id, phase, await api('/api/profiles'));
+      } catch (e) {
+        fail(e);
+      }
+    };
+    $('#msv').onclick = () => save(false);
+    $('#med').onclick = () => save(true);
+    $('#mbk').onclick = () => viewDisplays();
+    list();
+    push();
   }
 
   function editLayout(id, which, profiles) {
