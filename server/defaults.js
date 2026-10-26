@@ -84,11 +84,12 @@ const profiles = {
           w('ir', 'itemRemaining', 8, 0, 4, 2, {}),
           w('se', 'countdown', 12, 0, 4, 2, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }),
           w('pf', 'projected', 16, 0, 8, 2, { label: 'ENCOUNTER RUNNING' }),
-          w('ros', 'runOfShow', 0, 2, 6, 10, {}),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
           w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
-          w('st', 'faces', 6, 6, 9, 6, { group: 'stage', label: 'ON STAGE' }),
+          w('st', 'faces', 6, 6, 9, 5, { group: 'stage', label: 'ON STAGE' }),
           w('nx', 'songNext', 15, 2, 9, 3, {}),
-          w('cm', 'faces', 15, 5, 9, 7, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('cm', 'faces', 15, 5, 9, 6, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
       pre: {
@@ -491,7 +492,7 @@ for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.la
 const LAYOUT_REVISIONS = {
   'broadcast.pre': 1,
   'broadcast.preshow': 1,
-  'broadcast.live': 1,
+  'broadcast.live': 2,
 };
 
 module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
