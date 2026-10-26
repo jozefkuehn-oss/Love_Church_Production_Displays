@@ -149,7 +149,7 @@ const profiles = {
           w('t', 'title', 0, 0, 4, 2, { title: '{encounter} Encounter', sub: 'phase' }),
           w('c', 'clock', 4, 0, 4, 2, { seconds: true }),
           w('pos', 'countdown', 8, 0, 4, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
-          w('fs', 'countdown', 12, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN', accent: true }),
+          w('es', 'countdown', 12, 0, 4, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN', accent: true }),
           w('ps', 'preshow', 16, 0, 8, 2, {}),
           w('ros', 'runOfShow', 0, 2, 6, 9, {}),
           w('cm', 'faces', 6, 2, 11, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
@@ -534,7 +534,7 @@ for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.la
 const LAYOUT_REVISIONS = {
   'broadcast.pre': 3,
   'broadcast-audio.pre': 1,
-  'broadcast-audio.preshow': 1,
+  'broadcast-audio.preshow': 2,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
