@@ -160,8 +160,20 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
-      // Placeholder until designed: same as Pre-Encounter.
-      live: null,
+      live: {
+        widgets: [
+          w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
+          w('ir', 'itemRemaining', 12, 0, 6, 2, {}),
+          w('se', 'countdown', 18, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
+          w('sn', 'songNow', 6, 2, 11, 3, { showFeel: true, showProgression: true }),
+          w('sl', 'slide', 6, 5, 11, 3, { which: 'current', source: 'auditorium' }),
+          w('sx', 'slide', 6, 8, 11, 3, { which: 'next', source: 'auditorium' }),
+          w('wl', 'wirelessList', 17, 2, 7, 9, {}),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
     },
   },
   dock: {
@@ -535,6 +547,7 @@ const LAYOUT_REVISIONS = {
   'broadcast.pre': 3,
   'broadcast-audio.pre': 1,
   'broadcast-audio.preshow': 2,
+  'broadcast-audio.live': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
