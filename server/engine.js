@@ -60,6 +60,11 @@ const POSITION_ORDER = [
   'Worship Leader', 'MD', 'Music Director', 'Frontline', 'Vocals', 'Keys', 'Piano', 'Drums',
   'Bass Guitar', 'Acoustic Guitar', 'Rhythm Electric Guitar', 'Lead Electric Guitar', 'Electric Guitar',
 ];
+const PRODUCTION_ORDER = [
+  'FOH Audio Engineer', 'Monitor Engineer', 'Audio', 'Broadcast Audio', 'ProPresenter Operator',
+  'Broadcast ProPresenter Operator', 'Lighting Director', 'Lighting Operator',
+];
+const SERVICE_ORDER = ['Service Producer', 'Stage Manager', 'Floor Manager'];
 const BROADCAST_ORDER = [
   'Broadcast Producer', 'Video Director', 'Technical Director', 'Broadcast ProPresenter Operator', 'Broadcast Audio',
   'Cam 1', 'Cam 2', 'Cam 3', 'Cam 4', 'Cam 5', 'Cam 6', 'Cam 7',
@@ -280,6 +285,11 @@ function makeEngine({ config, db, clock, log }) {
       .sort((a, b) => rank(BROADCAST_ORDER, a.position) - rank(BROADCAST_ORDER, b.position))
       .map((p) => card(byName.get(p.name), short(p.position), p.position));
 
+    // Production team (audio, ProPresenter, lighting) and service management
+    // (service producers, stage manager, floor manager), straight from PCO teams.
+    const production = fromTeam(/production/i, PRODUCTION_ORDER);
+    const service = fromTeam(/service management|service producer|stage management/i, SERVICE_ORDER);
+
     const leaderRoles = cfg().leaderRoles || [];
     const leadership = plan.people
       .filter((p) => leaderRoles.includes(p.position))
@@ -299,6 +309,8 @@ function makeEngine({ config, db, clock, log }) {
       stage,
       communicators: dedupe(communicators),
       broadcast: dedupe(broadcast),
+      production: dedupe(production),
+      service: dedupe(service),
       leadership: dedupe(leadership),
     };
   }
