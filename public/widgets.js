@@ -102,13 +102,18 @@
 
   W.title = (o, s, ctx) => {
     let sub = '';
-    if (o.sub === 'live') {
+    // Which dashboard phase is up right now.
+    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : 'Pre-Encounter';
+    if (o.sub === 'live' || o.sub === 'phase') {
       const src = s.indexSource === 'propresenter' ? 'following Auditorium ProPresenter' : s.indexSource === 'manual' ? 'manual position' : 'planned timing';
-      sub = `<div class="sub"><span class="dot"></span><span>${s.isPreshow ? "Preshow" : "Live"} · ${src}</span></div>`;
+      sub = `<div class="sub"><span class="dot"></span><span>${phase}${s.isLive || s.isPreshow ? ' · ' + src : ''}</span></div>`;
     } else if (o.sub === 'date') sub = `<div class="sub">${esc(s.date.label)}</div>`;
     else if (o.sub === 'encounters') sub = `<div class="sub">Encounters ${esc((s.encounters || []).map((e) => e.label).join(' · '))}</div>`;
-    return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(fill(o.kicker, s))}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
+    // Kicker: the room name typed in, or the screen's location if left blank.
+    const kicker = o.kicker ? fill(o.kicker, s) : ((ctx && ctx.location) || '').toUpperCase();
+    return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(kicker)}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
   };
+
 
   W.clock = (o, s, ctx) => {
     const secs = o.seconds && !o.compact;

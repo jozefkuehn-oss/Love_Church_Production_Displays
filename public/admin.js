@@ -388,7 +388,7 @@
 
   // ---------------- Displays + layout editor ----------------
   const WIDGETS = {
-    title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'live', 'date', 'encounters']], ['compact', 'bool']] },
+    title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'phase', 'date', 'encounters']], ['compact', 'bool']] },
     clock: { name: 'Time of day', opts: [['label', 'text'], ['seconds', 'bool'], ['compact', 'bool']] },
     preshow: { name: 'Preshow countdown', opts: [['label', 'text'], ['huge', 'bool'], ['fallback', ['', 'projected', 'clock', 'itemRemaining', 'countdown']], ['showBeforeMin', 'number']] },
     countdown: { name: 'Countdown', opts: [['target', ['nextStart', 'nextStreamStart', 'nextBandToStage', 'streamEnd', 'encounterStart', 'bandToStage', 'streamStart', 'positions', 'firstStream', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool'], ['huge', 'bool']] },
@@ -534,7 +534,7 @@
     [4, 'item', 'Item remaining', 'itemRemaining', {}, 'tile'],
     [5, 'projected', 'Projected finish', 'projected', {}, 'tile'],
     [5, 'running', 'Encounter running (ahead / behind)', 'projected', { label: 'ENCOUNTER RUNNING' }, 'tile'],
-    [24, 'title', 'Title', 'title', { kicker: 'ROOM NAME', title: '{encounter} Encounter', sub: 'live' }, 'tile'],
+    [24, 'title', 'Title (location · Encounter · phase)', 'title', { title: '{encounter} Encounter', sub: 'phase' }, 'tile'],
     [6, 'encounters', "Today's Encounters strip", 'encountersToday', { compact: true }, 'strip'],
     [9, 'nownext', 'Now / next strip', 'nowNext', {}, 'strip'],
     [7, 'ros', 'Run of show (live)', 'runOfShow', {}, 'col'],
