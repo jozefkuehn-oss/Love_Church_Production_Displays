@@ -620,7 +620,12 @@ function makeEngine({ config, db, clock, log }) {
           enabled: true, connected: true, presentation: current.title,
           current: { text: current.isSong ? `[ ${secName} · lyric line 1 ]\n[ ${secName} · lyric line 2 ]` : current.title, notes: '' },
           next: { text: current.isSong ? `[ ${nextName} · lyric line 1 ]` : nextItem ? nextItem.title : '', notes: '' },
-          timers: [],
+          timers: (() => {
+            const left = Math.max(0, Math.round((remainingMs || 0) / 1000));
+            const f = (t) => `00:${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+            return [{ name: 'Song', time: f(left), state: 'running' }, { name: 'Message', time: '00:35:00', state: 'stopped' }];
+          })(),
+          stageMessage: '',
         },
         broadcast: {
           enabled: true, connected: true, presentation: current.isSong ? 'Lyrics' : 'Lower thirds',
@@ -699,10 +704,10 @@ function makeEngine({ config, db, clock, log }) {
       // isn't connected is simulated.
       propresenter: {
         auditorium: aud.status.connected || !sampleProP
-          ? { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers }
+          ? { connected: aud.status.connected, enabled: aud.status.enabled, presentation: aud.status.presentation, current: aud.status.current, next: aud.status.next, timers: aud.status.timers, stageMessage: aud.status.stageMessage }
           : sampleProP.auditorium,
         broadcast: bc.status.connected || !sampleProP
-          ? { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next }
+          ? { connected: bc.status.connected, enabled: bc.status.enabled, presentation: bc.status.presentation, current: bc.status.current, next: bc.status.next, timers: bc.status.timers, stageMessage: bc.status.stageMessage }
           : sampleProP.broadcast,
       },
     };

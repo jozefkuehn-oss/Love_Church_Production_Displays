@@ -403,6 +403,28 @@
     return `<div class="slide current">${esc(text) || '<span class="wait">(blank slide)</span>'}</div>`;
   };
 
+  // ProPresenter timers (and the stage message), live from the machine.
+  // opts: source auditorium|broadcast, names "Message, Countdown" (blank =
+  // every timer that's running or has time on it), label.
+  W.propTimers = (o, s) => {
+    const p = s.propresenter && s.propresenter[o.source || 'auditorium'];
+    const head = `<div class="label">${esc(o.label || 'PROPRESENTER TIMERS')}</div>`;
+    if (!p || !p.enabled) return `<div class="panel" style="height:100%">${head}<div class="dim">ProPresenter isn’t set up yet</div></div>`;
+    if (!p.connected) return `<div class="panel" style="height:100%">${head}<div style="color:var(--yellow)">Waiting for ProPresenter…</div></div>`;
+    const want = String(o.names || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    let list = (p.timers || []).filter((t) => (want.length ? want.includes(t.name.toLowerCase()) : /running|overrun/i.test(t.state)));
+    if (!list.length && !want.length) list = (p.timers || []).slice(0, 3);
+    const rows = list
+      .map((t) => {
+        const over = /overrun|complete/i.test(t.state) || /^-/.test(t.time);
+        const run = /running|overrun/i.test(t.state);
+        return `<div class="pt ${over ? 'over' : ''}"><span class="ptn">${esc(t.name)}</span><span class="ptt">${esc(String(t.time).replace(/^00:/, ''))}</span><span class="pts">${run ? '●' : '❚❚'}</span></div>`;
+      })
+      .join('');
+    const sm = p.stageMessage ? `<div class="ptmsg"><span class="badge">STAGE</span>${esc(p.stageMessage)}</div>` : '';
+    return `<div class="panel" style="height:100%;gap:10px">${head}${rows || '<div class="dim">No timers running</div>'}${sm}</div>`;
+  };
+
   W.messageBar = (o, s, ctx) => {
     const mine = (s.messages || []).filter((m) => m.targets.includes('all') || m.targets.includes(ctx.profileId));
     const m = mine[mine.length - 1];

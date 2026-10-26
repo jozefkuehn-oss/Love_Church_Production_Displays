@@ -241,3 +241,12 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .mb.flash .badge { background: #111; color: #fff; }
 .mb.flash .txt { font-weight: 800; }
 .mb.flash .from { color: inherit; opacity: .8; }
+
+/* ProPresenter timers */
+.pt { display: flex; align-items: baseline; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pt .ptn { flex: 1; min-width: 0; font-size: 20px; font-weight: 700; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt .ptt { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pt .pts { font-size: 16px; color: var(--green); width: 20px; text-align: center; }
+.pt.over .ptt, .pt.over .pts { color: var(--red); }
+.ptmsg { margin-top: auto; display: flex; gap: 12px; align-items: center; font-size: 22px; font-weight: 700; }
+.ptmsg .badge { font-size: 13px; letter-spacing: .12em; font-weight: 800; padding: 5px 10px; border-radius: 7px; background: var(--yellow); color: #111; }

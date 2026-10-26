@@ -14,6 +14,7 @@ function makeProPresenter(name) {
     next: { text: '', notes: '' },
     slideIndex: null,
     timers: [],
+    stageMessage: '',
   };
   let timer = null;
   let tick = 0;
@@ -40,13 +41,23 @@ function makeProPresenter(name) {
       const slide = await call(host, port, '/v1/status/slide');
       status.current = { text: slideText(slide && slide.current), notes: slideNotes(slide && slide.current) };
       status.next = { text: slideText(slide && slide.next), notes: slideNotes(slide && slide.next) };
+      // Timers every poll so they count in real time.
+      const timers = await Promise.allSettled([call(host, port, '/v1/timers/current')]).then((r) => r[0]);
+      if (timers.status === 'fulfilled' && Array.isArray(timers.value)) {
+        status.timers = timers.value.map((t) => ({
+          name: (t.id && t.id.name) || t.name || 'Timer',
+          time: t.time || '',
+          state: t.state || '',
+        }));
+      }
       // The rest changes less often; ask every other poll.
       if (tick++ % 2 === 0) {
-        const [active, idx, timers] = await Promise.allSettled([
+        const [active, idx, msg] = await Promise.allSettled([
           call(host, port, '/v1/presentation/active'),
           call(host, port, '/v1/presentation/slide_index'),
-          call(host, port, '/v1/timers/current'),
+          call(host, port, '/v1/stage/message'),
         ]);
+        if (msg.status === 'fulfilled') status.stageMessage = typeof msg.value === 'string' ? msg.value : (msg.value && msg.value.message) || '';
         if (active.status === 'fulfilled' && active.value) {
           const pr = active.value.presentation || active.value;
           status.presentation = (pr.id && pr.id.name) || pr.name || '';
@@ -54,13 +65,6 @@ function makeProPresenter(name) {
         if (idx.status === 'fulfilled' && idx.value) {
           const pi = idx.value.presentation_index || idx.value;
           status.slideIndex = typeof pi.index === 'number' ? pi.index : null;
-        }
-        if (timers.status === 'fulfilled' && Array.isArray(timers.value)) {
-          status.timers = timers.value.map((t) => ({
-            name: (t.id && t.id.name) || t.name || 'Timer',
-            time: t.time || '',
-            state: t.state || '',
-          }));
         }
       }
       status.connected = true;

@@ -397,6 +397,7 @@
     wirelessList: { name: 'Wireless list', opts: [] },
     nowNext: { name: 'Now / next strip', opts: [['compact', 'bool'], ['nowOnly', 'bool']] },
     slide: { name: 'ProPresenter slide', opts: [['which', ['current', 'next']], ['source', ['auditorium', 'broadcast']]] },
+    propTimers: { name: 'ProPresenter timers + stage message', opts: [['source', ['auditorium', 'broadcast']], ['names', 'text'], ['label', 'text']] },
     messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool']] },
     text: { name: 'Text', opts: [['label', 'text'], ['text', 'text'], ['size', 'number']] },
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },

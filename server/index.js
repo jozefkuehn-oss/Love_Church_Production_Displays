@@ -94,6 +94,18 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// FOH Timers dashboard: add the live ProPresenter timers if it's untouched.
+(function migrateTimers() {
+  if ((db.data.profilesVersion || 1) >= 3) return;
+  const p = db.data.profiles['foh-timers'];
+  const live = p && p.layouts && p.layouts.live && p.layouts.live.widgets;
+  if (live && live.some((w) => w.id === 'ky' && w.x === 16 && w.y === 6) && !live.some((w) => w.type === 'propTimers')) {
+    p.layouts.live.widgets = structuredClone(dbDefaults.profiles['foh-timers'].layouts.live.widgets);
+  }
+  db.data.profilesVersion = 3;
+  db.save();
+})();
+
 (function migrateProfiles() {
   let changed = false;
   for (const [id, p] of Object.entries(db.data.profiles)) {
