@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Doc, PHOTO_DIR, DATA_DIR } = require('./store');
-const { configDefaults, dbDefaults, LOCATIONS, preshowFrom } = require('./defaults');
+const { configDefaults, dbDefaults, LOCATIONS, LAYOUT_REVISIONS, preshowFrom } = require('./defaults');
 const { makeAuth } = require('./auth');
 const { makeClock, parts, zoned } = require('./time');
 const { makeEngine } = require('./engine');
@@ -165,6 +165,38 @@ const auth = makeAuth(db, {
   }
   db.data.profilesVersion = 8;
   db.save();
+})();
+
+// New display names and locations: Broadcast, The Dock, The Greenroom, FOH, Stage.
+(function migrateDisplayNames() {
+  if ((db.data.profilesVersion || 1) >= 9) return;
+  const set = { broadcast: ['Broadcast Control', 'Broadcast'], dock: ['The Dock', 'The Dock'], greenroom: ['The Greenroom', 'The Greenroom'],
+    'greenroom-2': [null, 'The Greenroom'], foh: ['FOH ProP', 'FOH'], 'foh-wireless': ['FOH Audio', 'FOH'], 'foh-timers': ['Service Producer', 'FOH'],
+    stage: ['Stage Display', 'Stage'], 'preshow-confidence': ['Pre-Show Teleprompter', 'Stage'] };
+  const oldLoc = { 'Broadcast Control': 'Broadcast', Greenroom: 'The Greenroom', Preshow: 'Stage' };
+  for (const [id, p] of Object.entries(db.data.profiles)) {
+    if (set[id]) { if (set[id][0]) p.name = set[id][0]; p.location = set[id][1]; }
+    else if (oldLoc[p.location]) p.location = oldLoc[p.location];
+  }
+  db.data.profilesVersion = 9;
+  db.save();
+})();
+
+// Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
+(function applyLayoutRevisions() {
+  const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
+  let changed = false;
+  for (const [key, rev] of Object.entries(LAYOUT_REVISIONS)) {
+    if ((done[key] || 0) >= rev) continue;
+    const [id, phase] = key.split('.');
+    const def = dbDefaults.profiles[id];
+    if (!def || !def.layouts[phase]) continue;
+    if (!db.data.profiles[id]) db.data.profiles[id] = structuredClone(def);
+    db.data.profiles[id].layouts[phase] = structuredClone(def.layouts[phase]);
+    done[key] = rev;
+    changed = true;
+  }
+  if (changed) db.save();
 })();
 
 (function migrateProfiles() {

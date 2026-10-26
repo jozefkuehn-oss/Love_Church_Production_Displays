@@ -43,7 +43,7 @@ const configDefaults = {
 };
 
 // Order locations appear in on a screen's room picker.
-const LOCATIONS = ['Broadcast Control', 'The Dock', 'Greenroom', 'FOH', 'Preshow', 'Stage'];
+const LOCATIONS = ['Broadcast', 'The Dock', 'The Greenroom', 'FOH', 'Stage'];
 
 // Preshow dashboards start as a copy of the Live one with the item timer
 // swapped for "Encounter starts in" (the preshow timer tile is already there
@@ -73,7 +73,7 @@ function w(id, type, x, y, wd, h, opts = {}) {
 const profiles = {
   broadcast: {
     name: 'Broadcast Control',
-    location: 'Broadcast Control',
+    location: 'Broadcast',
     modeSetting: 'auto', // 'auto' (pre-encounter, then live during each Encounter), 'pre' or 'live'
     style: {},
     layouts: {
@@ -96,14 +96,16 @@ const profiles = {
       },
       pre: {
         widgets: [
-          w('t', 'title', 0, 0, 12, 2, { kicker: 'BROADCAST CONTROL · HUDDLE', title: '{date} · Full-Day Brief', sub: 'encounters' }),
-          w('c', 'clock', 12, 0, 4, 2, { seconds: true }),
-          w('pos', 'countdown', 16, 0, 4, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
-          w('fs', 'countdown', 20, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN', accent: true }),
-          w('st', 'faces', 0, 2, 9, 6, { group: 'stage', label: 'WHO YOU’LL SEE ON STAGE' }),
-          w('cm', 'faces', 0, 8, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
-          w('wd', 'worshipDirection', 9, 2, 10, 9, {}),
-          w('ros', 'runOfShowDay', 19, 2, 5, 9, {}),
+          w('t', 'title', 0, 0, 4, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 4, 0, 4, 2, { seconds: true }),
+          w('pos', 'countdown', 8, 0, 4, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
+          w('fs', 'countdown', 12, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN', accent: true }),
+          w('ps', 'preshow', 16, 0, 8, 2, {}),
+          w('enc', 'encountersToday', 0, 2, 24, 1, { compact: true }),
+          w('ros', 'runOfShowDay', 0, 3, 6, 8, {}),
+          w('st', 'faces', 6, 3, 9, 4, { group: 'stage', label: 'WHO YOU’LL SEE ON STAGE' }),
+          w('cm', 'faces', 6, 7, 9, 4, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('wd', 'worshipDirection', 15, 3, 9, 8, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, { idleText: 'Pre-encounter · switches to Live automatically before each Encounter' }),
         ],
       },
@@ -141,8 +143,8 @@ const profiles = {
     },
   },
   greenroom: {
-    name: 'Greenroom · Team & Mics',
-    location: 'Greenroom',
+    name: 'The Greenroom',
+    location: 'The Greenroom',
     modeSetting: 'auto',
     style: {},
     layouts: {
@@ -173,7 +175,7 @@ const profiles = {
     },
   },
   foh: {
-    name: 'FOH · Run of Show',
+    name: 'FOH ProP',
     location: 'FOH',
     mode: 'live',
     modeSetting: 'auto',
@@ -214,8 +216,8 @@ const profiles = {
   // the Broadcast ProPresenter stage display). Big preshow countdown, what's
   // on the stream, and producer messages.
   'preshow-confidence': {
-    name: 'Preshow Confidence',
-    location: 'Preshow',
+    name: 'Pre-Show Teleprompter',
+    location: 'Stage',
     modeSetting: 'auto',
     style: { black: true },
     layouts: {
@@ -250,7 +252,7 @@ const profiles = {
   // Second Greenroom TV: big countdowns, what's on now and the go-to people.
   'greenroom-2': {
     name: 'Greenroom · Countdown',
-    location: 'Greenroom',
+    location: 'The Greenroom',
     mode: 'live',
     modeSetting: 'auto',
     style: {},
@@ -281,7 +283,7 @@ const profiles = {
   },
   // FOH monitor 2: every mic and IEM with faces, battery and RF.
   'foh-wireless': {
-    name: 'FOH · Wireless & Mics',
+    name: 'FOH Audio',
     location: 'FOH',
     mode: 'live',
     modeSetting: 'auto',
@@ -313,7 +315,7 @@ const profiles = {
   },
   // FOH monitor 3: big timers and producer messages.
   'foh-timers': {
-    name: 'FOH · Timers & Messages',
+    name: 'Service Producer',
     location: 'FOH',
     mode: 'live',
     modeSetting: 'auto',
@@ -345,7 +347,7 @@ const profiles = {
     },
   },
   stage: {
-    name: 'Stage Confidence',
+    name: 'Stage Display',
     location: 'Stage',
     mode: 'live',
     modeSetting: 'auto',
@@ -473,4 +475,10 @@ const dbDefaults = {
 
 for (const p of Object.values(dbDefaults.profiles)) if (!p.layouts.preshow) p.layouts.preshow = preshowFrom(p.layouts.live);
 
-module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, preshowFrom };
+// Dashboards designed with Jozef in the Dashboard Builder. Bumping a number
+// pushes that default layout to existing installs once, replacing what's there.
+const LAYOUT_REVISIONS = {
+  'broadcast.pre': 1,
+};
+
+module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
