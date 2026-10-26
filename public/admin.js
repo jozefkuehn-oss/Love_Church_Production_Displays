@@ -336,6 +336,7 @@
       <div class="row"><button id="lp">◀ Back</button><button class="primary" id="ln">Next ▶</button></div></div>
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
       <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
+      <div class="card" id="ps" style="margin-top:12px"></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
@@ -352,6 +353,17 @@
         .map((it, i) => `<button class="item ${it.status === 'now' ? 'now' : it.status === 'done' ? 'done' : ''}" data-i="${i}"><span class="grow">${esc(it.title)}</span>${it.key ? `<span class="dim">${esc(it.key)}</span>` : ''}</button>`)
         .join('');
       $$('#li .item').forEach((b) => (b.onclick = () => act('set', { index: Number(b.dataset.i) })));
+      // Preshow timer controls.
+      const p = d.preshow;
+      const len = d.preshowSeconds;
+      const lenTxt = `${Math.floor(len / 60)}:${String(len % 60).padStart(2, '0')}`;
+      const st = !p ? 'No preshow scheduled right now'
+        : p.state === 'waiting' ? `${p.label} preshow · starts ${new Date(p.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`
+        : p.state === 'running' ? `${p.label} preshow · ${dur(p.remainingMs)} left`
+        : `${p.label} preshow · OVER by ${dur(-p.remainingMs).replace('+', '')}`;
+      $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
+        <div class="row"><button class="primary" data-ps="start">Start preshow now (${lenTxt})</button><button data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End preshow</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+      $$('[data-ps]').forEach((b) => (b.onclick = () => api('/api/preshow/' + b.dataset.ps, { body: {} }).then(() => { toast(b.dataset.ps === 'start' ? 'Preshow started' : b.dataset.ps === 'end' ? 'Preshow ended' : 'Back to the schedule'); load(); }).catch(fail)));
       // ProPresenter presentation -> plan item link (the playlist is built by hand).
       const pl = $('#pl');
       const pres = d.propresenter.presentation;
@@ -994,7 +1006,7 @@
           <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
           <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
-          <p class="dim" style="margin:0">Preshow counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow). If it runs over, the screens count negative and flash red until ProPresenter leaves the PRESHOW presentation.</p></div>
+          <p class="dim" style="margin:0">The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. If it runs over, the screens count negative and flash red until someone taps <em>End preshow</em> (or 10 minutes pass).</p></div>
         <h2>Special Sundays</h2><p class="dim">Different times for one date (holidays, baptism Sunday). Replaces the normal schedule that day.</p>
         ${Object.entries(s.overrides || {})
           .map(([d, o]) => `<div class="card" style="margin-bottom:12px"><div class="row sp"><strong>${esc(d)}</strong><button class="small danger" data-rmo="${esc(d)}">Remove</button></div>${table(o.encounters, 'o:' + d)}</div>`)

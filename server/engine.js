@@ -97,7 +97,6 @@ function makeEngine({ config, db, clock, log }) {
   let lastWirelessRows = [];
   const receiverHosts = () => ((cfg().wireless || {}).receivers || []).filter((r) => r && r.host && r.enabled !== false).map((r) => r.host);
   const tracking = { encLabel: null, index: null, startedAt: null };
-  let preshowSeenAt = 0;
   let anchor = null; // last ProPresenter match { enc, index, at }
   const propChange = { name: '', at: 0 }; // when the auditorium presentation last changed
 
@@ -642,24 +641,30 @@ function makeEngine({ config, db, clock, log }) {
       .slice(-5)
       .map((m) => ({ id: m.id, text: m.text, level: m.level, flash: !!m.flash, targets: m.targets, from: m.from, at: m.at }));
 
-    // Preshow: a fixed-length countdown (default 4:30) ending at each
-    // Encounter's "Preshow ends" time. After that it counts negative (screens
-    // flash red) until ProPresenter leaves the PRESHOW presentation, or 10
+    // Preshow: a built-in 4:30 countdown (no ProPresenter needed). By default
+    // it runs on the Schedule's "Preshow ends" time; a producer can also start
+    // it by hand (Live tab → Start preshow) or end it. If it runs past zero it
+    // counts negative and flashes red until someone taps End preshow, or 10
     // minutes pass.
     const preshow = (() => {
       const sch = d().schedule;
       const len = (sch.preshowSeconds ?? 270) * 1000;
-      const onPreshow = aud.status.connected && /pre\s*-?\s*show/i.test(aud.status.presentation || '');
-      if (onPreshow) preshowSeenAt = now;
+      const ctlAll = d().preshowCtl || {};
       for (const e of encs) {
-        if (!e.preshowEnd || !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) continue;
-        const endMs = zoned(dateKey, e.preshowEnd.slice(0, 5), tz) + (Number(e.preshowEnd.slice(6, 8)) || 0) * 1000;
-        const startMs = endMs - len;
-        // ProPresenter moved on from PRESHOW after the end → this one is done.
-        const left = now >= endMs && aud.status.connected && !onPreshow && preshowSeenAt > startMs - 5 * 60e3;
-        if (now >= endMs + 10 * 60e3 || left) continue;
+        const ctl = ctlAll[`${dateKey}|${e.label}`] || {};
+        if (ctl.endedAt) continue;
+        let startMs, endMs;
+        if (ctl.startedAt) {
+          startMs = ctl.startedAt;
+          endMs = startMs + len;
+        } else {
+          if (!e.preshowEnd || !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) continue;
+          endMs = zoned(dateKey, e.preshowEnd.slice(0, 5), tz) + (Number(e.preshowEnd.slice(6, 8)) || 0) * 1000;
+          startMs = endMs - len;
+        }
+        if (now >= endMs + 10 * 60e3) continue;
         const state = now < startMs ? 'waiting' : now < endMs ? 'running' : 'over';
-        return { label: e.label, state, startMs, endMs, remainingMs: state === 'waiting' ? len : endMs - now };
+        return { label: e.label, state, startMs, endMs, manual: !!ctl.startedAt, remainingMs: state === 'waiting' ? len : endMs - now };
       }
       return null;
     })();
@@ -747,6 +752,29 @@ function makeEngine({ config, db, clock, log }) {
     return m.thumbnail(uuid, index);
   }
 
+  // Live tab buttons: start the preshow now, end it, or go back to the schedule.
+  function preshowAction(action, label) {
+    const tz = cfg().timezone;
+    const now = clock.now();
+    const dateKey = parts(now, tz).dateKey;
+    const snap = snapshot();
+    const lab = label || (snap.preshow && snap.preshow.label) || (snap.nextEncounter && snap.nextEncounter.label) || (snap.encounter && snap.encounter.label);
+    if (!lab) return null;
+    const all = (d().preshowCtl = d().preshowCtl || {});
+    for (const k of Object.keys(all)) if (!k.startsWith(dateKey + '|')) delete all[k]; // keep today only
+    let key = `${dateKey}|${lab}`;
+    // Reset undoes the most recent start/end today, whichever Encounter it was.
+    if (action === 'reset' && !label) {
+      const recent = Object.entries(all).sort((x, y) => Math.max(y[1].startedAt || 0, y[1].endedAt || 0) - Math.max(x[1].startedAt || 0, x[1].endedAt || 0))[0];
+      if (recent) key = recent[0];
+    }
+    if (action === 'start') all[key] = { startedAt: now };
+    else if (action === 'end') all[key] = { ...(all[key] || {}), endedAt: now };
+    else delete all[key];
+    db.save();
+    return lab;
+  }
+
   function health() {
     return {
       sampleMode: !!cfg().sampleMode,
@@ -757,7 +785,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

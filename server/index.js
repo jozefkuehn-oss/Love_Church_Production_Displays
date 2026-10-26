@@ -375,7 +375,20 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     propresenter: { auditorium: s.propresenter.auditorium.connected, presentation: s.propresenter.auditorium.presentation || '' },
     unmatched: s.unmatchedPresentation || '',
     links: db.data.presentationLinks || {},
+    preshow: s.preshow,
+    preshowSeconds: db.data.schedule.preshowSeconds ?? 270,
   });
+});
+
+// Preshow: start now / end / back to the schedule.
+app.post('/api/preshow/:action', auth.requirePerm('live'), (req, res) => {
+  const a = req.params.action;
+  if (!['start', 'end', 'reset'].includes(a)) return bad(res, 'Unknown action.');
+  const label = engine.preshowAction(a, (req.body || {}).label);
+  if (!label) return bad(res, 'No Encounter to run a preshow for.');
+  log(`Preshow ${a} (${label}) by ${req.account.name}`);
+  pushNow();
+  ok(res);
 });
 
 // Link a ProPresenter presentation name to a plan item (remembered for future Sundays).
