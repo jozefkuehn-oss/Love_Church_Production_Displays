@@ -52,7 +52,7 @@
   function photoImg(c) {
     if (!c.photo) return `<span class="ini" style="font-size:${Math.round((c._w || 160) / 3.2)}px">${esc(c.initials)}</span>`;
     const z = c.zoom && c.zoom !== 1 ? `transform:scale(${c.zoom});transform-origin:${c.focusX}% ${c.focusY}%;` : '';
-    return `<img src="${esc(c.photo)}" alt="" style="object-position:${c.focusX ?? 50}% ${c.focusY ?? 15}%;${z}">`;
+    return `<img src="${esc(c.photo)}" alt="" style="object-position:${c.focusX != null ? c.focusX : 50}% ${c.focusY != null ? c.focusY : 15}%;${z}">`;
   }
 
   function faceCard(c, size, extra = {}) {

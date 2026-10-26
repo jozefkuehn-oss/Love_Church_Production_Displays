@@ -9,7 +9,7 @@ const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
 const { makeShure } = require('./sources/shure');
-const { parseMicNotes, parseStageOrder } = require('./micnotes');
+const { parseMicNotes } = require('./micnotes');
 const sample = require('./seed/sample');
 const photos = require('./photos');
 
@@ -253,15 +253,6 @@ function makeEngine({ config, db, clock, log }) {
     stage.forEach((s) => {
       if (s.position === 'Frontline') s.slot = `Frontline#${++frontN}`;
     });
-    // If the plan notes give the singers' order across the stage ("Order from
-    // stage right to left"), show them that way — left to right as the
-    // cameras see them — singers first, then the band in its usual order.
-    const order = plan.notes ? parseStageOrder(plan.notes, stage.map((c) => ({ name: c.name, aliases: [(d().nameMap || {})[c.name]].filter(Boolean) }))) : [];
-    if (order.length > 1) {
-      const picked = stage.filter((c) => order.includes(c.name)).sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
-      const rest = stage.filter((c) => !order.includes(c.name));
-      stage.splice(0, stage.length, ...picked, ...rest);
-    }
 
     const fromTeam = (re, order) =>
       plan.people
@@ -588,6 +579,15 @@ function makeEngine({ config, db, clock, log }) {
 
     const people = buildPeople();
     const wl = buildWireless(people);
+    // Singers in VOX order (VOX 1 … VOX 5, from this week's mic plan), then
+    // everyone else in their usual order.
+    const vox = (name) => {
+      const r = wl.find((x) => x.name === name);
+      const m = r && r.mic && /^VOX\s*-?\s*(\d+)$/i.exec(String(r.mic.ch || '').trim());
+      return m ? Number(m[1]) : 99;
+    };
+    if (people.stage) people.stage = people.stage.map((c, i) => ({ c, i, v: vox(c.name) })).sort((a, b) => a.v - b.v || a.i - b.i).map((x) => x.c);
+    wl.sort((a, b) => vox(a.name) - vox(b.name));
 
     // Sample mode: simulate both ProPresenter machines so the slide, graphics
     // and section widgets can be seen before the real machines are connected.

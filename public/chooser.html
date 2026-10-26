@@ -13,7 +13,7 @@
   .kicker { font-size: clamp(14px, 1.4vw, 22px); letter-spacing: .18em; font-weight: 800; color: var(--pink); }
   h1 { margin: .3em 0 0; font-size: clamp(32px, 4.2vw, 72px); font-weight: 800; line-height: 1.05; }
   .sub { margin-top: 1vh; font-size: clamp(16px, 1.5vw, 26px); color: var(--dim); }
-  .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22vw), 1fr)); gap: 2vw; }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(22vw, 1fr)); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22vw), 1fr)); gap: 2vw; }
   button.room { all: unset; cursor: pointer; background: var(--panel); border-radius: 1.4vw; padding: 3vh 2vw; min-height: 18vh; display: flex; flex-direction: column; justify-content: space-between; gap: 2vh; outline: 0.35vw solid transparent; outline-offset: -0.35vw; transition: outline-color .12s, background .12s; }
   button.room:hover, button.room:focus-visible, button.room:focus { background: var(--panel2); outline-color: var(--pink); }
   button.room.current { outline-color: var(--pink-text); }
@@ -38,6 +38,9 @@
     <span>To change rooms later, press <b>R</b> on a keyboard or remote, or press and hold anywhere on the screen for 3 seconds.</span>
   </div>
 </main>
+<script>
+window.onerror = function (msg, src, line) { var d = document.createElement('div'); d.className = 'err'; d.textContent = 'This TV’s browser hit an error: ' + msg + ' (line ' + line + ') · ' + navigator.userAgent; document.body.appendChild(d); };
+</script>
 <script>
 (function () {
   // Two steps: where is this screen (location), then which dashboard.
@@ -102,7 +105,7 @@
     if (move) {
       e.preventDefault();
       btns[Math.max(0, Math.min(btns.length - 1, (i < 0 ? 0 : i) + move))].focus();
-    } else if (['Escape', 'Backspace', 'BrowserBack', 'GoBack'].includes(e.key) && wrap.dataset.step === 'dash') {
+    } else if ((['Escape', 'Backspace', 'BrowserBack', 'GoBack', 'XF86Back'].includes(e.key) || [8, 27, 461, 10009].includes(e.keyCode)) && wrap.dataset.step === 'dash') {
       e.preventDefault();
       showLocations();
     }

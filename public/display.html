@@ -11,6 +11,15 @@
 <body>
 <div id="stage-wrap"><div id="screen"></div></div>
 <div id="offline" hidden>Reconnecting to the display server…</div>
+<div id="hint" hidden>Press <b>OK</b> (or click here) to change this screen’s dashboard</div>
+<script>
+// Old TV browsers: show any script error on screen instead of a blank page.
+window.onerror = function (msg, src, line) {
+  var d = document.getElementById('jserr') || document.body.appendChild(document.createElement('div'));
+  d.id = 'jserr';
+  d.textContent = 'This TV’s browser hit an error: ' + msg + ' (' + String(src || '').split('/').pop() + ':' + line + ')\nBrowser: ' + navigator.userAgent;
+};
+</script>
 <script src="/static/widgets.js"></script>
 <script src="/static/display.js"></script>
 </body>

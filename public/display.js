@@ -25,14 +25,39 @@
   const locked = preview || store.get('lcd_lock') === '1';
   const changeRoom = () => !locked && location.assign('/display?choose=1');
 
-  // Change rooms: R / Escape / Back on a keyboard or remote, or press and hold 3 s.
+  // Change the dashboard from the TV:
+  //  • Back on the remote (or R / Escape on a keyboard) goes straight to the picker.
+  //  • Any other remote button shows a hint; pressing OK while it shows opens the picker.
+  //  • On touch screens, press and hold anywhere for 3 seconds.
+  // TV remotes: Samsung Back = 10009, LG Back = 461.
+  const hint = document.getElementById('hint');
+  let hintTimer = null;
+  const BACK_KEYS = ['r', 'R', 'Escape', 'Backspace', 'BrowserBack', 'GoBack', 'XF86Back'];
   document.addEventListener('keydown', (e) => {
     if (locked) return;
-    if (['r', 'R', 'Escape', 'Backspace', 'BrowserBack', 'GoBack'].includes(e.key)) {
+    if (BACK_KEYS.indexOf(e.key) >= 0 || [8, 27, 461, 10009].indexOf(e.keyCode) >= 0) {
       e.preventDefault();
-      changeRoom();
+      return changeRoom();
     }
+    const ok = e.key === 'Enter' || e.keyCode === 13 || e.keyCode === 29443; // 29443 = some Samsung OK
+    if (ok && !hint.hidden) {
+      e.preventDefault();
+      return changeRoom();
+    }
+    hint.hidden = false;
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => (hint.hidden = true), 8000);
   });
+  // Computers: moving the mouse shows the hint; clicking it opens the picker.
+  let lastMove = 0;
+  document.addEventListener('mousemove', () => {
+    if (locked || Date.now() - lastMove < 500) return;
+    lastMove = Date.now();
+    hint.hidden = false;
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => (hint.hidden = true), 4000);
+  });
+  hint.addEventListener('click', changeRoom);
   let holdTimer = null;
   const startHold = () => {
     clearTimeout(holdTimer);
