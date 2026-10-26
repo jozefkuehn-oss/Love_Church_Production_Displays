@@ -265,3 +265,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 @keyframes flashred { 0%, 49% { background: var(--red); color: #fff; } 50%, 100% { background: #3a1412; color: #ff8f88; } }
 .stat.flashred { animation: flashred 1s steps(1) infinite; }
 .stat.flashred .k { color: inherit; }
+
+/* Last 10 seconds before preshow */
+@keyframes flashwarn { 0%, 49% { background: var(--yellow); color: #111; } 50%, 100% { background: var(--red); color: #fff; } }
+.stat.flashwarn { animation: flashwarn 1s steps(1) infinite; }
+.stat.flashwarn .k { color: inherit; }

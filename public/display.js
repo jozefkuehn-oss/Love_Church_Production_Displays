@@ -112,7 +112,7 @@
       let html;
       try {
         html = fn
-          ? fn(w.opts || {}, snap, { profileId: profile.id, w: w.w * g.cw + (w.w - 1) * g.gap, h: w.h * g.ch + (w.h - 1) * g.gap })
+          ? fn(w.opts || {}, snap, { profileId: profile.id, location: profile.location || '', w: w.w * g.cw + (w.w - 1) * g.gap, h: w.h * g.ch + (w.h - 1) * g.gap })
           : `<div class="missing">Unknown widget “${w.type}”</div>`;
       } catch (e) {
         console.error(w.type, e);

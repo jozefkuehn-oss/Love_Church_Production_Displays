@@ -349,7 +349,7 @@ const dbDefaults = {
     encounters: [
       // Broadcast windows: 8:15–9:40 and 9:45–11:40. 11:45 isn't streamed
       // (blank stream times).
-      { label: '8:30', start: '08:30', streamStart: '08:15', streamEnd: '09:40', preshowEnd: '08:44:30' },
+      { label: '8:30', start: '08:30', streamStart: '08:15', streamEnd: '09:40', preshowEnd: '08:29:30' },
       { label: '10:00', start: '10:00', streamStart: '09:45', streamEnd: '11:40', preshowEnd: '09:59:30' },
       { label: '11:45', start: '11:45', streamStart: '', streamEnd: '' },
     ],

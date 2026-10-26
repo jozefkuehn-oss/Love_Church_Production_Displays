@@ -362,7 +362,7 @@
         : p.state === 'running' ? `${p.label} preshow · ${dur(p.remainingMs)} left`
         : `${p.label} preshow · OVER by ${dur(-p.remainingMs).replace('+', '')}`;
       $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
-        <div class="row"><button class="primary" data-ps="start">Start preshow now (${lenTxt})</button><button data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End preshow</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+        <div class="row"><button class="primary" data-ps="start">Start preshow now (${lenTxt})</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
       $$('[data-ps]').forEach((b) => (b.onclick = () => api('/api/preshow/' + b.dataset.ps, { body: {} }).then(() => { toast(b.dataset.ps === 'start' ? 'Preshow started' : b.dataset.ps === 'end' ? 'Preshow ended' : 'Back to the schedule'); load(); }).catch(fail)));
       // ProPresenter presentation -> plan item link (the playlist is built by hand).
       const pl = $('#pl');
@@ -412,7 +412,7 @@
     slide: { name: 'ProPresenter slide', opts: [['which', ['current', 'next']], ['source', ['auditorium', 'broadcast']]] },
     slidePreview: { name: 'ProPresenter slide preview (pictures)', opts: [['source', ['broadcast', 'auditorium']], ['label', 'text'], ['showNext', 'bool']] },
     propTimers: { name: 'ProPresenter timers + stage message', opts: [['source', ['auditorium', 'broadcast']], ['names', 'text'], ['label', 'text']] },
-    messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool']] },
+    messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool'], ['hidePreshowCues', 'bool']] },
     text: { name: 'Text', opts: [['label', 'text'], ['text', 'text'], ['size', 'number']] },
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },
   };
@@ -1006,7 +1006,7 @@
           <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
           <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
-          <p class="dim" style="margin:0">The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. If it runs over, the screens count negative and flash red until someone taps <em>End preshow</em> (or 10 minutes pass).</p></div>
+          <p class="dim" style="margin:0">The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. Before it starts, the screens flash “15 / 10 / 5 / 3 / 2 / 1 minutes, 30 / 15 seconds to preshow”, then count down the last 10 seconds. If it runs over, they count negative and flash red until the Encounter starts.</p></div>
         <h2>Special Sundays</h2><p class="dim">Different times for one date (holidays, baptism Sunday). Replaces the normal schedule that day.</p>
         ${Object.entries(s.overrides || {})
           .map(([d, o]) => `<div class="card" style="margin-bottom:12px"><div class="row sp"><strong>${esc(d)}</strong><button class="small danger" data-rmo="${esc(d)}">Remove</button></div>${table(o.encounters, 'o:' + d)}</div>`)

@@ -643,9 +643,8 @@ function makeEngine({ config, db, clock, log }) {
 
     // Preshow: a built-in 4:30 countdown (no ProPresenter needed). By default
     // it runs on the Schedule's "Preshow ends" time; a producer can also start
-    // it by hand (Live tab → Start preshow) or end it. If it runs past zero it
-    // counts negative and flashes red until someone taps End preshow, or 10
-    // minutes pass.
+    // it by hand (Live tab → Start preshow). If it runs past zero it counts
+    // negative and flashes red until the Encounter starts.
     const preshow = (() => {
       const sch = d().schedule;
       const len = (sch.preshowSeconds ?? 270) * 1000;
@@ -662,7 +661,10 @@ function makeEngine({ config, db, clock, log }) {
           endMs = zoned(dateKey, e.preshowEnd.slice(0, 5), tz) + (Number(e.preshowEnd.slice(6, 8)) || 0) * 1000;
           startMs = endMs - len;
         }
-        if (now >= endMs + 10 * 60e3) continue;
+        // Running over counts negative until the Encounter starts, then the
+        // timer goes away on its own.
+        const overUntil = Math.max(endMs, e.startMs);
+        if (now >= overUntil) continue;
         const state = now < startMs ? 'waiting' : now < endMs ? 'running' : 'over';
         return { label: e.label, state, startMs, endMs, manual: !!ctl.startedAt, remainingMs: state === 'waiting' ? len : endMs - now };
       }

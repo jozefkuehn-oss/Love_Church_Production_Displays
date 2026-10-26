@@ -125,7 +125,7 @@ const auth = makeAuth(db, {
 (function migratePreshow() {
   if ((db.data.profilesVersion || 1) >= 5) return;
   const sch = db.data.schedule;
-  const ends = { '08:30': '08:44:30', '10:00': '09:59:30' };
+  const ends = { '08:30': '08:29:30', '10:00': '09:59:30' };
   for (const e of sch.encounters || []) if (!e.preshowEnd && ends[e.start]) e.preshowEnd = ends[e.start];
   if (sch.preshowSeconds == null) sch.preshowSeconds = 270;
   for (const [id, lay] of [['broadcast', 'live'], ['foh-timers', 'live'], ['foh', 'live']]) {
@@ -136,6 +136,14 @@ const auth = makeAuth(db, {
     }
   }
   db.data.profilesVersion = 5;
+  db.save();
+})();
+
+// 8:30 preshow ends 8:29:30 (was entered as 8:44:30).
+(function migratePreshow830() {
+  if ((db.data.profilesVersion || 1) >= 6) return;
+  for (const e of db.data.schedule.encounters || []) if (e.start === '08:30' && e.preshowEnd === '08:44:30') e.preshowEnd = '08:29:30';
+  db.data.profilesVersion = 6;
   db.save();
 })();
 
@@ -888,7 +896,7 @@ function sendTo(ws, snap) {
   ws.send(
     JSON.stringify({
       type: 'snapshot',
-      profile: { id: ws.profile, name: p.name, mode, style: p.style || {}, layout: p.layouts[mode] || p.layouts.live },
+      profile: { id: ws.profile, name: p.name, location: p.location || '', mode, style: p.style || {}, layout: p.layouts[mode] || p.layouts.live },
       snap,
     })
   );

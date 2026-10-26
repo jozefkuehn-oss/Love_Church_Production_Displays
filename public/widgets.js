@@ -177,6 +177,25 @@
     return `<div class="stat ${cls}"><div class="k">PROJECTED FINISH</div><div class="v">${v}</div></div>`;
   };
 
+  // Preshow cues: flashing "N MINUTES TO PRESHOW" at 15, 10, 5, 3, 2 and 1
+  // minutes, 30 and 15 seconds (each shown for 15 s), then a 10-second
+  // countdown into the preshow timer.
+  const PRESHOW_CUES = [900, 600, 300, 180, 120, 60, 30, 15];
+  function preshowCue(s) {
+    const p = s.preshow;
+    if (!p || p.state !== 'waiting') return null;
+    const left = (p.startMs - s.now) / 1000;
+    if (left <= 0) return null;
+    if (left <= 10) return { final: true, secs: Math.ceil(left), label: p.label };
+    for (const c of PRESHOW_CUES) {
+      if (left <= c && left > Math.max(c - 15, 10)) {
+        const txt = c >= 60 ? `${c / 60} MINUTE${c === 60 ? '' : 'S'} TO PRESHOW` : `${c} SECONDS TO PRESHOW`;
+        return { final: false, text: txt, label: p.label };
+      }
+    }
+    return null;
+  }
+
   // Preshow countdown (4:30 by default, ending at the Schedule's "Preshow
   // ends" time). Runs over into a negative count that flashes red. When no
   // preshow is near, shows the fallback widget (e.g. projected finish).
@@ -189,8 +208,9 @@
     }
     const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
     if (p.state === 'waiting') {
-      const at = new Intl.DateTimeFormat('en-US', { timeZone: s.tz, hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(new Date(p.startMs));
-      return `<div class="stat"><div class="k">${label} · STARTS ${esc(at)}</div><div class="v" style="color:var(--muted)">${dur(p.remainingMs)}</div></div>`;
+      const left = p.startMs - s.now;
+      if (left <= 10000) return `<div class="stat flashwarn"><div class="k">${label} STARTS IN</div><div class="v">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
+      return `<div class="stat"><div class="k">${label} STARTS IN</div><div class="v">${dur(left)}</div></div>`;
     }
     if (p.state === 'running') return `<div class="stat accent"><div class="k">${label}</div><div class="v">${dur(p.remainingMs)}</div></div>`;
     return `<div class="stat flashred"><div class="k">${label} · OVER</div><div class="v">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
@@ -467,6 +487,11 @@
   };
 
   W.messageBar = (o, s, ctx) => {
+    const cue = o.hidePreshowCues || (ctx && ctx.location === 'The Dock') ? null : preshowCue(s);
+    if (cue) {
+      const txt = cue.final ? `PRESHOW IN ${cue.secs}` : cue.text;
+      return `<div class="mb urgent flash ${o.big ? 'big' : ''}"><span class="badge">PRESHOW${cue.label ? ' · ' + esc(cue.label) : ''}</span><span class="txt">${esc(txt)}</span></div>`;
+    }
     const mine = (s.messages || []).filter((m) => m.targets.includes('all') || m.targets.includes(ctx.profileId));
     const m = mine[mine.length - 1];
     const legend = o.legend ? '<span class="legend"><span style="color:var(--pink-text)">LEADERSHIP</span><span>WORSHIP</span><span style="color:var(--blue)">COMMUNICATORS</span></span>' : '';
