@@ -140,7 +140,7 @@
   function hugeV(ctx, text) {
     if (!ctx || !ctx.w || !ctx.h) return '';
     const chars = Math.max(4, String(text).length);
-    const fs = Math.floor(Math.min((ctx.h - 90) * 0.92, (ctx.w - 60) / (chars * 0.6)));
+    const fs = Math.floor(Math.min((ctx.h - 100) * 0.86, (ctx.w - 60) / (chars * 0.6)));
     return fs > 0 ? `font-size:${fs}px` : '';
   }
 
@@ -558,9 +558,10 @@
   function fitBox(el) {
     const c = el && el.firstElementChild;
     if (!c) return;
-    c.style.transform = '';
-    c.style.width = '';
-    c.style.height = '';
+    // Put back the block's own inline size before measuring (it may have been
+    // scaled on an earlier pass).
+    if (c.dataset.fitOrig != null) c.style.cssText = c.dataset.fitOrig;
+    else c.dataset.fitOrig = c.style.cssText;
     const W0 = el.clientWidth, H0 = el.clientHeight;
     if (!W0 || !H0) return;
     let k = 1;

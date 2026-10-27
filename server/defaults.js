@@ -330,16 +330,16 @@ const profiles = {
       pre: {
         widgets: [
           w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
-          w('pts', 'text', 0, 1, 24, 3, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 46 }),
-          w('ps', 'preshow', 0, 4, 24, 7, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
+          w('pts', 'text', 0, 1, 10, 10, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 72 }),
+          w('ps', 'preshow', 10, 1, 14, 10, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
           w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
         ],
       },
       preshow: {
         widgets: [
           w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
-          w('pts', 'text', 0, 1, 24, 3, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 46 }),
-          w('ps', 'preshow', 0, 4, 24, 7, { huge: true }),
+          w('pts', 'text', 0, 1, 10, 10, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 72 }),
+          w('ps', 'preshow', 10, 1, 14, 10, { huge: true }),
           w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
         ],
       },
@@ -593,8 +593,8 @@ const LAYOUT_REVISIONS = {
   'greenroom.pre': 1,
   'greenroom.preshow': 1,
   'greenroom.live': 1,
-  'preshow-confidence.pre': 1,
-  'preshow-confidence.preshow': 1,
+  'preshow-confidence.pre': 2,
+  'preshow-confidence.preshow': 2,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
