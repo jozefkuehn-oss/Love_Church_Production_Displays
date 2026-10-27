@@ -87,7 +87,7 @@ const profiles = {
           w('ros', 'runOfShow', 0, 2, 6, 9, {}),
           w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
           w('st', 'faces', 6, 6, 9, 5, { group: 'stage', label: 'ON STAGE' }),
-          w('nx', 'songNext', 15, 2, 9, 3, {}),
+          w('sl', 'slide', 15, 2, 9, 3, { which: 'current', source: 'auditorium' }),
           w('cm', 'faces', 15, 5, 9, 6, { group: 'communicators', label: 'COMMUNICATORS' }),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
@@ -617,7 +617,7 @@ const LAYOUT_REVISIONS = {
   'foh.preshow': 1,
   'foh.live': 1,
   'broadcast.preshow': 1,
-  'broadcast.live': 2,
+  'broadcast.live': 3,
 };
 
 module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
