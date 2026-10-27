@@ -315,6 +315,7 @@
 
   W.faces = (o, s, ctx) => {
     const list = groupPeople(s, o.group || 'stage');
+    if (o.look && o.look !== 'fill' && !o.collage) return facesLook(o, list, ctx);
     const collage = !!o.collage;
     const headH = o.label && !collage ? 30 : 0;
     const gap = collage ? 4 : 8;
@@ -329,6 +330,51 @@
     return `<div class="faces-wrap">${headH ? `<div class="label ${labelColor}">${esc(o.label)}</div>` : ''}
       <div class="faces" style="gap:${gap}px;grid-template-columns:repeat(${fit.cols}, minmax(0,1fr));${collage ? `grid-auto-rows:minmax(0,1fr)` : ''}">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
   };
+
+  // Other face-card looks. Cards keep their own shape (never stretched) and
+  // sit centered in the block; names are never on top of a face.
+  //   portrait: 4:5 photo with the name underneath
+  //   badge:    square photo on the left, role and name on the right
+  //   avatar:   round photo with the name underneath, no card behind it
+  function facesLook(o, list, ctx) {
+    const look = o.look;
+    const headH = o.label ? 30 : 0;
+    const W0 = ctx.w, H0 = ctx.h - headH;
+    const gap = look === 'avatar' ? 14 : 10;
+    const aspect = look === 'badge' ? 2.6 : look === 'avatar' ? 0.8 : 0.66;
+    const fit = fitGrid(list.length, W0, H0, gap, aspect, o.columns);
+    const w = Math.floor(fit.w), h = Math.floor(fit.h);
+    const img = (c, extra) => c.photo
+      ? `<img src="${esc(c.photo)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:${c.focusX != null ? c.focusX : 50}% ${Math.min(45, (c.focusY != null ? c.focusY : 15) + 10)}%;${extra || ''}">`
+      : `<span style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4a4a4f;font-size:${Math.round(Math.min(w, h) / 3)}px">${esc(c.initials)}</span>`;
+    const role = (c) => `<div style="font-weight:800;letter-spacing:.08em;color:${o.roleColor || c._roleColor || 'var(--pink-text)'};font-size:ROLEpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.role)}</div>`;
+    const pend = (c) => (c.pending ? '<span class="pend">PENDING</span>' : '');
+    let cards;
+    if (look === 'badge') {
+      const nm = Math.max(13, Math.min(34, Math.round(h * 0.26), Math.round((w - h) / 6.2)));
+      const rl = Math.max(10, Math.min(15, Math.round(h * 0.12)));
+      cards = list.map((c) => `<div style="position:relative;display:flex;width:${w}px;height:${h}px;background:var(--panel-2);border-radius:12px;overflow:hidden">
+        <div style="position:relative;flex:none;width:${h}px;height:${h}px;background:#1c1c1f">${img(c)}</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 ${Math.round(h * 0.14)}px">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
+    } else if (look === 'avatar') {
+      const d = Math.floor(Math.min(w, h * 0.72));
+      const nm = Math.max(13, Math.min(28, Math.round(w / 8.5)));
+      const rl = Math.max(10, Math.min(14, Math.round(w / 16)));
+      cards = list.map((c) => `<div style="position:relative;width:${w}px;height:${h}px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+        <div style="position:relative;flex:none;width:${d}px;height:${d}px;border-radius:50%;overflow:hidden;background:#1c1c1f;box-shadow:0 0 0 3px ${c._roleColor || 'var(--line)'}">${img(c)}</div>
+        <div style="min-width:0;max-width:100%">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${c.pending ? '<span class="pend" style="top:0;right:0">PENDING</span>' : ''}</div>`).join('');
+    } else {
+      const textH = Math.max(46, Math.round(h * 0.25));
+      const nm = Math.max(13, Math.min(28, Math.round(w / 8.5)));
+      const rl = Math.max(10, Math.min(14, Math.round(w / 16)));
+      cards = list.map((c) => `<div style="position:relative;width:${w}px;height:${h}px;display:flex;flex-direction:column;background:var(--panel-2);border-radius:12px;overflow:hidden">
+        <div style="position:relative;flex:1;min-height:0;background:#1c1c1f">${img(c)}</div>
+        <div style="flex:none;height:${textH}px;display:flex;flex-direction:column;justify-content:center;padding:0 ${Math.round(w * 0.06)}px">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
+    }
+    const labelColor = /communicators$/.test(o.group) ? 'blue' : 'pink';
+    return `<div class="faces-wrap">${headH ? `<div class="label ${labelColor}">${esc(o.label)}</div>` : ''}
+      <div style="flex:1;min-height:0;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols}, ${w}px);grid-auto-rows:${h}px;justify-content:center;align-content:center">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
+  }
 
   W.worshipMics = (o, s, ctx) => {
     const stageNames = new Set((s.people.stage || []).map((c) => c.name));
