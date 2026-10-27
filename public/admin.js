@@ -1561,7 +1561,7 @@
     const roles = d.roles.map((r) => ({ ...r, perms: [...r.perms] }));
     function draw() {
       app.innerHTML = `<h1>Permissions</h1>
-        <p class="muted">What each role can do when someone signs in with it. Tick or untick, then <b>Save</b>. A role with <em>Everything</em> can do all of it except Roles &amp; PINs. Personal admin accounts can always do everything.${d.canRoles ? '' : ' Only the Technical Director (or the overall administrator) can change who manages Roles &amp; PINs, or change the Technical Director’s role.'}</p>
+        <p class="muted">What each role can do when someone signs in with it. Tick or untick, then <b>Save</b>. A role with <em>Everything</em> can do all of it except Roles &amp; PINs. Personal admin accounts can always do everything, and the overall administrator’s account can’t be changed or removed by anyone else. This page only changes the shared roles.${d.canRoles ? '' : ' Only the Technical Director (or the overall administrator) can change who manages Roles &amp; PINs, or change the Technical Director’s role.'}</p>
         <div class="card" style="overflow-x:auto"><table class="pm"><thead><tr><th style="text-align:left">Permission</th>${roles.map((r) => `<th>${esc(r.name)}</th>`).join('')}</tr></thead><tbody>${d.perms
           .map((p) => `<tr><td><b>${esc(PERM_LABELS[p] || p)}</b><div class="dim" style="font-size:13px">${esc(PERM_DESC[p] || '')}</div></td>${roles
             .map((r, i) => {
