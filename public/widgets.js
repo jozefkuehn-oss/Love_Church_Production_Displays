@@ -345,25 +345,38 @@
       <div class="faces" style="gap:10px;grid-template-columns:repeat(${fit.cols}, ${Math.floor(fit.w)}px)">${cards || '<div class="missing">No go-to people scheduled</div>'}</div></div>`;
   };
 
-  W.wirelessList = (o, s) => {
+  // Every mic and IEM, always all on screen: rows shrink to fit the block, and
+  // go to two columns when one column would get too tight to read.
+  W.wirelessList = (o, s, ctx) => {
     const rows = (s.wireless || [])
-      .flatMap((r) => [r.mic && r.mic.ch && r.mic.ch !== 'WIRED' ? { r, d: r.mic } : null, r.iem && r.iem.ch ? { r, d: r.iem } : null])
+      .flatMap((r) => [r.mic && r.mic.ch && r.mic.ch !== 'WIRED' && r.mic.ch !== 'N/A' ? { r, d: r.mic } : null, r.iem && r.iem.ch && r.iem.ch !== 'N/A' ? { r, d: r.iem } : null])
       .filter(Boolean)
       .sort((a, b) => (a.d.ch.startsWith('IEM') - b.d.ch.startsWith('IEM')) || a.d.ch.localeCompare(b.d.ch, undefined, { numeric: true }));
+    const W0 = (ctx && ctx.w) || 600, H0 = (ctx && ctx.h) || 800;
+    const gap = 6;
+    const avail = H0 - 40 - 30 - 8; // panel padding, header, header gap
+    const rowsFor = (cols) => Math.ceil(rows.length / cols);
+    const hFor = (cols) => (avail - gap * (rowsFor(cols) - 1)) / Math.max(1, rowsFor(cols));
+    let cols = 1;
+    if (hFor(1) < 34 && W0 >= 640) cols = 2;
+    const rh = Math.max(18, Math.min(52, hFor(cols)));
+    const f = Math.max(11, Math.min(17, Math.round(rh * 0.42)));
+    const av = Math.max(14, Math.min(38, Math.round(rh - 10)));
     const html = rows
       .map(({ r, d }) => {
         const alert = devAlert(d);
         const col = d.battery < 20 ? 'var(--red)' : d.battery < 35 ? 'var(--yellow)' : 'var(--green)';
-        return `<div class="wl-row ${alert ? 'alert' : ''}">
-          <span style="width:52px;font-size:14px;font-weight:800;color:var(--muted)">${esc(d.ch)}</span>
-          <span class="av">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
-          <span class="grow" style="font-size:17px;font-weight:600;line-height:1.1">${esc(r.name)}</span>
-          <span style="width:56px;height:10px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${d.battery || 0}%;background:${col}"></i></span>
-          <span style="width:52px;text-align:right;font-size:17px;font-weight:700;color:${d.off ? 'var(--dim)' : d.battery < 35 ? col : '#fff'}">${d.off ? 'OFF' : d.battery == null ? '' : battText(d)}</span>
+        return `<div class="wl-row ${alert ? 'alert' : ''}" style="min-height:0;height:${Math.floor(rh)}px;padding:0 ${rh < 30 ? 6 : 10}px;gap:${rh < 30 ? 6 : 10}px">
+          <span style="width:${Math.round(f * 3.1)}px;flex:none;font-size:${Math.max(10, f - 3)}px;font-weight:800;color:var(--muted)">${esc(d.ch)}</span>
+          <span class="av" style="width:${av}px;height:${av}px;font-size:${Math.max(9, Math.round(av / 3))}px">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
+          <span class="grow ell" style="font-size:${f}px;font-weight:600;line-height:1.1">${esc(r.name)}</span>
+          <span style="width:${Math.round(f * 3.2)}px;flex:none;height:${Math.max(6, Math.round(f * 0.55))}px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${d.battery || 0}%;background:${col}"></i></span>
+          <span style="width:${Math.round(f * 3.1)}px;flex:none;text-align:right;font-size:${f}px;font-weight:700;color:${d.off ? 'var(--dim)' : d.battery < 35 ? col : '#fff'}">${d.off ? 'OFF' : d.battery == null ? '' : battText(d)}</span>
           <span class="rf ${rfClass(d)}"></span></div>`;
       })
       .join('');
-    return `<div class="panel" style="height:100%;gap:8px"><div class="row"><div class="label grow">WIRELESS</div><div style="font-size:14px;color:var(--dim)">Battery · RF</div></div>${html}</div>`;
+    return `<div class="panel" style="height:100%;gap:8px"><div class="row"><div class="label grow">WIRELESS</div><div style="font-size:14px;color:var(--dim)">Battery · RF</div></div>
+      <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));grid-auto-rows:${Math.floor(rh)}px;gap:${gap}px ${cols > 1 ? 10 : 0}px;grid-auto-flow:column;grid-template-rows:repeat(${rowsFor(cols)},${Math.floor(rh)}px)">${html || '<div class="missing">No wireless assigned</div>'}</div></div>`;
   };
 
   function needTags(it, s) {
@@ -525,5 +538,28 @@
 
   W.image = (o) => `<div style="height:100%;border-radius:16px;overflow:hidden;background:#000">${o.src ? `<img src="${esc(o.src)}" alt="" style="width:100%;height:100%;object-fit:${o.fit || 'cover'}">` : '<div class="missing">No image chosen</div>'}</div>`;
 
-  window.LCD = { widgets: W, dur, esc };
+  // Safety net: if a block's content is taller or wider than its box, scale
+  // the whole block down until everything fits, so nothing is ever cut off.
+  function fitBox(el) {
+    const c = el && el.firstElementChild;
+    if (!c) return;
+    c.style.transform = '';
+    c.style.width = '';
+    c.style.height = '';
+    const W0 = el.clientWidth, H0 = el.clientHeight;
+    if (!W0 || !H0) return;
+    let k = 1;
+    for (let i = 0; i < 4; i++) {
+      let over = Math.max(c.scrollHeight / Math.max(1, c.clientHeight), c.scrollWidth / Math.max(1, c.clientWidth));
+      if (i === 0) over = Math.max(over, c.offsetHeight / H0, c.offsetWidth / W0);
+      if (over <= 1.01) break;
+      k = k / over;
+      c.style.transformOrigin = '0 0';
+      c.style.width = W0 / k + 'px';
+      c.style.height = H0 / k + 'px';
+      c.style.transform = 'scale(' + k + ')';
+    }
+  }
+
+  window.LCD = { widgets: W, dur, esc, fitBox };
 })();

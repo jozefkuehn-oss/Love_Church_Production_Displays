@@ -122,6 +122,7 @@
       if (cache.get(w.id) !== html) {
         el.innerHTML = html;
         cache.set(w.id, html);
+        window.LCD.fitBox(el);
       }
     }
   }
