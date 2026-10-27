@@ -70,3 +70,7 @@ public/
   admin.*         admin + leader page
 scripts/          Mac mini install, screen launcher, updater
 ```
+
+## Updating
+
+See **[UPDATING.md](UPDATING.md)** — Admin → Settings → **Update now**, or double-click **Update Displays.command**. Your `data` folder is always kept (and backed up first).

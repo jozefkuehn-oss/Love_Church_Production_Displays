@@ -534,6 +534,68 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
 });
 
 // Preshow: start now / end / back to the schedule.
+// ---------- updates ----------
+// Admin → Settings shows which version is running, whether GitHub has a newer
+// one, and an Update button that runs scripts/update.sh (data is kept and
+// backed up). Nothing updates by itself.
+const UPDATE_REPO = 'jozefkuehn-oss/Love_Church_Production_Displays';
+let latestCache = { at: 0, data: null };
+async function latestVersion() {
+  if (latestCache.data && Date.now() - latestCache.at < 10 * 60e3) return latestCache.data;
+  let data = null;
+  const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/commits/main`, { headers: { 'User-Agent': 'lc-displays', Accept: 'application/vnd.github+json' } }).catch(() => null);
+  if (r && r.ok) {
+    const j = await r.json();
+    data = { sha: j.sha, date: j.commit && j.commit.committer && j.commit.committer.date, message: ((j.commit && j.commit.message) || '').split('\n')[0] };
+  } else {
+    // GitHub's API limits how often it can be asked; the commits feed works too.
+    const f = await fetch(`https://github.com/${UPDATE_REPO}/commits/main.atom`, { headers: { 'User-Agent': 'lc-displays' } });
+    if (!f.ok) throw new Error('GitHub said ' + f.status);
+    const x = await f.text();
+    const entry = x.slice(x.indexOf('<entry>'));
+    const sha = (entry.match(/Commit\/([0-9a-f]{40})/) || [])[1];
+    if (!sha) throw new Error('unexpected reply');
+    const title = (entry.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+    data = { sha, date: (entry.match(/<updated>([^<]+)<\/updated>/) || [])[1], message: title.trim().replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'") };
+  }
+  latestCache = { at: Date.now(), data };
+  return data;
+}
+function currentVersion() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(DATA_DIR_FOR_UPDATES, 'version.json'), 'utf8'));
+  } catch (e) {
+    try {
+      const sha = require('child_process').execSync('git rev-parse HEAD', { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+      return { sha, updatedAt: '' };
+    } catch (e2) {
+      return { sha: '', updatedAt: '' };
+    }
+  }
+}
+const DATA_DIR_FOR_UPDATES = process.env.LCD_DATA_DIR || path.join(__dirname, '..', 'data');
+const managedByLaunchd = () => fs.existsSync(path.join(require('os').homedir(), 'Library', 'LaunchAgents', 'org.lovechurch.displays.plist'));
+app.get('/api/version', auth.requireAdmin, async (req, res) => {
+  const cur = currentVersion();
+  let latest = null, error = '';
+  try {
+    latest = await latestVersion();
+  } catch (e) {
+    error = 'Couldn’t reach GitHub to check (' + e.message + ').';
+  }
+  ok(res, { current: cur, latest, error, updateAvailable: !!(latest && latest.sha !== cur.sha), managed: managedByLaunchd(), lastLog: (() => { try { return fs.readFileSync(path.join(DATA_DIR_FOR_UPDATES, 'logs', 'update.log'), 'utf8').trim().split('\n').slice(-6).join('\n'); } catch (e) { return ''; } })() });
+});
+app.post('/api/update', auth.requireAdmin, (req, res) => {
+  const script = path.join(__dirname, '..', 'scripts', 'update.sh');
+  if (process.platform !== 'darwin' && process.platform !== 'linux') return bad(res, 'Updates from the app only work on the Mac.');
+  log(`Update started by ${req.account.name}`);
+  ok(res, { managed: managedByLaunchd() });
+  setTimeout(() => {
+    const child = require('child_process').spawn('bash', [script, '--from-app'], { detached: true, stdio: 'ignore', cwd: path.join(__dirname, '..') });
+    child.unref();
+  }, 300);
+});
+
 // Rehearsal: run everything as if it were Sunday at a chosen time (real plan,
 // real ProPresenter and receivers), to test midweek. Ends after 3 hours.
 function nextSundayKey() {

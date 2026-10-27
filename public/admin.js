@@ -1692,11 +1692,41 @@
   }
 
   // ---------------- Settings ----------------
+  // Version + Update button (Admin → Settings).
+  async function drawUpdates() {
+    const box = $('#upd');
+    if (!box) return;
+    const v = await api('/api/version').catch((e) => ({ error: e.message }));
+    const short = (x) => (x ? String(x).slice(0, 7) : 'unknown');
+    const when = (d) => (d ? new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
+    box.innerHTML = `<div class="row sp"><h2 style="margin:0">Updates</h2>${v.updateAvailable ? '<span class="status"><span class="dot warn"></span>Update available</span>' : v.latest ? '<span class="status"><span class="dot ok"></span>Up to date</span>' : ''}</div>
+      <div>Running: <b>${esc(short(v.current && v.current.sha))}</b>${v.current && v.current.updatedAt ? ` <span class="dim">· updated ${esc(when(v.current.updatedAt))}</span>` : ''}</div>
+      ${v.latest ? `<div>Newest: <b>${esc(short(v.latest.sha))}</b> <span class="dim">· ${esc(when(v.latest.date))} · ${esc(v.latest.message)}</span></div>` : ''}
+      ${v.error ? `<div class="dim">${esc(v.error)}</div>` : ''}
+      <p class="dim" style="margin:0">Updating keeps all your settings, PINs, photos and dashboard changes (they’re in the data folder, and a backup is made first). ${v.managed ? 'The app restarts itself; screens reconnect in a few seconds.' : 'This Mac runs the app from the Start Displays window, so it will stop: double-click <b>Start Displays</b> again afterwards.'} Don’t update during an Encounter.</p>
+      <div class="row"><button class="${v.updateAvailable ? 'primary' : ''}" id="updgo">Update now</button><button class="small ghost" id="updchk">Check again</button></div>
+      ${v.lastLog ? `<details><summary class="dim">Last update log</summary><pre style="white-space:pre-wrap;font-size:12px">${esc(v.lastLog)}</pre></details>` : ''}`;
+    $('#updchk').onclick = drawUpdates;
+    $('#updgo').onclick = async () => {
+      if (!confirm('Update the display app now? Screens blink for a few seconds while it restarts.')) return;
+      try {
+        const r = await api('/api/update', { body: {} });
+        toast(r.managed ? 'Updating… this page reconnects in about a minute' : 'Updating… then double-click Start Displays on the Mac');
+        box.querySelector('#updgo').disabled = true;
+        setTimeout(() => location.reload(), 60000);
+      } catch (e) {
+        fail(e);
+      }
+    };
+  }
+
   async function viewSettings() {
     const [c, h, quick] = await Promise.all([api('/api/config'), api('/api/health'), api('/api/quick')]);
+    setTimeout(drawUpdates, 0);
     const st = (ok, txt, warn) => `<span class="status"><span class="dot ${ok ? 'ok' : warn ? 'warn' : 'bad'}"></span>${esc(txt)}</span>`;
     const pp = (x) => (!x.enabled ? st(false, 'Not set up', true) : x.connected ? st(true, 'Connected' + (x.presentation ? ' · ' + x.presentation : '')) : st(false, x.error || 'Not reachable'));
     app.innerHTML = `<h1>Settings</h1>
+      <div class="card" id="upd"><div class="row sp"><h2 style="margin:0">Updates</h2><span class="dim">Checking…</span></div></div>
       <div class="card"><div class="row sp"><h2 style="margin:0">Status</h2><button class="small" id="rf">Refresh now</button></div>
         <div>Mode: ${c.sampleMode ? st(false, 'Sample mode (built-in data)', true) : st(true, 'Live')}</div>
         <div>Planning Center: ${h.plan.source === 'planningcenter' ? st(true, 'Connected · ' + (h.plan.title || '') + ' ' + (h.plan.date || '')) : st(false, h.plan.error || 'Using sample plan', !h.plan.error)}</div>

@@ -20,6 +20,12 @@ echo "Installing the app's packages…"
 npm install --omit=dev --no-audit --no-fund
 
 mkdir -p "$AGENTS" "$APP_DIR/data/logs"
+# Remember which version this is, so Admin → Settings can tell when there's a newer one.
+if [ ! -f "$APP_DIR/data/version.json" ] && [ ! -d "$APP_DIR/.git" ]; then
+  SHA="$(curl -fsSL "https://github.com/jozefkuehn-oss/Love_Church_Production_Displays/commits/main.atom" 2>/dev/null | grep -m1 -oE 'Commit/[0-9a-f]{40}' | cut -d/ -f2)"
+  [ -n "$SHA" ] && echo "{\"sha\":\"$SHA\",\"updatedAt\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" > "$APP_DIR/data/version.json"
+fi
+xattr -dr com.apple.quarantine "$APP_DIR" 2>/dev/null || true
 
 cat > "$AGENTS/$LABEL.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
