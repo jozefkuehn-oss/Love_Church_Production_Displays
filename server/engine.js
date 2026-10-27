@@ -736,6 +736,7 @@ function makeEngine({ config, db, clock, log }) {
       date: { key: dateKey, weekday: p.weekday, label: new Date(now).toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' }) },
       campus: cfg().campusLabel,
       sampleMode: !!cfg().sampleMode,
+      rehearsal: clock.rehearsal() ? { time: clock.rehearsal().time, date: clock.rehearsal().dateKey } : null,
       plan: plan ? { title: plan.title, date: plan.date, source: planSource } : null,
       encounters: encs.map((e) => ({ label: e.label, start: e.start, streamEnd: e.streamEnd, startMs: e.startMs, streamEndMs: e.streamEndMs })),
       encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs } : null,

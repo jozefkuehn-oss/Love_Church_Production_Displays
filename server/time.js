@@ -49,7 +49,23 @@ function makeClock(config) {
     setDemo(dateKey) {
       demoBase = zoned(dateKey, config.data.demoStart || '10:18', config.data.timezone);
     },
+    // Rehearsal: run the app as if it were a chosen Sunday time, ticking in
+    // real time from when it was started. Ends by itself after 3 hours.
+    rehearsal() {
+      const r = config.data.rehearsal;
+      return r && r.base && Date.now() < r.until ? r : null;
+    },
+    startRehearsal(dateKey, hhmm) {
+      config.data.rehearsal = { dateKey, time: hhmm, base: zoned(dateKey, hhmm, config.data.timezone), startedAt: Date.now(), until: Date.now() + 3 * 3600e3 };
+      config.save();
+    },
+    stopRehearsal() {
+      config.data.rehearsal = null;
+      config.save();
+    },
     now() {
+      const r = this.rehearsal();
+      if (r) return r.base + (Date.now() - r.startedAt);
       if (config.data.sampleMode && demoBase) {
         // Loop the demo every 4 hours so it never runs off the end of Sunday.
         return demoBase + ((Date.now() - startedAt) % (4 * 3600e3));

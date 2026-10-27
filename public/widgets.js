@@ -675,7 +675,7 @@
     const mine = (s.messages || []).filter((m) => m.targets.includes('all') || m.targets.includes(ctx.profileId));
     const m = mine[mine.length - 1];
     const legend = o.legend ? '<span class="legend"><span style="color:var(--pink-text)">LEADERSHIP</span><span>WORSHIP</span><span style="color:var(--blue)">COMMUNICATORS</span></span>' : '';
-    const sample = s.sampleMode ? '<span class="sample-tag">Sample mode</span>' : '';
+    const sample = s.rehearsal ? '<span class="sample-tag" style="color:#111;background:var(--yellow);padding:2px 8px;border-radius:6px;font-weight:800">REHEARSAL</span>' : s.sampleMode ? '<span class="sample-tag">Sample mode</span>' : '';
     if (!m) return `<div class="mb idle ${o.big ? 'big' : ''}"><span class="badge">MESSAGE</span><span class="txt">${esc(o.idleText || '')}</span>${legend}${sample}</div>`;
     const badge = m.level === 'urgent' ? 'URGENT' : m.level === 'heads' ? 'HEADS UP' : 'PRODUCER';
     return `<div class="mb ${m.level} ${m.flash ? 'flash' : ''} ${o.big ? 'big' : ''}"><span class="badge">${m.flash ? 'MIC CHANGE' : badge}</span><span class="txt">${esc(m.text)}</span><span class="from">— ${esc(m.from)}</span>${sample}</div>`;

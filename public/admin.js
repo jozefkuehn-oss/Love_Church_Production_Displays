@@ -340,6 +340,7 @@
       <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
+      <div class="card" id="rh" style="margin-top:12px"></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
@@ -386,6 +387,22 @@
       } else pl.hidden = true;
     }
     api('/api/live').then((d) => { if ($('#ppt')) $('#ppt').value = d.preshowPoints || ''; }).catch(() => {});
+    // Rehearsal: run the screens as if it were Sunday at a chosen time.
+    async function drawRehearsal() {
+      const r = await api('/api/rehearsal').catch(() => null);
+      if (!r || !$('#rh')) return;
+      const fmt = (k) => new Date(k + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      $('#rh').innerHTML = r.active
+        ? `<div class="row sp"><strong>Rehearsal running</strong><span class="status"><span class="dot warn"></span>Screens think it’s ${esc(fmt(r.date))}, started at ${esc(r.time)}</span></div>
+           <p class="dim" style="margin:0">Every screen shows a yellow REHEARSAL tag. It ends by itself at ${new Date(r.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</p>
+           <div class="row"><button class="primary" id="rhs">End rehearsal (back to real time)</button></div>`
+        : `<div class="row sp"><strong>Rehearsal</strong><span class="dim">Test midweek</span></div>
+           <p class="dim" style="margin:0">Runs every screen as if it were ${esc(fmt(r.nextSunday))} at the time you pick, ticking forward from there, using the real plan, ProPresenter and receivers. Try 9:45 to see Pre-Encounter, the preshow cues, Preshow and Live.</p>
+           <div class="row"><label>Start the clock at<input type="time" id="rht" value="09:45"></label><button class="primary" id="rhg">Start rehearsal</button></div>`;
+      if ($('#rhg')) $('#rhg').onclick = () => api('/api/rehearsal', { body: { time: $('#rht').value } }).then(() => { toast('Rehearsal started'); drawRehearsal(); load(); }).catch(fail);
+      if ($('#rhs')) $('#rhs').onclick = () => api('/api/rehearsal', { method: 'DELETE' }).then(() => { toast('Back to real time'); drawRehearsal(); load(); }).catch(fail);
+    }
+    drawRehearsal();
     $('#pps').onclick = () => api('/api/preshow-points', { method: 'PUT', body: { text: $('#ppt').value } }).then(() => toast('Points saved')).catch(fail);
     load();
     S.timers.push(setInterval(load, 2500));

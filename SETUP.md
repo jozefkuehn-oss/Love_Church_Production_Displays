@@ -162,3 +162,12 @@ Admin page → **Schedule**: confirm each Encounter's **stream start and end** t
 | Need to see what happened | The log is at `data/logs/server.log` |
 
 **Backups:** copy the `data` folder somewhere safe now and then. It holds all your settings, accounts, the song bank and uploaded photos.
+
+## Testing midweek (Rehearsal)
+
+On the **Live** page, the **Rehearsal** card runs every screen as if it were the
+coming Sunday at the time you pick (try 9:45), ticking forward in real time —
+with the real Planning Center plan, ProPresenter and wireless receivers. You'll
+see Pre-Encounter, the preshow cues and countdown, Preshow, then Live, just like
+Sunday. Every screen shows a yellow **REHEARSAL** tag. Tap **End rehearsal** to
+go back to real time; it also ends by itself after 3 hours.

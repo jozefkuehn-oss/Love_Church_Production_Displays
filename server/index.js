@@ -504,7 +504,44 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
 });
 
 // Preshow: start now / end / back to the schedule.
-// Pre-Show Teleprompter talking points.
+// Rehearsal: run everything as if it were Sunday at a chosen time (real plan,
+// real ProPresenter and receivers), to test midweek. Ends after 3 hours.
+function nextSundayKey() {
+  const p = parts(Date.now(), config.data.timezone);
+  const d = new Date(Date.UTC(p.y, p.mo - 1, p.d));
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7));
+  return d.toISOString().slice(0, 10);
+}
+// The loaded plan's Sunday if it's today or later, otherwise the coming Sunday.
+function rehearsalDate(plan) {
+  const today = parts(Date.now(), config.data.timezone).dateKey;
+  return plan && plan.date && plan.date >= today ? plan.date : nextSundayKey();
+}
+app.get('/api/rehearsal', auth.requirePerm('live'), (req, res) => {
+  const r = clock.rehearsal();
+  const plan = engine.getPlan();
+  ok(res, { active: !!r, time: r ? r.time : '', date: r ? r.dateKey : '', until: r ? r.until : 0, nextSunday: rehearsalDate(plan) });
+});
+app.post('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
+  const time = String((req.body || {}).time || '');
+  if (!/^\d{1,2}:\d{2}$/.test(time)) return bad(res, 'Pick a start time.');
+  const plan = engine.getPlan();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String((req.body || {}).date || '')) ? req.body.date : rehearsalDate(plan);
+  clock.startRehearsal(date, time);
+  log(`Rehearsal started (${date} ${time}) by ${req.account.name}`);
+  await engine.refreshPlan().catch(() => {});
+  pushNow();
+  ok(res);
+});
+app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
+  clock.stopRehearsal();
+  log(`Rehearsal stopped by ${req.account.name}`);
+  await engine.refreshPlan().catch(() => {});
+  pushNow();
+  ok(res);
+});
+
+// Pre-/Post-Show Teleprompter talking points.
 app.put('/api/preshow-points', auth.requirePerm('live'), (req, res) => {
   const text = String((req.body || {}).text || '').slice(0, 2000);
   db.data.preshowPoints = text;
