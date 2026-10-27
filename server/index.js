@@ -25,6 +25,13 @@ function log(msg) {
 }
 
 const config = new Doc('config.json', configDefaults);
+// Messages now clear after 1 minute by default (was 2). Only changes installs
+// still on the old default.
+if (!config.data.msgDefault60) {
+  if (config.data.messageDefaultSeconds === 120) config.data.messageDefaultSeconds = 60;
+  config.data.msgDefault60 = true;
+  config.save();
+}
 const db = new Doc('db.json', dbDefaults);
 const clock = makeClock(config);
 const engine = makeEngine({ config, db, clock, log });

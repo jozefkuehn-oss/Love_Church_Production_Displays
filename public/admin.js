@@ -1621,7 +1621,7 @@
         demoStart: $('#c_demo').value,
         campusLabel: $('#c_campus').value,
         timezone: $('#c_tz').value,
-        messageDefaultSeconds: Number($('#c_msgsec').value) || 120,
+        messageDefaultSeconds: Number($('#c_msgsec').value) || 60,
         pco: { appId: $('#c_pid').value.trim(), secret: $('#c_psec').value.trim(), serviceTypeId: $('#c_pst').value.trim(), refreshMinutes: Number($('#c_prf').value) || 5 },
         slack: { ...c.slack, botToken: $('#c_slack').value.trim() },
         propresenter: {

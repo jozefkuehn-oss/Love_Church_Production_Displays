@@ -39,7 +39,7 @@ const configDefaults = {
   // When true, a leader account can send messages only on days that person is
   // scheduled in one of the leaderRoles in Planning Center. Admins can always send.
   onlyScheduledLeaders: true,
-  messageDefaultSeconds: 120,
+  messageDefaultSeconds: 60, // messages clear after a minute unless the sender picks otherwise
 };
 
 // Order locations appear in on a screen's room picker.
