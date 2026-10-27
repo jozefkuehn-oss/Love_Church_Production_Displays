@@ -33,6 +33,21 @@ if (!config.data.msgDefault60) {
   config.save();
 }
 const db = new Doc('db.json', dbDefaults);
+// Song bank from the Broadcast Notes song repository (progression + feel).
+// Added once; songs already in the bank (or edited in Admin → Songs) are kept.
+if ((db.data.songbankVersion || 0) < 1) {
+  const bank = require('./seed/songbank.json');
+  db.data.songs = db.data.songs || {};
+  let added = 0;
+  for (const [k, v] of Object.entries(bank)) {
+    if (db.data.songs[k]) continue;
+    db.data.songs[k] = { ...v, cue: '' };
+    added++;
+  }
+  db.data.songbankVersion = 1;
+  db.save();
+  console.log(`Song bank: added ${added} songs from the Broadcast Notes repository.`);
+}
 const clock = makeClock(config);
 const engine = makeEngine({ config, db, clock, log });
 const auth = makeAuth(db, {
