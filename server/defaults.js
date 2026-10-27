@@ -340,7 +340,8 @@ const profiles = {
       },
       preshow: {
         widgets: [
-          w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
+          w('t', 'title', 0, 0, 12, 1, { title: '{encounter} Encounter', sub: 'phase', compact: true }),
+          w('c', 'clock', 12, 0, 12, 1, { seconds: true, compact: true }),
           w('pts', 'text', 0, 1, 10, 10, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 72 }),
           w('ps', 'preshow', 10, 1, 14, 10, { huge: true }),
           w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
@@ -597,7 +598,7 @@ const LAYOUT_REVISIONS = {
   'greenroom.preshow': 1,
   'greenroom.live': 1,
   'preshow-confidence.pre': 3,
-  'preshow-confidence.preshow': 2,
+  'preshow-confidence.preshow': 3,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
