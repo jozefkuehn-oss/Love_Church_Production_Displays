@@ -184,13 +184,18 @@ const profiles = {
     style: { collage: true },
     layouts: {
       live: {
+        style: { collage: false },
         widgets: [
-          w('t', 'title', 0, 0, 5, 1, { kicker: 'THE DOCK', title: 'Who’s Serving Today', compact: true }),
-          w('nn', 'nowNext', 5, 0, 11, 1, { compact: true }),
-          w('c', 'clock', 16, 0, 3, 1, { compact: true }),
-          w('se', 'countdown', 19, 0, 5, 1, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true, compact: true }),
-          w('ld', 'faces', 0, 1, 24, 6, { group: 'leadership', collage: true, roleColor: '#FF4FA8', columns: 6 }),
-          w('cr', 'faces', 0, 7, 24, 4, { group: 'stage+communicators', collage: true, columns: 8 }),
+          w('t', 'title', 0, 0, 6, 1, { kicker: 'THE DOCK', title: 'Who’s Serving Today', compact: true }),
+          w('c', 'clock', 6, 0, 6, 1, { compact: true }),
+          w('se', 'countdown', 12, 0, 6, 1, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true, compact: true }),
+          w('ns', 'countdown', 18, 0, 6, 1, { target: 'nextStart', label: '{next} STARTS IN', compact: true }),
+          w('et', 'encountersToday', 0, 1, 24, 1, { compact: true }),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
+          w('cr', 'faces', 6, 2, 9, 5, { group: 'stage+communicators', collage: true, columns: 8 }),
+          w('bt', 'faces', 6, 7, 9, 4, { group: 'broadcast', label: 'BROADCAST TEAM' }),
+          w('pr', 'faces', 15, 2, 9, 5, { group: 'production', label: 'PRODUCTION TEAM' }),
+          w('sm', 'faces', 15, 7, 9, 4, { group: 'service', label: 'SERVICE MANAGEMENT' }),
           w('mb', 'messageBar', 0, 11, 24, 1, { legend: true }),
         ],
       },
@@ -570,6 +575,7 @@ const LAYOUT_REVISIONS = {
   'broadcast-audio.live': 1,
   'dock.pre': 1,
   'dock.preshow': 1,
+  'dock.live': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
