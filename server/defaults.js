@@ -470,9 +470,11 @@ const dbDefaults = {
   // (set by an admin in Accounts). positions = the Planning Center position
   // names that count as this role, so the app knows who's signed in.
   roles: [
-    { id: 'foh', name: 'FOH Engineer', positions: ['FOH Audio Engineer', 'FOH Engineer'], perms: ['messages', 'live', 'wireless', 'handhelds'] },
-    { id: 'service-producer', name: 'Service Producer', positions: ['Service Producer'], perms: ['messages', 'live'] },
-    { id: 'broadcast-producer', name: 'Broadcast Producer', positions: ['Broadcast Producer', 'Producer'], perms: ['messages', 'live'] },
+    // FOH Audio: messages and every mic / IEM assignment. Producers can do all of
+    // that plus Live control (run of show, preshow, subs, recording, rehearsal).
+    { id: 'foh', name: 'FOH Audio', positions: ['FOH Audio Engineer', 'FOH Engineer'], perms: ['messages', 'wireless', 'handhelds'] },
+    { id: 'service-producer', name: 'Service Producer', positions: ['Service Producer'], perms: ['messages', 'live', 'wireless', 'handhelds'] },
+    { id: 'broadcast-producer', name: 'Broadcast Producer', positions: ['Broadcast Producer', 'Producer'], perms: ['messages', 'live', 'wireless', 'handhelds'] },
     { id: 'stage-manager', name: 'Stage Manager', positions: ['Stage Manager'], perms: ['messages'] },
     { id: 'floor-manager', name: 'Floor Manager', positions: ['Floor Manager'], perms: ['messages', 'handhelds'] },
     // Directors: full access. The Technical Director outranks the other two:

@@ -426,22 +426,35 @@
       };
     }
     drawRecording();
-    // Subs: who's actually here today.
+    // Subs: who's actually here, for the whole day or one Encounter.
+    let subScope = '';
     async function drawSubs(open) {
       const r = await api('/api/subs').catch(() => null);
       if (!r || !$('#sbc')) return;
-      const n = r.groups.reduce((k, g) => k + g.rows.filter((x) => x.sub).length, 0);
+      const all = r.groups.flatMap((g) => g.rows);
+      const n = all.filter((x) => x.sub).length + all.reduce((k, x) => k + Object.keys(x.byEnc || {}).length, 0);
+      const scopes = [['', 'All day'], ...r.encounters.map((l) => [l, l])];
+      const val = (x) => (subScope ? (x.byEnc || {})[subScope] || '' : x.sub);
+      const ph = (x) => (subScope ? x.sub || x.name : x.name);
+      const notes = (x) => {
+        const bits = [];
+        if (x.sub) bits.push(`all day: ${x.sub}`);
+        for (const [l, nm] of Object.entries(x.byEnc || {})) bits.push(`${l}: ${nm}`);
+        return bits.length ? ` <span style="color:var(--yellow)">· ${esc(bits.join(' · '))}</span>` : '';
+      };
       $('#sbc').innerHTML = `<details ${open ? 'open' : ''}><summary class="row sp" style="cursor:pointer"><strong>Subs today</strong><span class="dim">${n ? n + ' sub' + (n > 1 ? 's' : '') : 'Someone didn’t show? Put a sub in their spot'}</span></summary>
-        <p class="dim">Type the person filling in and tap Save. Every screen uses them for today: face cards, mics, go-to people. Clear the box to go back to who’s scheduled.</p>
+        <p class="dim">Pick <b>All day</b> or one Encounter, type who’s filling in, and tap Save. Every screen uses them: face cards, mics, go-to people. An Encounter’s sub wins over an all-day one. Clear the box and Save to undo.</p>
+        <div class="row" style="flex-wrap:wrap;gap:6px">${scopes.map(([v, t]) => `<button class="small ${v === subScope ? 'primary' : 'ghost'}" data-scope="${esc(v)}">${esc(t)}</button>`).join('')}</div>
         ${r.groups.map((g) => `<h3 style="margin:14px 0 6px">${esc(g.team)}</h3>${g.rows
-          .map((x) => `<div class="row nowrap" style="margin-bottom:6px;align-items:end"><label class="grow">${esc(x.position)} <span class="dim">· ${esc(x.name)}${x.status !== 'confirmed' ? ' (not confirmed)' : ''}</span>
-            <input list="sbnames" data-sk="${esc(x.key)}" value="${esc(x.sub)}" placeholder="${esc(x.name)}"></label>
-            <button class="small ${x.sub ? '' : 'ghost'}" data-sks="${esc(x.key)}">Save</button></div>`)
+          .map((x) => `<div class="row nowrap" style="margin-bottom:6px;align-items:end"><label class="grow">${esc(x.position)} <span class="dim">· ${esc(x.name)}${x.status !== 'confirmed' ? ' (not confirmed)' : ''}</span>${notes(x)}
+            <input list="sbnames" data-sk="${esc(x.key)}" value="${esc(val(x))}" placeholder="${esc(ph(x))}"></label>
+            <button class="small ${val(x) ? '' : 'ghost'}" data-sks="${esc(x.key)}">Save</button></div>`)
           .join('')}`).join('')}
         <datalist id="sbnames">${r.names.map((nm) => `<option value="${esc(nm)}">`).join('')}</datalist></details>`;
+      $$('[data-scope]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); subScope = b.dataset.scope; drawSubs(true); }));
       $$('[data-sks]').forEach((b) => (b.onclick = () => {
         const inp = $(`[data-sk="${CSS.escape(b.dataset.sks)}"]`);
-        api('/api/subs', { method: 'PUT', body: { key: b.dataset.sks, name: inp.value } }).then(() => { toast(inp.value ? 'Sub saved' : 'Back to scheduled'); drawSubs(true); }).catch(fail);
+        api('/api/subs', { method: 'PUT', body: { key: b.dataset.sks, name: inp.value, encounter: subScope } }).then(() => { toast(inp.value ? `Sub saved${subScope ? ' for the ' + subScope : ' for all day'}` : 'Back to scheduled'); drawSubs(true); }).catch(fail);
       }));
     }
     drawSubs(false);

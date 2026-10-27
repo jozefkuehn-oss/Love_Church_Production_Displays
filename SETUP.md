@@ -124,8 +124,8 @@ Admin page → **Roles & PINs**:
 - Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Speaking mics (HH, TEACH, BP)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
   - **Technical Director** (David): everything, and the only role that can manage Roles & PINs and admin accounts.
   - **Production Director, Broadcast Director:** everything except Roles & PINs.
-  - **FOH Engineer:** messages, Live, Mics and Speaking mics.
-  - **Service Producer, Broadcast Producer:** messages and Live.
+  - **FOH Audio:** messages, Mics (every mic and IEM) and Speaking mics.
+  - **Service Producer / Broadcast Producer:** everything FOH Audio has, plus Live (run of show, preshow, subs, recording the 11:45, rehearsal).
   - **Floor Manager:** messages and Speaking mics — their phone opens on the Speaking Mics screen to say who has HH-1 / HH-2 (preshow, the host moment, announcements…) and TEACH / BP-1 / BP-2.
   - **Stage Manager:** messages.
 - **Planning Center positions** tells the app which scheduled positions count as the role. When exactly one person is scheduled in it, their name shows on the sign-in button and on the messages they send.
@@ -193,7 +193,7 @@ It only applies to that Sunday's plan, so it's off again the next week.
 
 On the **Live** page, open **Subs today**. Every scheduled spot from the plan
 is listed by team; type the person filling in (names suggest as you type) and
-tap **Save**. For that Sunday every screen uses the sub: face cards, worship
+tap **Save** — for **All day** or just one Encounter (8:30, 10:00, 11:45; an Encounter’s sub wins over an all-day one). Every screen uses the sub: face cards, worship
 mics (they take over the mic and IEM of the person they replaced, including
 assignments written in the plan notes), go-to people and the 11:45 crew. Clear
 the box and Save to go back to who's scheduled. Subs reset with the next plan.

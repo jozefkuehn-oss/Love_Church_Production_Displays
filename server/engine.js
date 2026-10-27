@@ -245,15 +245,18 @@ function makeEngine({ config, db, clock, log }) {
   // Subs: someone didn't show, so a producer put someone else in their spot
   // for today (Live page). Keyed by team | position | scheduled name.
   const subKey = (p) => `${p.team}|${p.position}|${p.name}`;
-  function rosterToday() {
+  // A sub can be for the whole day or for one Encounter; an Encounter's own
+  // sub wins over the all-day one.
+  function rosterToday(encLabel) {
     if (!plan) return [];
-    const sb = d().subs && d().subs.date === plan.date ? d().subs.byKey || {} : {};
+    const S = d().subs && d().subs.date === plan.date ? d().subs : {};
+    const sb = { ...(S.byKey || {}), ...((S.byEnc || {})[encLabel] || {}) };
     return plan.people.map((p) => (sb[subKey(p)] ? { ...p, name: sb[subKey(p)], subFor: p.name, status: 'confirmed' } : p));
   }
 
-  function buildPeople() {
+  function buildPeople(encLabel) {
     if (!plan) return {};
-    const roster = rosterToday();
+    const roster = rosterToday(encLabel);
     const byName = new Map();
     for (const p of roster) {
       const cur = byName.get(p.name) || { name: p.name, positions: [], teams: new Set(), status: p.status, subFor: p.subFor };
@@ -449,7 +452,7 @@ function makeEngine({ config, db, clock, log }) {
     const r = recordingOn();
     if (!r || !plan) return [];
     return RECORD_CREW.map((pos) => {
-      const today = rosterToday();
+      const today = rosterToday(r.label);
       const name = (r.crew || {})[pos] || (today.find((p) => p.position === pos) || {}).name || '';
       const pp = today.find((p) => p.name === name);
       return { position: pos, name, role: short(pos), initials: name ? initials(name) : '', pending: pp ? pp.status !== 'confirmed' : false, ...(name ? photoFor(name) : {}) };
@@ -690,7 +693,7 @@ function makeEngine({ config, db, clock, log }) {
       }
     }
 
-    const people = buildPeople();
+    const people = buildPeople(enc && enc.label);
     // From the end of the 10:00 until the recording wraps, the Broadcast team
     // everywhere is just the crew staying to record.
     // Cams 1–3 and the Broadcast Producer are the Broadcast team; Broadcast

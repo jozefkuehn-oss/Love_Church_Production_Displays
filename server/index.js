@@ -87,6 +87,22 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// FOH Audio: messages + all mics/IEMs (no Live control). Producers get
+// everything FOH has plus Live. Only changes roles still on the old defaults.
+(function migrateRoles4() {
+  if ((db.data.rolesVersion || 1) >= 4) return;
+  const same = (a, b) => [...(a || [])].sort().join() === [...b].sort().join();
+  for (const r of db.data.roles || []) {
+    if (r.id === 'foh') {
+      if (same(r.perms, ['messages', 'live', 'wireless', 'handhelds'])) r.perms = ['messages', 'wireless', 'handhelds'];
+      if (r.name === 'FOH Engineer') r.name = 'FOH Audio';
+    }
+    if ((r.id === 'service-producer' || r.id === 'broadcast-producer') && same(r.perms, ['messages', 'live'])) r.perms = ['messages', 'live', 'wireless', 'handhelds'];
+  }
+  db.data.rolesVersion = 4;
+  db.save();
+})();
+
 // Displays saved by an earlier build: give every dashboard a location and
 // add the second Greenroom TV and the extra FOH monitors.
 (function migrateLocations() {
@@ -544,35 +560,42 @@ app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
 // Subs: when someone doesn't show, put someone else in their spot for today.
 // Every screen (face cards, mics, go-to people, the 11:45 crew) uses the sub.
 const SUB_TEAMS = [/worship/i, /communicator/i, /broadcast/i, /production/i, /service management/i];
-app.get('/api/subs', auth.requirePerm(['live', 'wireless']), (req, res) => {
+app.get('/api/subs', auth.requirePerm('live'), (req, res) => {
   engine.snapshot();
   const plan = engine.getPlan();
   if (!plan) return ok(res, { groups: [], names: [] });
-  const sb = db.data.subs && db.data.subs.date === plan.date ? db.data.subs.byKey || {} : {};
+  const S = db.data.subs && db.data.subs.date === plan.date ? db.data.subs : {};
+  const encLabels = ((db.data.schedule && db.data.schedule.encounters) || []).map((e) => e.label);
   const groups = [];
   for (const p of plan.people) {
     if (!SUB_TEAMS.some((re) => re.test(p.team || ''))) continue;
     let g = groups.find((x) => x.team === p.team);
     if (!g) groups.push((g = { team: p.team, rows: [] }));
     const key = engine.subKey(p);
-    g.rows.push({ key, position: p.position, name: p.name, sub: sb[key] || '', status: p.status });
+    const byEnc = {};
+    for (const l of encLabels) if (((S.byEnc || {})[l] || {})[key]) byEnc[l] = S.byEnc[l][key];
+    g.rows.push({ key, position: p.position, name: p.name, sub: (S.byKey || {})[key] || '', byEnc, status: p.status });
   }
   groups.sort((a, b) => SUB_TEAMS.findIndex((re) => re.test(a.team)) - SUB_TEAMS.findIndex((re) => re.test(b.team)));
   const names = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
-  ok(res, { date: plan.date, groups, names });
+  ok(res, { date: plan.date, encounters: encLabels, groups, names });
 });
-app.put('/api/subs', auth.requirePerm(['live', 'wireless']), (req, res) => {
+app.put('/api/subs', auth.requirePerm('live'), (req, res) => {
   const plan = engine.getPlan();
   if (!plan) return bad(res, 'No plan loaded yet.');
   const { key } = req.body || {};
   if (!plan.people.some((p) => engine.subKey(p) === key)) return bad(res, 'That spot isn’t on today’s plan.');
-  if (!db.data.subs || db.data.subs.date !== plan.date) db.data.subs = { date: plan.date, byKey: {} };
+  if (!db.data.subs || db.data.subs.date !== plan.date) db.data.subs = { date: plan.date, byKey: {}, byEnc: {} };
+  db.data.subs.byEnc = db.data.subs.byEnc || {};
+  const enc = String((req.body || {}).encounter || '');
   const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
   const orig = key.split('|')[2];
-  if (name && name !== orig) db.data.subs.byKey[key] = name;
-  else delete db.data.subs.byKey[key];
+  // encounter '' = all day; otherwise just that Encounter.
+  const bucket = enc ? (db.data.subs.byEnc[enc] = db.data.subs.byEnc[enc] || {}) : db.data.subs.byKey;
+  if (name && name !== orig) bucket[key] = name;
+  else delete bucket[key];
   db.save();
-  log(`Sub: ${key} → ${name || '(back to scheduled)'} by ${req.account.name}`);
+  log(`Sub${enc ? ' (' + enc + ')' : ''}: ${key} → ${name || '(back to scheduled)'} by ${req.account.name}`);
   pushNow();
   ok(res);
 });
