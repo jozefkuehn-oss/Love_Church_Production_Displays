@@ -286,7 +286,7 @@ const profiles = {
     layouts: {
       live: {
         widgets: [
-          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH · AUDIO & LIGHTING', title: '{encounter} Encounter' }),
+          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH PROP', title: '{encounter} Encounter', sub: 'phase' }),
           w('c', 'clock', 4, 0, 5, 2, { seconds: true }),
           w('ir', 'itemRemaining', 9, 0, 5, 2, { accent: true }),
           w('se', 'countdown', 14, 0, 5, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
@@ -301,7 +301,7 @@ const profiles = {
       },
       pre: {
         widgets: [
-          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH · PRE-ENCOUNTER', title: '{next} Encounter' }),
+          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH PROP', title: '{encounter} Encounter', sub: 'phase' }),
           w('c', 'clock', 4, 0, 5, 2, { seconds: true }),
           w('bs', 'countdown', 9, 0, 5, 2, { target: 'nextBandToStage', label: 'BAND TO STAGE IN' }),
           w('ns', 'countdown', 14, 0, 5, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN', accent: true }),
@@ -404,7 +404,7 @@ const profiles = {
     layouts: {
       live: {
         widgets: [
-          w('t', 'title', 0, 0, 6, 2, { kicker: 'FOH · WIRELESS', title: '{encounter} Encounter' }),
+          w('t', 'title', 0, 0, 6, 2, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase' }),
           w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
           w('ir', 'itemRemaining', 12, 0, 6, 2, { accent: true }),
           w('se', 'countdown', 18, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
@@ -415,12 +415,15 @@ const profiles = {
       },
       pre: {
         widgets: [
-          w('t', 'title', 0, 0, 6, 2, { kicker: 'FOH · WIRELESS', title: '{next} Encounter' }),
-          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
-          w('bs', 'countdown', 12, 0, 6, 2, { target: 'nextBandToStage', label: 'BAND TO STAGE IN' }),
-          w('ns', 'countdown', 18, 0, 6, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN', accent: true }),
-          w('wm', 'worshipMics', 0, 2, 16, 9, {}),
-          w('wl', 'wirelessList', 16, 2, 8, 9, {}),
+          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 4, 0, 4, 2, {}),
+          w('ss', 'countdown', 8, 0, 4, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
+          w('ps', 'preshow', 12, 0, 4, 2, {}),
+          w('ns', 'countdown', 16, 0, 8, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN', accent: true }),
+          w('ros', 'runOfShowDay', 0, 2, 6, 9, {}),
+          w('sm', 'faces', 6, 2, 9, 5, { group: 'service', label: 'SERVICE MANAGEMENT' }),
+          w('pr', 'faces', 6, 7, 9, 4, { group: 'production', label: 'PRODUCTION TEAM' }),
+          w('wm', 'worshipMics', 15, 2, 9, 9, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
@@ -605,6 +608,12 @@ const LAYOUT_REVISIONS = {
   'preshow-confidence.pre': 3,
   'preshow-confidence.preshow': 4,
   'preshow-confidence.live': 1,
+  'foh-wireless.pre': 1,
+  'foh-wireless.preshow': 1,
+  'foh-wireless.live': 1,
+  'foh.pre': 1,
+  'foh.preshow': 1,
+  'foh.live': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
