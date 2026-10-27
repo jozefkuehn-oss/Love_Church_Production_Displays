@@ -305,11 +305,11 @@
     // row the same height. Photos crop around each person's saved focus point.
     const rowH = (ctx.h - headH - gap * (fit.rows - 1)) / fit.rows;
     const colW = (ctx.w - gap * (fit.cols - 1)) / fit.cols;
-    const size = collage ? { w: fit.w, h: fit.h } : { w: colW, h: rowH };
+    const size = { w: colW, h: rowH };
     const cards = list.map((c) => faceCard(c, size, { roleColor: o.roleColor, fixed: true })).join('');
     const labelColor = /communicators$/.test(o.group) ? 'blue' : 'pink';
     return `<div class="faces-wrap">${headH ? `<div class="label ${labelColor}">${esc(o.label)}</div>` : ''}
-      <div class="faces" style="grid-template-columns:repeat(${fit.cols}, minmax(0,1fr));${collage ? `grid-auto-rows:minmax(0,1fr)` : ''}">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
+      <div class="faces" style="gap:${gap}px;grid-template-columns:repeat(${fit.cols}, minmax(0,1fr));${collage ? `grid-auto-rows:minmax(0,1fr)` : ''}">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
   };
 
   W.worshipMics = (o, s, ctx) => {
