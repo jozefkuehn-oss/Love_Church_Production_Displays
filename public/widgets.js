@@ -168,6 +168,13 @@
     if (left != null && left <= 0) text = { streamEnd: 'Ended', encounterStart: 'Started', nextStart: 'Starting', bandToStage: 'On stage', nextBandToStage: 'On stage', streamStart: 'Live', nextStreamStart: 'Live', firstStream: 'Live' }[o.target] || 'Now';
     if (left == null && /^next/.test(o.target)) text = 'Done for today';
     if (left == null && ((s.targets && s.targets.notStreamed) || []).includes(o.target)) text = 'Not streamed';
+    // Recording the 11:45: its "stream" countdowns are recording countdowns.
+    const recT = ((o.target === 'streamStart' || o.target === 'streamEnd') && s.encounter && s.encounter.recorded) || (o.target === 'nextStreamStart' && s.nextEncounter && s.nextEncounter.recorded);
+    if (recT) {
+      o = { ...o, label: (o.label || COUNT_LABELS[o.target] || 'STREAM STARTS IN').replace(/STREAM/g, 'RECORDING') };
+      if (text === 'Live') text = 'Recording';
+      if (text === 'Ended') text = 'Done';
+    }
     if (o.huge) {
       return `<div class="stat huge ${cls}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v" style="${hugeV(ctx, text)}">${text}</div></div>`;
     }

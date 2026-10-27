@@ -171,3 +171,18 @@ with the real Planning Center plan, ProPresenter and wireless receivers. You'll
 see Pre-Encounter, the preshow cues and countdown, Preshow, then Live, just like
 Sunday. Every screen shows a yellow **REHEARSAL** tag. Tap **End rehearsal** to
 go back to real time; it also ends by itself after 3 hours.
+
+## Recording the 11:45
+
+The 11:45 isn't streamed. On Sundays you record it, turn on **Recording the
+11:45** on the **Live** page. Then:
+
+- its countdowns read **RECORDING STARTS IN / RECORDING ENDS IN** (11:30–1:25 by
+  default; set **recordStart** / **recordEnd** on that Encounter to change it),
+- Broadcast Control and Broadcast Audio go Pre-Encounter → Live with no Preshow,
+- the **Broadcast team** face cards on every screen become the crew that stays:
+  Cam 1–3, Broadcast ProP, Broadcast Audio and Broadcast Producer. They start as
+  whoever Planning Center has in those spots; type over any name if someone
+  else fills in, then **Save crew**.
+
+It only applies to that Sunday's plan, so it's off again the next week.

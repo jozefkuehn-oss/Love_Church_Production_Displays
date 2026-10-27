@@ -340,6 +340,7 @@
       <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
+      <div class="card" id="rc" style="margin-top:12px"></div>
       <div class="card" id="rh" style="margin-top:12px"></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
@@ -403,6 +404,27 @@
       if ($('#rhs')) $('#rhs').onclick = () => api('/api/rehearsal', { method: 'DELETE' }).then(() => { toast('Back to real time'); drawRehearsal(); load(); }).catch(fail);
     }
     drawRehearsal();
+    // Recording the 11:45: on/off and who stays to record it.
+    async function drawRecording() {
+      const r = await api('/api/recording').catch(() => null);
+      if (!r || !$('#rc') || !r.label) { if ($('#rc')) $('#rc').hidden = true; return; }
+      const LABEL = { 'Broadcast ProPresenter Operator': 'Broadcast ProP', 'Broadcast Audio': 'Broadcast Audio', 'Broadcast Producer': 'Broadcast Producer' };
+      $('#rc').innerHTML = `<div class="row sp"><strong>Recording the ${esc(r.label)}</strong>
+          <label class="inline" style="flex:none"><input type="checkbox" id="rcon" ${r.on ? 'checked' : ''}> ${r.on ? 'On this Sunday' : 'Off'}</label></div>
+        <p class="dim" style="margin:0">When on, the ${esc(r.label)} gets recording countdowns, Broadcast Control and Broadcast Audio go Pre-Encounter → Live (no Preshow), and the Broadcast team on every screen becomes the crew below. Change anyone who’s filling in.</p>
+        <div class="wkrows" style="${r.on ? '' : 'opacity:.55'}">${r.crew
+          .map((c, i) => `<label class="wkf">${esc(LABEL[c.position] || c.position)}<input list="rcnames" data-rc="${esc(c.position)}" value="${esc(c.name)}" placeholder="${esc(c.planName || 'Type a name')}"></label>`)
+          .join('')}</div>
+        <datalist id="rcnames">${r.names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
+        <div class="row"><button class="primary" id="rcsave">Save crew</button></div>`;
+      $('#rcon').onchange = (e) => api('/api/recording', { method: 'PUT', body: { on: e.target.checked } }).then(() => { toast(e.target.checked ? `Recording the ${r.label}` : 'Recording off'); drawRecording(); }).catch(fail);
+      $('#rcsave').onclick = () => {
+        const crew = {};
+        $$('[data-rc]').forEach((el) => (crew[el.dataset.rc] = el.value));
+        api('/api/recording', { method: 'PUT', body: { crew } }).then(() => { toast('Crew saved'); drawRecording(); }).catch(fail);
+      };
+    }
+    drawRecording();
     $('#pps').onclick = () => api('/api/preshow-points', { method: 'PUT', body: { text: $('#ppt').value } }).then(() => toast('Points saved')).catch(fail);
     load();
     S.timers.push(setInterval(load, 2500));

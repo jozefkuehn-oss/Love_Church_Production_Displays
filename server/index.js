@@ -541,6 +541,51 @@ app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
   ok(res);
 });
 
+// Recording an unstreamed Encounter (the 11:45): on/off for this Sunday, and
+// who's on the crew that stays (defaults to whoever PCO has in each position).
+function recordLabel() {
+  const encs = (db.data.schedule && db.data.schedule.encounters) || [];
+  const e = encs.find((x) => !x.streamStart && !x.streamEnd);
+  return e ? e.label : '';
+}
+app.get('/api/recording', auth.requirePerm('live'), (req, res) => {
+  engine.snapshot();
+  const plan = engine.getPlan();
+  const r = db.data.recording && plan && db.data.recording.date === plan.date ? db.data.recording : null;
+  const names = [...new Set([...((plan && plan.people) || []).map((p) => p.name), ...photos.roster()])].sort(byFirst);
+  const cur = r && r.on ? engine.recordCrew() : [];
+  ok(res, {
+    on: !!(r && r.on),
+    label: (r && r.label) || recordLabel(),
+    crew: engine.RECORD_CREW.map((pos) => {
+      const c = cur.find((x) => x.position === pos);
+      const fromPlan = ((plan && plan.people) || []).find((p) => p.position === pos);
+      return { position: pos, name: c ? c.name : (r && r.crew && r.crew[pos]) || (fromPlan ? fromPlan.name : ''), planName: fromPlan ? fromPlan.name : '' };
+    }),
+    names,
+  });
+});
+app.put('/api/recording', auth.requirePerm('live'), (req, res) => {
+  const plan = engine.getPlan();
+  if (!plan) return bad(res, 'No plan loaded yet.');
+  const body = req.body || {};
+  const label = recordLabel();
+  if (!label) return bad(res, 'There’s no unstreamed Encounter in the Schedule to record.');
+  const prev = db.data.recording && db.data.recording.date === plan.date ? db.data.recording : { crew: {} };
+  const crew = { ...(prev.crew || {}) };
+  for (const [pos, name] of Object.entries(body.crew || {})) {
+    if (!engine.RECORD_CREW.includes(pos)) continue;
+    const n = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (n) crew[pos] = n;
+    else delete crew[pos];
+  }
+  db.data.recording = { date: plan.date, label, on: body.on != null ? !!body.on : !!prev.on, crew };
+  db.save();
+  log(`Recording the ${label}: ${db.data.recording.on ? 'on' : 'off'} (${req.account.name})`);
+  pushNow();
+  ok(res);
+});
+
 // Pre-/Post-Show Teleprompter talking points.
 app.put('/api/preshow-points', auth.requirePerm('live'), (req, res) => {
   const text = String((req.body || {}).text || '').slice(0, 2000);

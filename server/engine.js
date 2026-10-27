@@ -75,6 +75,11 @@ const COMMS_ORDER = ['Encounter Host', 'Online Host', 'Online Co-Host', 'Bible T
 // Handhelds, the teaching mic and belt packs: the mics that move between people.
 const SPOKEN_MICS = ['HH-1', 'HH-2', 'TEACH', 'BP-1', 'BP-2'];
 
+// Who stays to record an unstreamed Encounter (the 11:45), by PCO position.
+const RECORD_CREW = ['Cam 1', 'Cam 2', 'Cam 3', 'Broadcast ProPresenter Operator', 'Broadcast Audio', 'Broadcast Producer'];
+// Dashboards that skip Preshow (Pre-Encounter straight to Live) for a recording.
+const RECORD_SKIP_PRESHOW = ['broadcast', 'broadcast-audio'];
+
 const DEFAULT_PRESHOW_POINTS = '• Welcome\n• 1, 2, 5\n• Take A Next Step!\n• Pitch to :30 Countdown';
 
 const SHORT = {
@@ -419,6 +424,22 @@ function makeEngine({ config, db, clock, log }) {
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
 
+  // ---- recording an unstreamed Encounter ----
+  // Turned on per Sunday from the Live page; the crew can be changed there.
+  function recordingOn() {
+    const r = d().recording;
+    return r && r.on && plan && r.date === plan.date ? r : null;
+  }
+  function recordCrew() {
+    const r = recordingOn();
+    if (!r || !plan) return [];
+    return RECORD_CREW.map((pos) => {
+      const name = (r.crew || {})[pos] || (plan.people.find((p) => p.position === pos) || {}).name || '';
+      const pp = plan.people.find((p) => p.name === name);
+      return { position: pos, name, role: short(pos), initials: name ? initials(name) : '', pending: pp ? pp.status !== 'confirmed' : false, ...(name ? photoFor(name) : {}) };
+    });
+  }
+
   // ---- the snapshot ----
   function snapshot() {
     const now = clock.now();
@@ -428,12 +449,21 @@ function makeEngine({ config, db, clock, log }) {
     const nowMin = p.h * 60 + p.mi + p.s / 60;
     // An Encounter with no stream times in the Schedule isn't streamed: its
     // stream countdowns read "Not streamed" and Live mode lasts 75 minutes.
+    const rec = recordingOn();
     const encs = encountersFor(dateKey).map((e, i) => {
-      const noStream = !e.streamStart && !e.streamEnd;
+      let noStream = !e.streamStart && !e.streamEnd;
+      // Recording this one: it gets a record window (Schedule, or 15 min
+      // before start until 100 min after) and is treated like a stream.
+      const recorded = !!(noStream && rec && rec.label === e.label);
+      if (recorded) {
+        noStream = false;
+        e = { ...e, streamStart: e.recordStart || plus(e.start, -15), streamEnd: e.recordEnd || plus(e.start, 100) };
+      }
       return {
         ...e,
         index: i,
         noStream,
+        recorded,
         startMs: zoned(dateKey, e.start, tz),
         streamStartMs: noStream ? null : zoned(dateKey, e.streamStart || e.start, tz),
         streamEndMs: noStream ? null : zoned(dateKey, e.streamEnd || plus(e.start, 75), tz),
@@ -625,6 +655,9 @@ function makeEngine({ config, db, clock, log }) {
     }
 
     const people = buildPeople();
+    // From the end of the 10:00 until the recording wraps, the Broadcast team
+    // everywhere is just the crew staying to record.
+    if (enc && enc.recorded) people.broadcast = recordCrew().filter((c) => c.name);
     const wl = buildWireless(people);
     // Singers in VOX order (VOX 1 … VOX 5, from this week's mic plan), then
     // everyone else in their usual order.
@@ -726,6 +759,7 @@ function makeEngine({ config, db, clock, log }) {
     for (const [id, pr] of Object.entries(d().profiles)) {
       const setting = pr.modeSetting || 'auto';
       let mode = setting === 'auto' ? (liveEnc ? 'live' : preshowEnc ? 'preshow' : 'pre') : setting;
+      if (setting === 'auto' && mode === 'preshow' && preshowEnc.recorded && RECORD_SKIP_PRESHOW.includes(id)) mode = 'pre';
       if (!pr.layouts[mode]) mode = pr.layouts.live ? 'live' : Object.keys(pr.layouts)[0];
       modes[id] = mode;
     }
@@ -739,10 +773,11 @@ function makeEngine({ config, db, clock, log }) {
       rehearsal: clock.rehearsal() ? { time: clock.rehearsal().time, date: clock.rehearsal().dateKey } : null,
       plan: plan ? { title: plan.title, date: plan.date, source: planSource } : null,
       encounters: encs.map((e) => ({ label: e.label, start: e.start, streamEnd: e.streamEnd, startMs: e.startMs, streamEndMs: e.streamEndMs })),
-      encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs } : null,
+      encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs, recorded: !!enc.recorded } : null,
+      recording: rec ? { label: rec.label } : null,
       isLive: !!liveEnc,
       isPreshow: !!preshowEnc,
-      nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs } : null,
+      nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs, recorded: !!nextEnc.recorded } : null,
       preshow,
       // Pre-Show Teleprompter talking points (edited on the Live page).
       preshowPoints: d().preshowPoints != null ? d().preshowPoints : DEFAULT_PRESHOW_POINTS,
@@ -824,7 +859,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };
