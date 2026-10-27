@@ -50,10 +50,15 @@
     return best;
   }
 
-  function photoImg(c) {
+  function photoImg(c, wide) {
     if (!c.photo) return `<span class="ini" style="font-size:${Math.round((c._w || 160) / 3.2)}px">${esc(c.initials)}</span>`;
-    const z = c.zoom && c.zoom !== 1 ? `transform:scale(${c.zoom});transform-origin:${c.focusX}% ${c.focusY}%;` : '';
-    return `<img src="${esc(c.photo)}" alt="" style="object-position:${c.focusX != null ? c.focusX : 50}% ${c.focusY != null ? c.focusY : 15}%;${z}">`;
+    const fx = c.focusX != null ? c.focusX : 50;
+    let fy = c.focusY != null ? c.focusY : 15;
+    // Saved framing is for tall cards (keeps the top of the head in). In a wide
+    // photo window only a thin slice shows, so aim lower, at the face.
+    if (wide) fy = Math.min(55, fy + 22);
+    const z = c.zoom && c.zoom !== 1 ? `transform:scale(${c.zoom});transform-origin:${fx}% ${fy}%;` : '';
+    return `<img src="${esc(c.photo)}" alt="" style="object-position:${fx}% ${fy}%;${z}">`;
   }
 
   function faceCard(c, size, extra = {}) {
@@ -62,8 +67,11 @@
     const nameSize = Math.max(13, Math.min(30, Math.round(w / 9)));
     const roleSize = Math.max(10, Math.min(14, Math.round(w / 20)));
     const roleColor = extra.roleColor || c._roleColor || '';
-    return `<div class="face" style="${extra.fixed ? `height:${Math.round(size.h)}px;` : ''}">
-      ${photoImg(c)}
+    // Name strip goes UNDER the photo (not over it) unless the card is tall
+    // and narrow, so wide cards never hide a face behind the name.
+    const split = size.h && size.w && size.h < size.w * 1.3;
+    return `<div class="face ${split ? 'split' : ''}" style="${extra.fixed ? `height:${Math.round(size.h)}px;` : ''}">
+      ${split ? `<div class="phw">${photoImg(c, true)}</div>` : photoImg(c)}
       ${c.pending && !extra.noPending ? '<span class="pend">PENDING</span>' : ''}
       ${extra.inner || ''}
       <div class="ov" style="padding:${Math.max(6, w / 24)}px ${Math.max(8, w / 18)}px">
