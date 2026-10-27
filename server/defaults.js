@@ -329,10 +329,13 @@ const profiles = {
       // countdown into and through the 4:30 preshow.
       pre: {
         widgets: [
-          w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
-          w('pts', 'text', 0, 1, 10, 10, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 72 }),
-          w('ps', 'preshow', 10, 1, 14, 10, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
-          w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
+          w('t', 'title', 0, 0, 12, 1, { title: '{encounter} Encounter', sub: 'phase', compact: true }),
+          w('c', 'clock', 12, 0, 12, 1, { seconds: true, compact: true }),
+          w('pts', 'text', 0, 1, 12, 3, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 72 }),
+          w('ps', 'preshow', 0, 4, 12, 6, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
+          w('cm', 'faces', 12, 1, 12, 5, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('sm', 'faces', 12, 6, 12, 4, { group: 'service', label: 'SERVICE MANAGEMENT' }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
         ],
       },
       preshow: {
@@ -593,7 +596,7 @@ const LAYOUT_REVISIONS = {
   'greenroom.pre': 1,
   'greenroom.preshow': 1,
   'greenroom.live': 1,
-  'preshow-confidence.pre': 2,
+  'preshow-confidence.pre': 3,
   'preshow-confidence.preshow': 2,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
