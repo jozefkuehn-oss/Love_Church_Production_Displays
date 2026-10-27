@@ -217,6 +217,21 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// The old second Greenroom dashboard is retired; any screen on it moves to
+// The Greenroom.
+const REPLACED_PROFILES = { 'greenroom-2': 'greenroom' };
+(function retireGreenroomCountdown() {
+  if ((db.data.profilesVersion || 1) >= 13 && !db.data.profiles['greenroom-2']) return;
+  delete db.data.profiles['greenroom-2'];
+  for (const d of Object.values(db.data.devices || {})) {
+    if (REPLACED_PROFILES[d.profile]) d.profile = REPLACED_PROFILES[d.profile];
+    if (REPLACED_PROFILES[d.pendingProfile]) d.pendingProfile = REPLACED_PROFILES[d.pendingProfile];
+  }
+  for (const m of db.data.messages || []) if (Array.isArray(m.targets)) m.targets = m.targets.filter((t) => !REPLACED_PROFILES[t]);
+  db.data.profilesVersion = Math.max(13, db.data.profilesVersion || 1);
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
@@ -986,7 +1001,9 @@ wss.on('connection', (ws, req) => {
     const known = db.data.devices[device] || {};
     // The room in the screen's own address wins, unless an admin moved this
     // screen while it was off; then it switches to that room now.
-    if (known.pendingProfile && known.pendingProfile !== ws.profile && db.data.profiles[known.pendingProfile]) {
+    if (!db.data.profiles[ws.profile] && REPLACED_PROFILES[ws.profile]) {
+      ws.send(JSON.stringify({ type: 'assign', profile: REPLACED_PROFILES[ws.profile] }));
+    } else if (known.pendingProfile && known.pendingProfile !== ws.profile && db.data.profiles[known.pendingProfile]) {
       ws.send(JSON.stringify({ type: 'assign', profile: known.pendingProfile }));
     }
     db.data.devices[device] = {

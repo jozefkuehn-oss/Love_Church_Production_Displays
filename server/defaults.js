@@ -366,38 +366,6 @@ const profiles = {
       },
     },
   },
-  // Second Greenroom TV: big countdowns, what's on now and the go-to people.
-  'greenroom-2': {
-    name: 'Greenroom · Countdown',
-    location: 'The Greenroom',
-    mode: 'live',
-    modeSetting: 'auto',
-    style: {},
-    layouts: {
-      live: {
-        widgets: [
-          w('t', 'title', 0, 0, 6, 2, { kicker: 'GREENROOM', title: '{encounter} Encounter' }),
-          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
-          w('ir', 'itemRemaining', 12, 0, 6, 2, { accent: true }),
-          w('se', 'countdown', 18, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
-          w('sn', 'songNow', 0, 2, 15, 8, { showFeel: true, showProgression: true }),
-          w('gt', 'goto', 15, 2, 9, 8, {}),
-          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
-        ],
-      },
-      pre: {
-        widgets: [
-          w('et', 'encountersToday', 0, 0, 18, 1, { compact: true }),
-          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
-          w('ns', 'countdown', 0, 1, 15, 6, { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true }),
-          w('bs', 'countdown', 15, 1, 9, 3, { target: 'nextBandToStage', label: 'BAND TO STAGE IN', accent: true }),
-          w('ss', 'countdown', 15, 4, 9, 3, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
-          w('fu', 'firstUp', 0, 7, 24, 3, {}),
-          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
-        ],
-      },
-    },
-  },
   // FOH monitor 2: every mic and IEM with faces, battery and RF.
   'foh-wireless': {
     name: 'FOH Audio',
