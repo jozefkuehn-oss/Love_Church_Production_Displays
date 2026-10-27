@@ -238,6 +238,18 @@ const profiles = {
     modeSetting: 'auto',
     style: {},
     layouts: {
+      preshow: {
+        widgets: [
+          w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
+          w('ps', 'preshow', 12, 0, 6, 2, {}),
+          w('es', 'countdown', 18, 0, 6, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN', accent: true }),
+          w('nn', 'nowNext', 0, 2, 24, 1, {}),
+          w('mic', 'worshipMics', 0, 3, 12, 8, {}),
+          w('cm', 'faces', 12, 3, 12, 8, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
       pre: {
         widgets: [
           w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
@@ -576,6 +588,7 @@ const LAYOUT_REVISIONS = {
   'dock.preshow': 2,
   'dock.live': 2,
   'greenroom.pre': 1,
+  'greenroom.preshow': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
