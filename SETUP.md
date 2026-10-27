@@ -177,12 +177,14 @@ go back to real time; it also ends by itself after 3 hours.
 The 11:45 isn't streamed. On Sundays you record it, turn on **Recording the
 11:45** on the **Live** page. Then:
 
-- its countdowns read **RECORDING STARTS IN / RECORDING ENDS IN** (11:30–1:25 by
-  default; set **recordStart** / **recordEnd** on that Encounter to change it),
+- its countdowns read **RECORDING STARTS IN / RECORDING ENDS IN**. Only the
+  message is recorded, so the window runs from the last worship song before the
+  Message through the Post Host, using the plan's timing,
 - Broadcast Control and Broadcast Audio go Pre-Encounter → Live with no Preshow,
 - the **Broadcast team** face cards on every screen become the crew that stays:
   Cam 1–3 and the Broadcast Producer. Broadcast ProP and Broadcast Audio stay
   under **Production**. All six start as whoever Planning Center has in those
-  spots; type over any name if someone else fills in, then **Save crew**.
+  spots; type over any name if someone else fills in, then **Save crew**. The
+  cards switch to this crew as soon as the 10:00 stream ends.
 
 It only applies to that Sunday's plan, so it's off again the next week.

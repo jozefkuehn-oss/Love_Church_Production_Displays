@@ -450,6 +450,32 @@ function makeEngine({ config, db, clock, log }) {
     // An Encounter with no stream times in the Schedule isn't streamed: its
     // stream countdowns read "Not streamed" and Live mode lasts 75 minutes.
     const rec = recordingOn();
+    // An Encounter's plan items with planned start times: "during" items run
+    // from the Encounter start; "pre" items stack backwards before it.
+    const hide = (cfg().hideItems || ['Washed (Remix)', 'T.I.P. Time [PA]', 'Team Huddles']).map((s) => s.toLowerCase());
+    function planItems(e) {
+      const out = [];
+      if (!plan || !e) return out;
+      for (const it of plan.items) {
+        if (it.type === 'header') continue;
+        if (hide.includes(String(it.title).toLowerCase())) continue;
+        const r = resolveTitle(it.title, e.label, e.index);
+        if (!r.include) continue;
+        out.push({ id: it.id, title: r.title, type: it.type, length: it.length || 0, key: it.key, position: it.position, isSong: it.type === 'song' });
+      }
+      let t = e.startMs;
+      for (const i of out.filter((x) => x.position !== 'pre')) {
+        i.plannedStart = t;
+        t += i.length * 1000;
+      }
+      const pre = out.filter((x) => x.position === 'pre');
+      let back = e.startMs;
+      for (let k = pre.length - 1; k >= 0; k--) {
+        back -= pre[k].length * 1000;
+        pre[k].plannedStart = back;
+      }
+      return out;
+    }
     const encs = encountersFor(dateKey).map((e, i) => {
       let noStream = !e.streamStart && !e.streamEnd;
       // Recording this one: it gets a record window (Schedule, or 15 min
@@ -470,6 +496,22 @@ function makeEngine({ config, db, clock, log }) {
       };
     });
 
+    // Recording only the message: from the last worship song before the
+    // Message through the Post Host (planned times), when the plan has them.
+    for (const e of encs) {
+      if (!e.recorded || e.recordStart || e.recordEnd) continue;
+      const its = planItems(e);
+      const m = its.findIndex((x) => /^message\b/i.test(String(x.title).trim()));
+      if (m < 0) continue;
+      let song = -1;
+      for (let k = m - 1; k >= 0; k--) if (its[k].isSong) { song = k; break; }
+      const startIt = its[song >= 0 ? song : m];
+      const ph = its.findIndex((x, k) => k > m && /post[\s-]*host/i.test(x.title));
+      const endIt = its[ph >= 0 ? ph : m];
+      if (startIt && startIt.plannedStart != null) e.streamStartMs = startIt.plannedStart;
+      if (endIt && endIt.plannedStart != null) e.streamEndMs = endIt.plannedStart + (endIt.length || 0) * 1000;
+    }
+
     // Three phases per Encounter:
     //   Pre-Encounter  until preshow (5 min before the Encounter start)
     //   Preshow        5 min before start → start
@@ -486,36 +528,14 @@ function makeEngine({ config, db, clock, log }) {
     const activeEnc = encs.find((e) => now >= e.preshowFrom && now <= e.liveUntil) || null;
     const liveEnc = activeEnc && now >= activeEnc.liveFrom ? activeEnc : null;
     const preshowEnc = activeEnc && !liveEnc ? activeEnc : null;
-    const upcoming = encs.find((e) => e.preshowFrom > now) || null;
+    // The next Encounter that hasn't started (not the one running now), so
+    // "next" countdowns keep working even when Encounters overlap.
+    const upcoming = encs.find((e) => e !== activeEnc && e.startMs > now) || null;
     let enc = activeEnc || upcoming || encs[encs.length - 1] || null;
     const nextEnc = activeEnc ? upcoming : enc && enc.preshowFrom > now ? enc : null;
 
     // Items for this Encounter.
-    const hide = (cfg().hideItems || ['Washed (Remix)', 'T.I.P. Time [PA]', 'Team Huddles']).map((s) => s.toLowerCase());
-    let items = [];
-    if (plan && enc) {
-      for (const it of plan.items) {
-        if (it.type === 'header') continue;
-        if (hide.includes(String(it.title).toLowerCase())) continue;
-        const r = resolveTitle(it.title, enc.label, enc.index);
-        if (!r.include) continue;
-        items.push({ id: it.id, title: r.title, type: it.type, length: it.length || 0, key: it.key, position: it.position, isSong: it.type === 'song' });
-      }
-      // Planned start times: "during" items run from the Encounter start;
-      // "pre" items stack backwards before it; "post" items follow.
-      const during = items.filter((i) => i.position !== 'pre');
-      let t = enc.startMs;
-      for (const i of during) {
-        i.plannedStart = t;
-        t += i.length * 1000;
-      }
-      const pre = items.filter((i) => i.position === 'pre');
-      let back = enc.startMs;
-      for (let k = pre.length - 1; k >= 0; k--) {
-        back -= pre[k].length * 1000;
-        pre[k].plannedStart = back;
-      }
-    }
+    let items = plan && enc ? planItems(enc) : [];
 
     // Which item is live?
     const songs = d().songs || {};
@@ -660,7 +680,10 @@ function makeEngine({ config, db, clock, log }) {
     // Cams 1–3 and the Broadcast Producer are the Broadcast team; Broadcast
     // ProP and Broadcast Audio stay under Production, with whoever the crew
     // list says is on them.
-    if (enc && enc.recorded) {
+    const recEnc = encs.find((e) => e.recorded);
+    const prevEnc = recEnc && recEnc.index > 0 ? encs[recEnc.index - 1] : null;
+    const crewFrom = prevEnc ? prevEnc.streamEndMs || prevEnc.liveUntil : recEnc && recEnc.preshowFrom;
+    if (recEnc && now >= crewFrom && now <= recEnc.liveUntil) {
       const crew = recordCrew().filter((c) => c.name);
       const prodPos = ['Broadcast ProPresenter Operator', 'Broadcast Audio'];
       people.broadcast = crew.filter((c) => !prodPos.includes(c.position));
