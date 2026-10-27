@@ -376,13 +376,16 @@ const profiles = {
     layouts: {
       live: {
         widgets: [
-          w('t', 'title', 0, 0, 6, 2, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase' }),
-          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
-          w('ir', 'itemRemaining', 12, 0, 6, 2, { accent: true }),
-          w('se', 'countdown', 18, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
-          w('wm', 'worshipMics', 0, 2, 16, 9, {}),
-          w('wl', 'wirelessList', 16, 2, 8, 9, {}),
-          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+          w('t', 'title', 0, 0, 6, 1, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+          w('c', 'clock', 6, 0, 6, 1, { compact: true }),
+          w('ir', 'itemRemaining', 12, 0, 6, 1, { accent: true, compact: true }),
+          w('se', 'countdown', 18, 0, 6, 1, { target: 'streamEnd', label: 'STREAM ENDS IN', compact: true }),
+          w('ros', 'runOfShow', 0, 1, 6, 9, {}),
+          w('sn', 'songNow', 6, 1, 11, 4, { showFeel: true, showProgression: true }),
+          w('ky', 'keys', 6, 5, 11, 2, {}),
+          w('hh', 'handhelds', 6, 7, 11, 3, {}),
+          w('wl', 'wirelessList', 17, 1, 7, 9, {}),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
         ],
       },
       preshow: {
@@ -599,7 +602,7 @@ const LAYOUT_REVISIONS = {
   'preshow-confidence.live': 1,
   'foh-wireless.pre': 2,
   'foh-wireless.preshow': 2,
-  'foh-wireless.live': 1,
+  'foh-wireless.live': 2,
   'foh.pre': 1,
   'foh.preshow': 1,
   'foh.live': 1,
