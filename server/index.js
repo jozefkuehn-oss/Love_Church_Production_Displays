@@ -1026,10 +1026,24 @@ app.put('/api/handhelds/:ch', auth.requirePerm(['handhelds', 'wireless']), (req,
     // Remember who has held a handheld, so they're in the quick list next time.
     db.data.handheldHistory = [...new Set([name, ...(db.data.handheldHistory || [])])].slice(0, 60);
     // Tell every screen except the Dock, flashing red/yellow, for 45 seconds.
+    // If a MIC CHANGE banner is still up (e.g. HH-1 was just given out for
+    // preshow), this one joins it so both names show, in mic order.
     const targets = Object.entries(db.data.profiles).filter(([, p]) => (p.location || '') !== 'The Dock').map(([id]) => id);
+    const nowMs = Date.now();
+    const mics = {};
+    for (const m of db.data.messages) {
+      if (m.mics && !m.cleared && (!m.expiresAt || m.expiresAt > nowMs)) {
+        Object.assign(mics, m.mics);
+        m.cleared = true;
+      }
+    }
+    mics[ch] = name;
+    const order = (c) => (HANDHELDS.indexOf(c) < 0 ? 99 : HANDHELDS.indexOf(c));
+    const text = Object.keys(mics).sort((x, y) => order(x) - order(y)).map((c) => `${c} → ${mics[c]}`).join('   ·   ');
     db.data.messages.push({
       id: crypto.randomUUID(),
-      text: `${ch} → ${name}`,
+      mics,
+      text,
       level: 'urgent',
       flash: true,
       targets,
