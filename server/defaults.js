@@ -385,6 +385,21 @@ const profiles = {
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
+      preshow: {
+        widgets: [
+          w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 4, 0, 4, 2, {}),
+          w('ps', 'preshow', 8, 0, 4, 2, {}),
+          w('ir', 'itemRemaining', 12, 0, 4, 2, {}),
+          w('es', 'countdown', 16, 0, 8, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN', accent: true }),
+          w('ros', 'runOfShow', 0, 2, 6, 9, {}),
+          w('nx', 'songNext', 6, 2, 11, 2, {}),
+          w('sl', 'slide', 6, 4, 11, 4, { which: 'current', source: 'auditorium' }),
+          w('cm', 'faces', 6, 8, 11, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('wl', 'wirelessList', 17, 2, 7, 9, {}),
+          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+        ],
+      },
       pre: {
         widgets: [
           w('t', 'title', 0, 0, 4, 2, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase' }),
@@ -583,7 +598,7 @@ const LAYOUT_REVISIONS = {
   'preshow-confidence.preshow': 4,
   'preshow-confidence.live': 1,
   'foh-wireless.pre': 2,
-  'foh-wireless.preshow': 1,
+  'foh-wireless.preshow': 2,
   'foh-wireless.live': 1,
   'foh.pre': 1,
   'foh.preshow': 1,
