@@ -90,7 +90,8 @@
 
   function render(msg) {
     const { profile, snap } = msg;
-    const style = profile.style || {};
+    // A layout can override the dashboard's style (e.g. Dock Live is a collage, Pre isn't).
+    const style = Object.assign({}, profile.style || {}, (profile.layout && profile.layout.style) || {});
     const widgets = (profile.layout && profile.layout.widgets) || [];
     const sig = JSON.stringify([profile.mode, style, widgets]);
     document.body.dataset.mode = profile.mode;
