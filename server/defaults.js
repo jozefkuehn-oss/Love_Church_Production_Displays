@@ -349,10 +349,15 @@ const profiles = {
       },
       live: {
         widgets: [
-          w('nn', 'nowNext', 0, 0, 18, 1, { compact: true }),
-          w('c', 'clock', 18, 0, 6, 1, { compact: true }),
-          w('se', 'countdown', 0, 1, 24, 7, { target: 'streamEnd', label: 'STREAM ENDS IN', huge: true }),
-          w('mb', 'messageBar', 0, 8, 24, 4, { big: true }),
+          w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 6, 0, 6, 2, {}),
+          w('se', 'countdown', 12, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN', accent: true }),
+          w('ns', 'countdown', 18, 0, 6, 2, { target: 'nextStart', label: '{next} STARTS IN' }),
+          w('nn', 'nowNext', 0, 2, 24, 1, { compact: true }),
+          w('cm', 'faces', 0, 3, 12, 4, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('sm', 'faces', 0, 7, 12, 3, { group: 'service', label: 'SERVICE MANAGEMENT' }),
+          w('sl', 'slide', 12, 3, 12, 7, { which: 'current', source: 'auditorium' }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
         ],
       },
     },
@@ -599,6 +604,7 @@ const LAYOUT_REVISIONS = {
   'greenroom.live': 1,
   'preshow-confidence.pre': 3,
   'preshow-confidence.preshow': 4,
+  'preshow-confidence.live': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
