@@ -69,7 +69,7 @@
     const roleColor = extra.roleColor || c._roleColor || '';
     // Name strip goes UNDER the photo (not over it) unless the card is tall
     // and narrow, so wide cards never hide a face behind the name.
-    const split = size.h && size.w && size.h < size.w * 1.3;
+    const split = extra.split || (size.h && size.w && size.h < size.w * 1.3);
     return `<div class="face ${split ? 'split' : ''}" style="${extra.fixed ? `height:${Math.round(size.h)}px;` : ''}">
       ${split ? `<div class="phw">${photoImg(c, true)}</div>` : photoImg(c)}
       ${c.pending && !extra.noPending ? '<span class="pend">PENDING</span>' : ''}
@@ -347,7 +347,11 @@
     const img = (c, extra) => c.photo
       ? `<img src="${esc(c.photo)}" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:${c.focusX != null ? c.focusX : 50}% ${Math.min(45, (c.focusY != null ? c.focusY : 15) + 10)}%;${extra || ''}">`
       : `<span style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#4a4a4f;font-size:${Math.round(Math.min(w, h) / 3)}px">${esc(c.initials)}</span>`;
-    const role = (c) => `<div style="font-weight:800;letter-spacing:.08em;color:${o.roleColor || c._roleColor || 'var(--pink-text)'};font-size:ROLEpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.role)}</div>`;
+    // Role line shrinks (down to 8px) so it always fits on one line.
+    const textW = look === 'badge' ? w - h - Math.round(h * 0.28) : look === 'avatar' ? w : w - Math.round(w * 0.12);
+    // If even 9px won't fit on one line, the role wraps to a second line.
+    const role = (c, sz) => `<div style="font-weight:800;letter-spacing:.06em;line-height:1.1;color:${o.roleColor || c._roleColor || 'var(--pink-text)'};font-size:${Math.max(9, sz)}px;white-space:${sz < 9 ? 'normal' : 'nowrap'}">${esc(c.role)}</div>`;
+    const fitRole = (c, base) => Math.max(1, Math.min(base, Math.floor(textW / Math.max(1, String(c.role || '').length * 0.72))));
     const pend = (c) => (c.pending ? '<span class="pend">PENDING</span>' : '');
     let cards;
     if (look === 'badge') {
@@ -355,21 +359,21 @@
       const rl = Math.max(10, Math.min(15, Math.round(h * 0.12)));
       cards = list.map((c) => `<div style="position:relative;display:flex;width:${w}px;height:${h}px;background:var(--panel-2);border-radius:12px;overflow:hidden">
         <div style="position:relative;flex:none;width:${h}px;height:${h}px;background:#1c1c1f">${img(c)}</div>
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 ${Math.round(h * 0.14)}px">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 ${Math.round(h * 0.14)}px">${role(c, fitRole(c, rl))}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
     } else if (look === 'avatar') {
       const d = Math.floor(Math.min(w, h * 0.72));
       const nm = Math.max(13, Math.min(28, Math.round(w / 8.5)));
       const rl = Math.max(10, Math.min(14, Math.round(w / 16)));
       cards = list.map((c) => `<div style="position:relative;width:${w}px;height:${h}px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
         <div style="position:relative;flex:none;width:${d}px;height:${d}px;border-radius:50%;overflow:hidden;background:#1c1c1f;box-shadow:0 0 0 3px ${c._roleColor || 'var(--line)'}">${img(c)}</div>
-        <div style="min-width:0;max-width:100%">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${c.pending ? '<span class="pend" style="top:0;right:0">PENDING</span>' : ''}</div>`).join('');
+        <div style="min-width:0;max-width:100%">${role(c, fitRole(c, rl))}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${c.pending ? '<span class="pend" style="top:0;right:0">PENDING</span>' : ''}</div>`).join('');
     } else {
       const textH = Math.max(46, Math.round(h * 0.25));
       const nm = Math.max(13, Math.min(28, Math.round(w / 8.5)));
       const rl = Math.max(10, Math.min(14, Math.round(w / 16)));
       cards = list.map((c) => `<div style="position:relative;width:${w}px;height:${h}px;display:flex;flex-direction:column;background:var(--panel-2);border-radius:12px;overflow:hidden">
         <div style="position:relative;flex:1;min-height:0;background:#1c1c1f">${img(c)}</div>
-        <div style="flex:none;height:${textH}px;display:flex;flex-direction:column;justify-content:center;padding:0 ${Math.round(w * 0.06)}px">${role(c).replace('ROLE', rl)}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
+        <div style="flex:none;height:${textH}px;display:flex;flex-direction:column;justify-content:center;padding:0 ${Math.round(w * 0.06)}px">${role(c, fitRole(c, rl))}<div style="font-size:${nm}px;font-weight:800;line-height:1.05;text-wrap:balance">${esc(c.name)}</div></div>${pend(c)}</div>`).join('');
     }
     const labelColor = /communicators$/.test(o.group) ? 'blue' : 'pink';
     return `<div class="faces-wrap">${headH ? `<div class="label ${labelColor}">${esc(o.label)}</div>` : ''}
@@ -389,6 +393,7 @@
         const c = { ...r, pending: false };
         return faceCard(c, size, {
           fixed: true,
+          split: true,
           below: `<div style="display:flex;flex-direction:column;gap:7px;margin-top:8px">${devRow(r.mic)}${devRow(r.iem)}</div>`,
           ring: alert ? '<span class="ring" style="box-shadow:inset 0 0 0 4px var(--red)"></span>' : warn ? '<span class="ring" style="box-shadow:inset 0 0 0 4px var(--yellow)"></span>' : '',
           inner: alert ? '<span class="tag" style="background:var(--red);color:#fff">CHECK</span>' : warn ? '<span class="tag" style="background:var(--yellow);color:#111">LOW</span>' : '',
@@ -411,36 +416,78 @@
 
   // Every mic and IEM, always all on screen: rows shrink to fit the block, and
   // go to two columns when one column would get too tight to read.
+  // Every mic and IEM, always all on screen. Each person's IEM sits right under
+  // their mic (name shown once); people with only an IEM come after. Rows
+  // shrink to fit the block, and go to two columns if one would be too tight.
   W.wirelessList = (o, s, ctx) => {
-    const rows = (s.wireless || [])
-      .flatMap((r) => [r.mic && r.mic.ch && r.mic.ch !== 'WIRED' && r.mic.ch !== 'N/A' ? { r, d: r.mic } : null, r.iem && r.iem.ch && r.iem.ch !== 'N/A' ? { r, d: r.iem } : null])
-      .filter(Boolean)
-      .sort((a, b) => (a.d.ch.startsWith('IEM') - b.d.ch.startsWith('IEM')) || a.d.ch.localeCompare(b.d.ch, undefined, { numeric: true }));
+    const usable = (d) => d && d.ch && d.ch !== 'WIRED' && d.ch !== 'N/A';
+    const chNum = (ch) => String(ch || '');
+    const byCh = (a, b) => chNum(a).localeCompare(chNum(b), undefined, { numeric: true });
+    const people = (s.wireless || []).filter((r) => usable(r.mic) || usable(r.iem));
+    const withMic = people.filter((r) => usable(r.mic)).sort((a, b) => byCh(a.mic.ch, b.mic.ch));
+    const iemOnly = people.filter((r) => !usable(r.mic)).sort((a, b) => byCh(a.iem.ch, b.iem.ch));
+    const rows = [];
+    for (const r of withMic) {
+      rows.push({ r, d: r.mic, first: true });
+      if (usable(r.iem)) rows.push({ r, d: r.iem, first: false });
+    }
+    for (const r of iemOnly) rows.push({ r, d: r.iem, first: true });
     const W0 = (ctx && ctx.w) || 600, H0 = (ctx && ctx.h) || 800;
     const gap = 6;
-    const avail = H0 - 40 - 30 - 8; // panel padding, header, header gap
+    const avail = H0 - 40 - 30 - 8;
     const rowsFor = (cols) => Math.ceil(rows.length / cols);
     const hFor = (cols) => (avail - gap * (rowsFor(cols) - 1)) / Math.max(1, rowsFor(cols));
     let cols = 1;
-    if (hFor(1) < 34 && W0 >= 640) cols = 2;
+    if (hFor(1) < 30 && W0 >= 640) cols = 2;
     const rh = Math.max(18, Math.min(52, hFor(cols)));
-    const f = Math.max(11, Math.min(17, Math.round(rh * 0.42)));
-    const av = Math.max(14, Math.min(38, Math.round(rh - 10)));
+    const f = Math.max(11, Math.min(17, Math.round(rh * 0.46)));
+    const av = Math.max(14, Math.min(38, Math.round(rh - 8)));
     const html = rows
-      .map(({ r, d }) => {
+      .map(({ r, d, first }) => {
         const alert = devAlert(d);
         const col = d.battery < 20 ? 'var(--red)' : d.battery < 35 ? 'var(--yellow)' : 'var(--green)';
-        return `<div class="wl-row ${alert ? 'alert' : ''}" style="min-height:0;height:${Math.floor(rh)}px;padding:0 ${rh < 30 ? 6 : 10}px;gap:${rh < 30 ? 6 : 10}px">
+        const who = first
+          ? `<span class="av" style="width:${av}px;height:${av}px;font-size:${Math.max(9, Math.round(av / 3))}px">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
+            <span class="grow ell" style="font-size:${f}px;font-weight:600;line-height:1.1">${esc(r.name)}</span>`
+          : `<span style="width:${av}px;flex:none;align-self:stretch;border-left:2px solid var(--line);margin-left:${Math.round(av / 2)}px;width:${Math.round(av / 2)}px"></span><span class="grow"></span>`;
+        const meter = d.battery == null && !d.off
+          ? `<span style="width:${Math.round(f * 6.5)}px;flex:none;text-align:right;font-size:${Math.max(10, f - 3)}px;color:var(--dim)">${d.ch.startsWith('IEM') ? 'assigned' : ''}</span>`
+          : `<span style="width:${Math.round(f * 3.2)}px;flex:none;height:${Math.max(6, Math.round(f * 0.55))}px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${d.battery || 0}%;background:${col}"></i></span>
+          <span style="width:${Math.round(f * 3.1)}px;flex:none;text-align:right;font-size:${f}px;font-weight:700;color:${d.off ? 'var(--dim)' : d.battery < 35 ? col : '#fff'}">${d.off ? 'OFF' : battText(d)}</span>`;
+        return `<div class="wl-row ${alert ? 'alert' : ''}" style="min-height:0;height:${Math.floor(rh)}px;padding:0 ${rh < 30 ? 6 : 10}px;gap:${rh < 30 ? 6 : 10}px;${first ? '' : 'background:transparent'}">
           <span style="width:${Math.round(f * 3.1)}px;flex:none;font-size:${Math.max(10, f - 3)}px;font-weight:800;color:var(--muted)">${esc(d.ch)}</span>
-          <span class="av" style="width:${av}px;height:${av}px;font-size:${Math.max(9, Math.round(av / 3))}px">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
-          <span class="grow ell" style="font-size:${f}px;font-weight:600;line-height:1.1">${esc(r.name)}</span>
-          <span style="width:${Math.round(f * 3.2)}px;flex:none;height:${Math.max(6, Math.round(f * 0.55))}px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${d.battery || 0}%;background:${col}"></i></span>
-          <span style="width:${Math.round(f * 3.1)}px;flex:none;text-align:right;font-size:${f}px;font-weight:700;color:${d.off ? 'var(--dim)' : d.battery < 35 ? col : '#fff'}">${d.off ? 'OFF' : d.battery == null ? '' : battText(d)}</span>
+          ${who}${meter}
           <span class="rf ${rfClass(d)}"></span></div>`;
       })
       .join('');
     return `<div class="panel" style="height:100%;gap:8px"><div class="row"><div class="label grow">WIRELESS</div><div style="font-size:14px;color:var(--dim)">Battery · RF</div></div>
-      <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));grid-auto-rows:${Math.floor(rh)}px;gap:${gap}px ${cols > 1 ? 10 : 0}px;grid-auto-flow:column;grid-template-rows:repeat(${rowsFor(cols)},${Math.floor(rh)}px)">${html || '<div class="missing">No wireless assigned</div>'}</div></div>`;
+      <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:${gap}px ${cols > 1 ? 10 : 0}px;grid-auto-flow:column;grid-template-rows:repeat(${rowsFor(cols)},${Math.floor(rh)}px)">${html || '<div class="missing">No wireless assigned</div>'}</div></div>`;
+  };
+
+  // HH-1 and HH-2 at a glance: who has each one right now (Floor Manager's
+  // Handhelds page), plus battery and RF straight from the receiver.
+  W.handhelds = (o, s, ctx) => {
+    const list = s.handhelds || [];
+    const W0 = (ctx && ctx.w) || 600, H0 = (ctx && ctx.h) || 200;
+    const side = W0 / Math.max(1, H0) > 2.2; // wide box: side by side
+    const tileW = side ? (W0 - 12) / 2 : W0, tileH = side ? H0 : (H0 - 12) / 2;
+    const big = Math.max(16, Math.min(40, Math.round(tileH * 0.24)));
+    const av = Math.round(Math.min(tileH - 24, tileW * 0.28, 110));
+    const tile = (h) => {
+      const col = h.battery == null ? 'var(--dim)' : h.battery < 20 ? 'var(--red)' : h.battery < 35 ? 'var(--yellow)' : 'var(--green)';
+      const state = h.off ? 'OFF' : h.battery == null ? 'No signal' : battText(h);
+      const rf = h.off || h.battery == null ? '' : `<span class="row" style="gap:6px;font-size:${Math.round(big * 0.5)}px;color:${h.rf === false ? 'var(--red)' : 'var(--muted)'}"><span class="rf ${rfClass(h)}"></span>${h.rf === false ? 'RF DROP' : 'RF'}</span>`;
+      const alert = devAlert(h);
+      return `<div style="position:relative;display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:14px;background:var(--panel);min-width:0;${alert ? 'box-shadow:inset 0 0 0 3px var(--red)' : ''}">
+        <span class="av" style="width:${av}px;height:${av}px;border-radius:50%;font-size:${Math.round(av / 3)}px">${h.photo ? `<img src="${esc(h.photo)}" alt="" style="object-position:${h.focusX}% ${h.focusY}%">` : esc(h.initials || '—')}</span>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <div class="row" style="gap:10px"><span style="font-size:${Math.round(big * 0.55)}px;font-weight:800;letter-spacing:.1em;color:var(--pink-text)">${esc(h.ch)}</span>${h.moment ? `<span style="font-size:${Math.round(big * 0.45)}px;color:var(--muted);font-weight:700">${esc(h.moment)}</span>` : ''}</div>
+          <div style="font-size:${Math.max(14, Math.min(big, Math.floor((tileW - av - 60) / Math.max(1, String(h.name || 'Not assigned').length * 0.56))))}px;font-weight:800;line-height:1.05;white-space:nowrap">${h.name ? esc(h.name) : '<span style="color:var(--dim)">Not assigned</span>'}</div>
+          <div class="row" style="gap:10px"><span style="flex:1;max-width:160px;height:${Math.max(8, Math.round(big * 0.3))}px;border-radius:6px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${h.battery || 0}%;background:${col}"></i></span>
+            <span style="font-size:${Math.round(big * 0.6)}px;font-weight:800;color:${h.battery != null && h.battery < 35 ? col : '#fff'}">${state}</span>${rf}</div>
+        </div></div>`;
+    };
+    return `<div style="height:100%;display:grid;gap:12px;grid-template-columns:${side ? '1fr 1fr' : '1fr'};grid-template-rows:${side ? '1fr' : '1fr 1fr'}">${list.map(tile).join('') || '<div class="missing">No handhelds</div>'}</div>`;
   };
 
   function needTags(it, s) {

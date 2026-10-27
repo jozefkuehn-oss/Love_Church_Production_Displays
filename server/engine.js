@@ -105,6 +105,7 @@ function makeEngine({ config, db, clock, log }) {
   const wireless = makeWireless();
   const shure = makeShure();
   let lastWirelessRows = [];
+  let lastHandhelds = [];
   const receiverHosts = () => ((cfg().wireless || {}).receivers || []).filter((r) => r && r.host && r.enabled !== false).map((r) => r.host);
   const tracking = { encLabel: null, index: null, startedAt: null };
   let anchor = null; // last ProPresenter match { enc, index, at }
@@ -397,12 +398,18 @@ function makeEngine({ config, db, clock, log }) {
       };
       iem = (name) => ({ ch: name, battery: null, rf: null });
     } else if (cfg().sampleMode) {
-      wireless.seed(rows.flatMap((r) => [r.mic, r.iem]));
+      wireless.seed(rows.flatMap((r) => [r.mic, r.iem]).concat(['HH-1', 'HH-2']));
       const live = wireless.tick();
       mic = iem = (name) => (name && name !== 'WIRED' && live[name] ? { ch: name, battery: live[name].battery, rf: live[name].rf } : { ch: name, battery: null, rf: null });
     } else {
       mic = iem = (name) => ({ ch: name, battery: null, rf: null });
     }
+    // Handheld channels on their own, assigned or not, for the HH status box.
+    lastHandhelds = ['HH-1', 'HH-2'].map((ch) => {
+      const who = rows.find((x) => nrm(x.mic) === nrm(ch));
+      const dev = mic(ch);
+      return { ch, ...dev, ch2: dev.ch, name: who ? who.name : '', role: who ? who.role : '', moment: who ? who.handheld || '' : '', photo: who && who.photo, focusX: who && who.focusX, focusY: who && who.focusY, initials: who ? who.initials : '' };
+    });
     lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem, fromNotes: r.fromNotes, handheld: r.handheld || '' }));
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
   }
@@ -750,6 +757,7 @@ function makeEngine({ config, db, clock, log }) {
       runDay,
       people,
       wireless: wl,
+      handhelds: lastHandhelds,
       messages,
       targets,
       modes,
