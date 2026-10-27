@@ -394,7 +394,7 @@
   // ---------------- Displays + layout editor ----------------
   const WIDGETS = {
     title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'phase', 'date', 'encounters']], ['compact', 'bool']] },
-    clock: { name: 'Time of day', opts: [['label', 'text'], ['seconds', 'bool'], ['compact', 'bool']] },
+    clock: { name: 'Time of day', opts: [['label', 'text'], ['compact', 'bool']] },
     preshow: { name: 'Preshow countdown', opts: [['label', 'text'], ['huge', 'bool'], ['compact', 'bool'], ['fallback', ['', 'projected', 'clock', 'itemRemaining', 'countdown']], ['showBeforeMin', 'number']] },
     countdown: { name: 'Countdown', opts: [['target', ['nextStart', 'nextStreamStart', 'nextBandToStage', 'streamEnd', 'encounterStart', 'bandToStage', 'streamStart', 'positions', 'firstStream', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool'], ['huge', 'bool']] },
     encountersToday: { name: 'Today’s Encounters strip', opts: [['compact', 'bool']] },

@@ -136,7 +136,7 @@
 
 
   W.clock = (o, s, ctx) => {
-    const secs = !!o.seconds;
+    const secs = true; // time of day is always h:mm:ss
     // Shrink the digits in narrow boxes so the AM/PM always fits.
     const fs = !o.compact && ctx && ctx.w ? Math.min(58, Math.floor((ctx.w - 48) / (secs ? 5.4 : 4.1))) : null;
     return `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v" style="white-space:nowrap;${fs ? `font-size:${fs}px` : ''}">${clockText(s.now, s.tz, secs)}<span class="ampm">${ampm(s.now, s.tz)}</span></div></div>`;
