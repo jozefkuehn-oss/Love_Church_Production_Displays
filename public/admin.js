@@ -411,7 +411,7 @@
     graphics: { name: 'Broadcast graphics', opts: [] },
     faces: { name: 'Face cards', opts: [['group', ['stage', 'communicators', 'broadcast', 'production', 'service', 'production+service', 'production+service+broadcast', 'leadership', 'stage+communicators', 'leadership+stage+communicators']], ['label', 'text'], ['look', ['fill', 'portrait', 'badge', 'avatar']], ['collage', 'bool'], ['columns', 'number'], ['roleColor', 'text']] },
     worshipMics: { name: 'Worship team mics & IEMs', opts: [['columns', 'number']] },
-    handhelds: { name: 'Handhelds (HH-1 / HH-2)', opts: [] },
+    handhelds: { name: 'Spoken mics (HH-1, HH-2, TEACH, BP-1, BP-2)', opts: [] },
     goto: { name: 'Go-to people', opts: [] },
     wirelessList: { name: 'Wireless list', opts: [] },
     nowNext: { name: 'Now / next strip', opts: [['compact', 'bool'], ['nowOnly', 'bool']] },

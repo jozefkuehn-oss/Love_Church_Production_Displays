@@ -464,30 +464,34 @@
       <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:${gap}px ${cols > 1 ? 10 : 0}px;grid-auto-flow:column;grid-template-rows:repeat(${rowsFor(cols)},${Math.floor(rh)}px)">${html || '<div class="missing">No wireless assigned</div>'}</div></div>`;
   };
 
-  // HH-1 and HH-2 at a glance: who has each one right now (Floor Manager's
-  // Handhelds page), plus battery and RF straight from the receiver.
+  // Spoken-word mics at a glance (HH-1, HH-2, TEACH, BP-1, BP-2): who has each
+  // one right now, plus battery and RF straight from the receiver.
   W.handhelds = (o, s, ctx) => {
     const list = s.handhelds || [];
     const W0 = (ctx && ctx.w) || 600, H0 = (ctx && ctx.h) || 200;
-    const side = W0 / Math.max(1, H0) > 2.2; // wide box: side by side
-    const tileW = side ? (W0 - 12) / 2 : W0, tileH = side ? H0 : (H0 - 12) / 2;
-    const big = Math.max(16, Math.min(40, Math.round(tileH * 0.24)));
-    const av = Math.round(Math.min(tileH - 24, tileW * 0.28, 110));
+    const gap = 10;
+    const fit = fitGrid(list.length, W0, H0, gap, 2.4);
+    const tileW = (W0 - gap * (fit.cols - 1)) / fit.cols;
+    const tileH = (H0 - gap * (fit.rows - 1)) / fit.rows;
+    const av = Math.round(Math.max(24, Math.min(tileH - 20, tileW * 0.3, 110)));
     const tile = (h) => {
       const col = h.battery == null ? 'var(--dim)' : h.battery < 20 ? 'var(--red)' : h.battery < 35 ? 'var(--yellow)' : 'var(--green)';
       const state = h.off ? 'OFF' : h.battery == null ? 'No signal' : battText(h);
-      const rf = h.off || h.battery == null ? '' : `<span class="row" style="gap:6px;font-size:${Math.round(big * 0.5)}px;color:${h.rf === false ? 'var(--red)' : 'var(--muted)'}"><span class="rf ${rfClass(h)}"></span>${h.rf === false ? 'RF DROP' : 'RF'}</span>`;
+      const textW = tileW - av - 40;
+      const nmText = h.name || 'Not assigned';
+      const nm = Math.max(11, Math.min(Math.round(tileH * 0.24), 36, Math.floor(textW / Math.max(1, nmText.length * 0.56))));
+      const sm = Math.max(10, Math.round(nm * 0.62));
       const alert = devAlert(h);
-      return `<div style="position:relative;display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:14px;background:var(--panel);min-width:0;${alert ? 'box-shadow:inset 0 0 0 3px var(--red)' : ''}">
+      return `<div style="position:relative;display:flex;align-items:center;gap:${Math.round(av * 0.16)}px;padding:8px 12px;border-radius:12px;background:var(--panel);min-width:0;${alert ? 'box-shadow:inset 0 0 0 3px var(--red)' : ''}">
         <span class="av" style="width:${av}px;height:${av}px;border-radius:50%;font-size:${Math.round(av / 3)}px">${h.photo ? `<img src="${esc(h.photo)}" alt="" style="object-position:${h.focusX}% ${h.focusY}%">` : esc(h.initials || '—')}</span>
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-          <div class="row" style="gap:10px"><span style="font-size:${Math.round(big * 0.55)}px;font-weight:800;letter-spacing:.1em;color:var(--pink-text)">${esc(h.ch)}</span>${h.moment ? `<span style="font-size:${Math.round(big * 0.45)}px;color:var(--muted);font-weight:700">${esc(h.moment)}</span>` : ''}</div>
-          <div style="font-size:${Math.max(14, Math.min(big, Math.floor((tileW - av - 60) / Math.max(1, String(h.name || 'Not assigned').length * 0.56))))}px;font-weight:800;line-height:1.05;white-space:nowrap">${h.name ? esc(h.name) : '<span style="color:var(--dim)">Not assigned</span>'}</div>
-          <div class="row" style="gap:10px"><span style="flex:1;max-width:160px;height:${Math.max(8, Math.round(big * 0.3))}px;border-radius:6px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${h.battery || 0}%;background:${col}"></i></span>
-            <span style="font-size:${Math.round(big * 0.6)}px;font-weight:800;color:${h.battery != null && h.battery < 35 ? col : '#fff'}">${state}</span>${rf}</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:${Math.round(nm * 0.15)}px">
+          <div style="font-size:${sm}px;font-weight:800;letter-spacing:.08em;color:var(--pink-text);white-space:nowrap">${esc(h.ch)}${h.moment ? `<span style="color:var(--muted);letter-spacing:0;margin-left:6px">${esc(h.moment)}</span>` : ''}</div>
+          <div style="font-size:${nm}px;font-weight:800;line-height:1.05;white-space:nowrap">${h.name ? esc(h.name) : '<span style="color:var(--dim)">Not assigned</span>'}</div>
+          <div class="row" style="gap:8px"><span style="flex:1;max-width:140px;height:${Math.max(6, Math.round(nm * 0.3))}px;border-radius:5px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${h.battery || 0}%;background:${col}"></i></span>
+            <span style="font-size:${sm}px;font-weight:800;color:${h.battery != null && h.battery < 35 ? col : '#fff'};white-space:nowrap">${state}</span>${h.off || h.battery == null ? '' : `<span class="rf ${rfClass(h)}"></span>`}</div>
         </div></div>`;
     };
-    return `<div style="height:100%;display:grid;gap:12px;grid-template-columns:${side ? '1fr 1fr' : '1fr'};grid-template-rows:${side ? '1fr' : '1fr 1fr'}">${list.map(tile).join('') || '<div class="missing">No handhelds</div>'}</div>`;
+    return `<div style="height:100%;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols},minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">${list.map(tile).join('') || '<div class="missing">No mics</div>'}</div>`;
   };
 
   function needTags(it, s) {

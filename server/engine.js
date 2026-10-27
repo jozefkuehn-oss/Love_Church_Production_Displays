@@ -72,6 +72,9 @@ const BROADCAST_ORDER = [
 ];
 const COMMS_ORDER = ['Encounter Host', 'Online Host', 'Online Co-Host', 'Bible Teacher', 'TIP Host'];
 
+// Handhelds, the teaching mic and belt packs: the mics that move between people.
+const SPOKEN_MICS = ['HH-1', 'HH-2', 'TEACH', 'BP-1', 'BP-2'];
+
 const DEFAULT_PRESHOW_POINTS = '• Welcome\n• 1, 2, 5\n• Take A Next Step!\n• Pitch to :30 Countdown';
 
 const SHORT = {
@@ -398,17 +401,17 @@ function makeEngine({ config, db, clock, log }) {
       };
       iem = (name) => ({ ch: name, battery: null, rf: null });
     } else if (cfg().sampleMode) {
-      wireless.seed(rows.flatMap((r) => [r.mic, r.iem]).concat(['HH-1', 'HH-2']));
+      wireless.seed(rows.flatMap((r) => [r.mic, r.iem]).concat(SPOKEN_MICS));
       const live = wireless.tick();
       mic = iem = (name) => (name && name !== 'WIRED' && live[name] ? { ch: name, battery: live[name].battery, rf: live[name].rf } : { ch: name, battery: null, rf: null });
     } else {
       mic = iem = (name) => ({ ch: name, battery: null, rf: null });
     }
-    // Handheld channels on their own, assigned or not, for the HH status box.
-    lastHandhelds = ['HH-1', 'HH-2'].map((ch) => {
+    // Spoken-word mics on their own, assigned or not, for the status box.
+    lastHandhelds = SPOKEN_MICS.map((ch) => {
       const who = rows.find((x) => nrm(x.mic) === nrm(ch));
       const dev = mic(ch);
-      return { ch, ...dev, ch2: dev.ch, name: who ? who.name : '', role: who ? who.role : '', moment: who ? who.handheld || '' : '', photo: who && who.photo, focusX: who && who.focusX, focusY: who && who.focusY, initials: who ? who.initials : '' };
+      return { ch, ...dev, name: who ? who.name : '', role: who ? who.role : '', moment: who ? who.handheld || '' : '', photo: who && who.photo, focusX: who && who.focusX, focusY: who && who.focusY, initials: who ? who.initials : '' };
     });
     lastWirelessRows = rows.map((r) => ({ name: r.name, position: r.position, role: r.role, mic: r.mic, iem: r.iem, defMic: r.defMic, defIem: r.defIem, fromNotes: r.fromNotes, handheld: r.handheld || '' }));
     return rows.map((r) => ({ ...r, mic: mic(r.mic), iem: r.iem ? iem(r.iem) : null }));
