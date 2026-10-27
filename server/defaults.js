@@ -88,7 +88,8 @@ const profiles = {
           w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
           w('st', 'faces', 6, 6, 9, 5, { group: 'stage', label: 'ON STAGE' }),
           w('sl', 'slide', 15, 2, 9, 3, { which: 'current', source: 'auditorium' }),
-          w('cm', 'faces', 15, 5, 9, 6, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('cm', 'faces', 15, 5, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('hh', 'handhelds', 15, 8, 9, 3, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
@@ -117,7 +118,8 @@ const profiles = {
           w('sn', 'songNow', 6, 2, 9, 4, { showFeel: true, showProgression: true }),
           w('st', 'faces', 6, 6, 9, 5, { group: 'stage', label: 'ON STAGE' }),
           w('fu', 'firstUp', 15, 2, 9, 3, {}),
-          w('cm', 'faces', 15, 5, 9, 6, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('cm', 'faces', 15, 5, 9, 3, { group: 'communicators', label: 'COMMUNICATORS' }),
+          w('hh', 'handhelds', 15, 8, 9, 3, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
@@ -616,8 +618,8 @@ const LAYOUT_REVISIONS = {
   'foh.pre': 1,
   'foh.preshow': 1,
   'foh.live': 1,
-  'broadcast.preshow': 1,
-  'broadcast.live': 3,
+  'broadcast.preshow': 2,
+  'broadcast.live': 4,
 };
 
 module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
