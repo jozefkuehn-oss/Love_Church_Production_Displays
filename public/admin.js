@@ -340,6 +340,7 @@
       <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
+      <div class="card" id="sbc" style="margin-top:12px"></div>
       <div class="card" id="rc" style="margin-top:12px"></div>
       <div class="card" id="rh" style="margin-top:12px"></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
@@ -425,6 +426,25 @@
       };
     }
     drawRecording();
+    // Subs: who's actually here today.
+    async function drawSubs(open) {
+      const r = await api('/api/subs').catch(() => null);
+      if (!r || !$('#sbc')) return;
+      const n = r.groups.reduce((k, g) => k + g.rows.filter((x) => x.sub).length, 0);
+      $('#sbc').innerHTML = `<details ${open ? 'open' : ''}><summary class="row sp" style="cursor:pointer"><strong>Subs today</strong><span class="dim">${n ? n + ' sub' + (n > 1 ? 's' : '') : 'Someone didn’t show? Put a sub in their spot'}</span></summary>
+        <p class="dim">Type the person filling in and tap Save. Every screen uses them for today: face cards, mics, go-to people. Clear the box to go back to who’s scheduled.</p>
+        ${r.groups.map((g) => `<h3 style="margin:14px 0 6px">${esc(g.team)}</h3>${g.rows
+          .map((x) => `<div class="row nowrap" style="margin-bottom:6px;align-items:end"><label class="grow">${esc(x.position)} <span class="dim">· ${esc(x.name)}${x.status !== 'confirmed' ? ' (not confirmed)' : ''}</span>
+            <input list="sbnames" data-sk="${esc(x.key)}" value="${esc(x.sub)}" placeholder="${esc(x.name)}"></label>
+            <button class="small ${x.sub ? '' : 'ghost'}" data-sks="${esc(x.key)}">Save</button></div>`)
+          .join('')}`).join('')}
+        <datalist id="sbnames">${r.names.map((nm) => `<option value="${esc(nm)}">`).join('')}</datalist></details>`;
+      $$('[data-sks]').forEach((b) => (b.onclick = () => {
+        const inp = $(`[data-sk="${CSS.escape(b.dataset.sks)}"]`);
+        api('/api/subs', { method: 'PUT', body: { key: b.dataset.sks, name: inp.value } }).then(() => { toast(inp.value ? 'Sub saved' : 'Back to scheduled'); drawSubs(true); }).catch(fail);
+      }));
+    }
+    drawSubs(false);
     $('#pps').onclick = () => api('/api/preshow-points', { method: 'PUT', body: { text: $('#ppt').value } }).then(() => toast('Points saved')).catch(fail);
     load();
     S.timers.push(setInterval(load, 2500));

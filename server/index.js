@@ -541,6 +541,42 @@ app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
   ok(res);
 });
 
+// Subs: when someone doesn't show, put someone else in their spot for today.
+// Every screen (face cards, mics, go-to people, the 11:45 crew) uses the sub.
+const SUB_TEAMS = [/worship/i, /communicator/i, /broadcast/i, /production/i, /service management/i];
+app.get('/api/subs', auth.requirePerm(['live', 'wireless']), (req, res) => {
+  engine.snapshot();
+  const plan = engine.getPlan();
+  if (!plan) return ok(res, { groups: [], names: [] });
+  const sb = db.data.subs && db.data.subs.date === plan.date ? db.data.subs.byKey || {} : {};
+  const groups = [];
+  for (const p of plan.people) {
+    if (!SUB_TEAMS.some((re) => re.test(p.team || ''))) continue;
+    let g = groups.find((x) => x.team === p.team);
+    if (!g) groups.push((g = { team: p.team, rows: [] }));
+    const key = engine.subKey(p);
+    g.rows.push({ key, position: p.position, name: p.name, sub: sb[key] || '', status: p.status });
+  }
+  groups.sort((a, b) => SUB_TEAMS.findIndex((re) => re.test(a.team)) - SUB_TEAMS.findIndex((re) => re.test(b.team)));
+  const names = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
+  ok(res, { date: plan.date, groups, names });
+});
+app.put('/api/subs', auth.requirePerm(['live', 'wireless']), (req, res) => {
+  const plan = engine.getPlan();
+  if (!plan) return bad(res, 'No plan loaded yet.');
+  const { key } = req.body || {};
+  if (!plan.people.some((p) => engine.subKey(p) === key)) return bad(res, 'That spot isn’t on today’s plan.');
+  if (!db.data.subs || db.data.subs.date !== plan.date) db.data.subs = { date: plan.date, byKey: {} };
+  const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const orig = key.split('|')[2];
+  if (name && name !== orig) db.data.subs.byKey[key] = name;
+  else delete db.data.subs.byKey[key];
+  db.save();
+  log(`Sub: ${key} → ${name || '(back to scheduled)'} by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
 // Recording an unstreamed Encounter (the 11:45): on/off for this Sunday, and
 // who's on the crew that stays (defaults to whoever PCO has in each position).
 function recordLabel() {

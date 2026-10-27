@@ -242,11 +242,21 @@ function makeEngine({ config, db, clock, log }) {
     return { photo: src, focusX: o.focusX ?? 50, focusY: o.focusY ?? 15, zoom: o.zoom ?? 1 };
   }
 
+  // Subs: someone didn't show, so a producer put someone else in their spot
+  // for today (Live page). Keyed by team | position | scheduled name.
+  const subKey = (p) => `${p.team}|${p.position}|${p.name}`;
+  function rosterToday() {
+    if (!plan) return [];
+    const sb = d().subs && d().subs.date === plan.date ? d().subs.byKey || {} : {};
+    return plan.people.map((p) => (sb[subKey(p)] ? { ...p, name: sb[subKey(p)], subFor: p.name, status: 'confirmed' } : p));
+  }
+
   function buildPeople() {
     if (!plan) return {};
+    const roster = rosterToday();
     const byName = new Map();
-    for (const p of plan.people) {
-      const cur = byName.get(p.name) || { name: p.name, positions: [], teams: new Set(), status: p.status };
+    for (const p of roster) {
+      const cur = byName.get(p.name) || { name: p.name, positions: [], teams: new Set(), status: p.status, subFor: p.subFor };
       cur.positions.push(p.position);
       cur.teams.add(p.team);
       if (p.status !== 'confirmed') cur.status = p.status;
@@ -258,6 +268,7 @@ function makeEngine({ config, db, clock, log }) {
       position,
       initials: initials(person.name),
       pending: person.status !== 'confirmed',
+      subFor: person.subFor || '',
       ...photoFor(person.name),
     });
     const rank = (order, pos) => {
@@ -269,7 +280,7 @@ function makeEngine({ config, db, clock, log }) {
     const stage = [];
     let frontN = 0;
     for (const person of byName.values()) {
-      const wp = plan.people.filter((p) => p.name === person.name && /worship/i.test(p.team)).map((p) => p.position);
+      const wp = roster.filter((p) => p.name === person.name && /worship/i.test(p.team)).map((p) => p.position);
       if (!wp.length) continue;
       const sorted = [...wp].sort((a, b) => rank(POSITION_ORDER, a) - rank(POSITION_ORDER, b));
       let primary = sorted[0];
@@ -287,14 +298,14 @@ function makeEngine({ config, db, clock, log }) {
     });
 
     const fromTeam = (re, order) =>
-      plan.people
+      roster
         .filter((p) => re.test(p.team))
         .sort((a, b) => rank(order, a.position) - rank(order, b.position))
         .map((p) => card(byName.get(p.name), short(p.position), p.position));
 
     const communicators = fromTeam(/communicator/i, COMMS_ORDER);
 
-    const broadcast = plan.people
+    const broadcast = roster
       .filter((p) => /broadcast/i.test(p.team))
       .sort((a, b) => rank(BROADCAST_ORDER, a.position) - rank(BROADCAST_ORDER, b.position))
       .map((p) => card(byName.get(p.name), short(p.position), p.position));
@@ -305,7 +316,7 @@ function makeEngine({ config, db, clock, log }) {
     const service = fromTeam(/service management|service producer|stage management/i, SERVICE_ORDER);
 
     const leaderRoles = cfg().leaderRoles || [];
-    const leadership = plan.people
+    const leadership = roster
       .filter((p) => leaderRoles.includes(p.position))
       .sort((a, b) => leaderRoles.indexOf(a.position) - leaderRoles.indexOf(b.position))
       .map((p) => ({ ...card(byName.get(p.name), short(p.position), p.position), help: (d().helpText || {})[p.position] || '' }));
@@ -337,7 +348,11 @@ function makeEngine({ config, db, clock, log }) {
     const nameMap = d().nameMap || {};
     const key = plan.notes + '|' + list.map((c) => c.name).join(',');
     if (notesCache.key !== key) {
-      const ppl = [...new Map(list.map((c) => [c.name, { name: c.name, aliases: [nameMap[c.name]].filter(Boolean) }])).values()];
+      // A sub answers to the name of the person they replaced (full name, and
+      // first name when nobody else on the list shares it).
+      const firsts = list.map((c) => String(c.subFor || c.name).split(' ')[0].toLowerCase());
+      const subAliases = (c) => (c.subFor ? [c.subFor, firsts.filter((f) => f === c.subFor.split(' ')[0].toLowerCase()).length === 1 ? c.subFor.split(' ')[0] : ''] : []);
+      const ppl = [...new Map(list.map((c) => [c.name, { name: c.name, aliases: [nameMap[c.name], ...subAliases(c)].filter(Boolean) }])).values()];
       notesCache = { key, out: parseMicNotes(plan.notes, ppl) };
     }
     return notesCache.out;
@@ -434,8 +449,9 @@ function makeEngine({ config, db, clock, log }) {
     const r = recordingOn();
     if (!r || !plan) return [];
     return RECORD_CREW.map((pos) => {
-      const name = (r.crew || {})[pos] || (plan.people.find((p) => p.position === pos) || {}).name || '';
-      const pp = plan.people.find((p) => p.name === name);
+      const today = rosterToday();
+      const name = (r.crew || {})[pos] || (today.find((p) => p.position === pos) || {}).name || '';
+      const pp = today.find((p) => p.name === name);
       return { position: pos, name, role: short(pos), initials: name ? initials(name) : '', pending: pp ? pp.status !== 'confirmed' : false, ...(name ? photoFor(name) : {}) };
     });
   }
@@ -892,7 +908,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

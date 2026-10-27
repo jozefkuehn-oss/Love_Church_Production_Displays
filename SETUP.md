@@ -188,3 +188,12 @@ The 11:45 isn't streamed. On Sundays you record it, turn on **Recording the
   cards switch to this crew as soon as the 10:00 stream ends.
 
 It only applies to that Sunday's plan, so it's off again the next week.
+
+## Subs (someone didn't show)
+
+On the **Live** page, open **Subs today**. Every scheduled spot from the plan
+is listed by team; type the person filling in (names suggest as you type) and
+tap **Save**. For that Sunday every screen uses the sub: face cards, worship
+mics (they take over the mic and IEM of the person they replaced, including
+assignments written in the plan notes), go-to people and the 11:45 crew. Clear
+the box and Save to go back to who's scheduled. Subs reset with the next plan.
