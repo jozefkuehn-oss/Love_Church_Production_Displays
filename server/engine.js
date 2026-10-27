@@ -60,22 +60,25 @@ const POSITION_ORDER = [
   'Worship Leader', 'MD', 'Music Director', 'Frontline', 'Vocals', 'Keys', 'Piano', 'Drums',
   'Bass Guitar', 'Acoustic Guitar', 'Rhythm Electric Guitar', 'Lead Electric Guitar', 'Electric Guitar',
 ];
+// Face-card order and labels follow Planning Center's teams.
 const PRODUCTION_ORDER = [
-  'FOH Audio Engineer', 'Monitor Engineer', 'Audio', 'Broadcast Audio', 'ProPresenter Operator',
+  'FOH Audio Engineer', 'Monitor Engineer', 'Broadcast Audio', 'ProPresenter Operator',
   'Broadcast ProPresenter Operator', 'Lighting Director', 'Lighting Operator',
 ];
 const SERVICE_ORDER = ['Service Producer', 'Stage Manager', 'Floor Manager'];
 const BROADCAST_ORDER = [
-  'Broadcast Producer', 'Video Director', 'Technical Director', 'Broadcast ProPresenter Operator', 'Broadcast Audio',
   'Cam 1', 'Cam 2', 'Cam 3', 'Cam 4', 'Cam 5', 'Cam 6', 'Cam 7',
+  'Video Director', 'Technical Director', 'Broadcast Producer',
 ];
-const COMMS_ORDER = ['Bible Teacher', 'Encounter Host', 'Online Host', 'Online Co-Host', 'TIP Host'];
+const COMMS_ORDER = ['Encounter Host', 'Online Host', 'Online Co-Host', 'Bible Teacher', 'TIP Host'];
 
 const SHORT = {
   'Worship Leader': 'WORSHIP LEADER', MD: 'MD', 'Bass Guitar': 'BASS', 'Acoustic Guitar': 'AG', Frontline: 'FRONTLINE',
   Keys: 'KEYS', Drums: 'DRUMS', 'Rhythm Electric Guitar': 'RHYTHM EG', 'Lead Electric Guitar': 'LEAD EG',
-  'Broadcast Producer': 'PRODUCER', 'Video Director': 'VIDEO DIR', 'Broadcast ProPresenter Operator': 'GRAPHICS',
-  'Broadcast Audio': 'AUDIO', 'Encounter Host': 'HOST', 'Online Co-Host': 'ONLINE CO-HOST', 'FOH Audio Engineer': 'FOH ENGINEER',
+  'Video Director': 'TECHNICAL DIRECTOR', 'Broadcast Producer': 'BROADCAST PRODUCER',
+  'FOH Audio Engineer': 'FOH AUDIO', 'Broadcast Audio': 'BROADCAST AUDIO', 'ProPresenter Operator': 'FOH PROP',
+  'Broadcast ProPresenter Operator': 'BROADCAST PROP', 'Lighting Operator': 'LIGHTING',
+  'Encounter Host': 'ENCOUNTER HOST', 'Online Host': 'ONLINE HOST', 'Online Co-Host': 'ONLINE CO-HOST',
 };
 const short = (p) => (SHORT[p] || p).toUpperCase();
 
@@ -281,7 +284,7 @@ function makeEngine({ config, db, clock, log }) {
     const communicators = fromTeam(/communicator/i, COMMS_ORDER);
 
     const broadcast = plan.people
-      .filter((p) => /broadcast/i.test(p.team) || /^broadcast /i.test(p.position))
+      .filter((p) => /broadcast/i.test(p.team))
       .sort((a, b) => rank(BROADCAST_ORDER, a.position) - rank(BROADCAST_ORDER, b.position))
       .map((p) => card(byName.get(p.name), short(p.position), p.position));
 
