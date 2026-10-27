@@ -73,10 +73,12 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .stat.good .k { color: var(--green); }
 .stat.flash { animation: flash 1s steps(2, start) infinite; }
 @keyframes flash { 50% { opacity: 0.45; } }
-.stat.compact { flex-direction: row; align-items: center; gap: 12px; border-radius: 0; background: var(--bg); padding: 0 24px; justify-content: flex-end; }
+.stat.compact { flex-direction: row; align-items: center; gap: 12px; padding: 0 24px; justify-content: space-between; }
+.collage .stat.compact { border-radius: 0; background: var(--bg); justify-content: flex-end; }
+.stat.compact .v small { font-size: 15px; }
 .stat.compact .v { font-size: 40px; font-weight: 800; }
-.stat.compact .k { font-size: 13px; }
-.stat.compact.accent { background: var(--pink); }
+.stat.compact .k { font-size: 13px; line-height: 1.2; }
+.stat.compact.accent, .collage .stat.compact.accent { background: var(--pink); }
 .black .stat.compact { background: #000; }
 
 /* run of show */

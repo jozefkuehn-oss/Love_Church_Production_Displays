@@ -100,6 +100,13 @@
   // ---------- widgets ----------
   const W = {};
 
+  // Skinny titles shrink to stay on one line.
+  function titleSize(o, ctx, text) {
+    if (!o.compact) return ctx && ctx.w < 420 ? 'font-size:34px' : '';
+    const w = ctx && ctx.w ? ctx.w - 56 : 400;
+    return `font-size:${Math.max(16, Math.min(30, Math.floor(w / (String(text).length * 0.56))))}px;white-space:nowrap`;
+  }
+
   W.title = (o, s, ctx) => {
     let sub = '';
     // Which dashboard phase is up right now.
@@ -110,8 +117,13 @@
     } else if (o.sub === 'date') sub = `<div class="sub">${esc(s.date.label)}</div>`;
     else if (o.sub === 'encounters') sub = `<div class="sub">Encounters ${esc((s.encounters || []).map((e) => e.label).join(' · '))}</div>`;
     // Kicker: the room name typed in, or the screen's location if left blank.
-    const kicker = o.kicker ? fill(o.kicker, s) : ((ctx && ctx.location) || '').toUpperCase();
-    return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(kicker)}</div><div class="big" style="${!o.compact && ctx && ctx.w < 420 ? 'font-size:34px' : ''}">${esc(fill(o.title, s))}</div>${sub}</div>`;
+    let kicker = o.kicker ? fill(o.kicker, s) : ((ctx && ctx.location) || '').toUpperCase();
+    // Skinny (one-row) title: no room for a sub line, so the phase joins the kicker.
+    if (o.compact && sub) {
+      if (o.sub === 'live' || o.sub === 'phase') kicker = (kicker ? kicker + ' · ' : '') + phase.toUpperCase();
+      sub = '';
+    }
+    return `<div class="title ${o.compact ? 'compact' : ''}"><div class="kicker">${esc(kicker)}</div><div class="big" style="${titleSize(o, ctx, fill(o.title, s))}">${esc(fill(o.title, s))}</div>${sub}</div>`;
   };
 
 
@@ -173,13 +185,13 @@
       // FOH style: how far behind/ahead of plan the Encounter is running.
       const d = s.driftMs || 0;
       const cls = d > 60e3 ? 'warn' : d < -60e3 ? 'good' : '';
-      return `<div class="stat ${cls}"><div class="k">${esc(o.label)}</div><div class="v">${d >= 0 ? '+' : '−'}${dur(Math.abs(d)).replace('+', '')}<small>${d >= 0 ? 'behind plan' : 'ahead'}</small></div></div>`;
+      return `<div class="stat ${cls} ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label)}</div><div class="v">${d >= 0 ? '+' : '−'}${dur(Math.abs(d)).replace('+', '')}<small>${d >= 0 ? 'behind plan' : 'ahead'}</small></div></div>`;
     }
     const ov = s.overStreamMs;
-    if (ov == null) return `<div class="stat"><div class="k">PROJECTED FINISH</div><div class="v">—</div></div>`;
+    if (ov == null) return `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">PROJECTED FINISH</div><div class="v">—</div></div>`;
     const cls = ov > 2 * 60e3 ? 'alert' : ov > 0 ? 'warn' : 'good';
     const v = ov > 0 ? `+${dur(ov).replace('+', '')}<small>past stream end</small>` : `−${dur(-ov).replace('+', '')}<small>to spare</small>`;
-    return `<div class="stat ${cls}"><div class="k">PROJECTED FINISH</div><div class="v">${v}</div></div>`;
+    return `<div class="stat ${cls} ${o.compact ? 'compact' : ''}"><div class="k">PROJECTED FINISH</div><div class="v">${v}</div></div>`;
   };
 
   // Preshow cues: flashing "N MINUTES TO PRESHOW" at 15, 10, 5, 3, 2 and 1
@@ -209,10 +221,10 @@
     const near = p && (p.state !== 'waiting' || p.startMs - s.now < (o.showBeforeMin ?? 15) * 60e3);
     if (!near) {
       const fb = o.fallback && W[o.fallback];
-      return fb ? fb(o.fallbackOpts || {}, s, ctx) : `<div class="stat"><div class="k">PRESHOW</div><div class="v" style="color:var(--dim)">—</div></div>`;
+      return fb ? fb(o.fallbackOpts || {}, s, ctx) : `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">PRESHOW</div><div class="v" style="color:var(--dim)">—</div></div>`;
     }
     const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
-    const big = o.huge ? 'huge' : '';
+    const big = o.huge ? 'huge' : o.compact ? 'compact' : '';
     if (p.state === 'waiting') {
       const left = p.startMs - s.now;
       if (left <= 10000) return `<div class="stat ${big} flashwarn"><div class="k">${label} STARTS IN</div><div class="v">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
@@ -289,13 +301,15 @@
     const headH = o.label && !collage ? 30 : 0;
     const gap = collage ? 4 : 8;
     const fit = fitGrid(list.length, ctx.w, ctx.h - headH, gap, collage ? 0.8 : 0.8, o.columns);
-    // Non-collage cards may grow taller (down to a 0.6 portrait) to use the space.
+    // Cards stretch to fill the whole block: every column the same width, every
+    // row the same height. Photos crop around each person's saved focus point.
     const rowH = (ctx.h - headH - gap * (fit.rows - 1)) / fit.rows;
-    const size = collage ? { w: fit.w, h: fit.h } : { w: fit.w, h: Math.min(rowH, fit.w / 0.6) };
+    const colW = (ctx.w - gap * (fit.cols - 1)) / fit.cols;
+    const size = collage ? { w: fit.w, h: fit.h } : { w: colW, h: rowH };
     const cards = list.map((c) => faceCard(c, size, { roleColor: o.roleColor, fixed: true })).join('');
     const labelColor = /communicators$/.test(o.group) ? 'blue' : 'pink';
     return `<div class="faces-wrap">${headH ? `<div class="label ${labelColor}">${esc(o.label)}</div>` : ''}
-      <div class="faces" style="grid-template-columns:repeat(${fit.cols}, ${collage ? 'minmax(0,1fr)' : Math.floor(size.w) + 'px'});${collage ? `grid-auto-rows:minmax(0,1fr)` : ''}">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
+      <div class="faces" style="grid-template-columns:repeat(${fit.cols}, minmax(0,1fr));${collage ? `grid-auto-rows:minmax(0,1fr)` : ''}">${cards || '<div class="missing">Nobody scheduled</div>'}</div></div>`;
   };
 
   W.worshipMics = (o, s, ctx) => {
