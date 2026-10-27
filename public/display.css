@@ -167,7 +167,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 
 /* worship direction */
 .wd { display: flex; flex-direction: column; gap: 8px; height: 100%; }
-.wd .card { flex: 1 1 auto; min-height: 0; background: var(--panel); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+.wd .card { flex: none; background: var(--panel); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
 .wd .card .t { font-size: 19px; font-weight: 800; }
 .wd .card .f { font-size: 14px; line-height: 1.3; color: var(--text-2); }
 .wd .card .pg { font-size: 13px; line-height: 1.35; color: #c8c8ce; }
@@ -250,7 +250,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 
 /* ProPresenter timers */
 .pt { display: flex; align-items: baseline; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.pt .ptn { flex: 1; min-width: 0; font-size: 20px; font-weight: 700; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt .ptn { flex: 1; min-width: 0; font-size: 20px; font-weight: 700; color: var(--muted); line-height: 1.15; }
 .pt .ptt { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .pt .pts { font-size: 16px; color: var(--green); width: 20px; text-align: center; }
 .pt.over .ptt, .pt.over .pts { color: var(--red); }

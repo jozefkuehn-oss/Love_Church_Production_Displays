@@ -105,6 +105,14 @@
   const devAlert = (d) => d && !d.off && ((d.battery != null && d.battery < 20) || d.rf === false);
   const devWarn = (d) => d && d.battery != null && d.battery < 35;
 
+  // One line of text that must never be cut off: shrink the font to fit the
+  // width (down to min), and if it still doesn't fit, let it wrap.
+  function fitLine(text, width, max, min) {
+    const need = String(text || '').length * 0.52;
+    const fs = Math.max(min, Math.min(max, Math.floor(width / Math.max(1, need))));
+    return `font-size:${fs}px;line-height:1.15;${fs * need > width ? 'white-space:normal' : 'white-space:nowrap'}`;
+  }
+
   // ---------- widgets ----------
   const W = {};
 
@@ -259,7 +267,7 @@
     if (all.length > fits && s.index != null) startAt = Math.max(0, Math.min(all.length - fits, s.index - 3));
     const rows = all
       .slice(startAt, startAt + fits)
-      .map((it) => `<div class="it ${it.status || ''}"><span class="dot"></span><span class="grow ell">${esc(it.title)}</span>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<span class="len">${lenFmt(it.length)}</span></div>`)
+      .map((it) => `<div class="it ${it.status || ''}"><span class="dot"></span><span class="grow" style="${fitLine(it.title, (ctx ? ctx.w : 400) - 190, 19, 13)}">${esc(it.title)}</span>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<span class="len">${lenFmt(it.length)}</span></div>`)
       .join('');
     return `<div class="panel ros" style="height:100%"><div class="row"><div class="label grow">RUN OF SHOW</div><div style="font-size:15px;color:var(--dim)">${s.plan && s.plan.source === 'planningcenter' ? 'Planning Center' : 'Sample plan'}</div></div>${rows || '<div class="missing">No plan loaded</div>'}</div>`;
   };
@@ -282,7 +290,7 @@
       <div class="row"><div class="label pink grow">NOW${songCount ? ` · SONG ${songIdx + 1} OF ${songCount}` : ''}</div><div class="meta">${[sn.lead && 'Lead ' + sn.lead, sn.key && 'Key ' + sn.key, cur.length && lenFmt(cur.length)].filter(Boolean).map(esc).join(' · ')}</div></div>
       <div class="t" style="font-size:${tSize}px">${esc(sn.title)}</div>
       <div class="bar"><i style="width:${pct}%"></i></div>
-      ${o.showFeel && sn.feel ? `<div class="feel" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:${tight ? 16 : 19}px">${esc(sn.feel)}</div>` : ''}
+      ${o.showFeel && sn.feel ? `<div class="feel" style="font-size:${tight ? 16 : 19}px">${esc(sn.feel)}</div>` : ''}
       ${!sn.inBank ? '<div class="flag">Not in the song bank yet — add it in the admin page</div>' : ''}
       ${chips}
     </div>`;
@@ -297,7 +305,7 @@
     return `<div class="panel" style="height:100%"><div class="label">NEXT</div>
       <div class="small-t">${esc(n.title)}</div>
       <div style="font-size:17px;color:var(--muted)">${[n.key && 'Key ' + n.key, n.length && lenFmt(n.length), showSong && sn.lead && 'Lead ' + sn.lead].filter(Boolean).map(esc).join(' · ')}</div>
-      ${roomy && showSong && sn.feel ? `<div style="font-size:16px;line-height:1.35;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(sn.feel)}</div>` : ''}
+      ${roomy && showSong && sn.feel ? `<div style="font-size:16px;line-height:1.35;color:var(--text-2)">${esc(sn.feel)}</div>` : ''}
       ${showSong && !sn.inBank ? '<div class="flag">Not in the song bank yet</div>' : ''}
     </div>`;
   };
@@ -308,8 +316,8 @@
     if (!b.enabled) body = '<div class="missing">Broadcast ProPresenter isn’t set up yet (admin → Settings)</div>';
     else if (!b.connected) body = '<div class="missing" style="color:var(--yellow)">Can’t reach Broadcast ProPresenter</div>';
     else
-      body = `<div class="row"><span class="pill">LIVE</span><span class="grow ell" style="font-size:21px;font-weight:600">${esc(b.presentation || '')}${b.current.text ? ' · ' + esc(b.current.text.split('\n')[0]) : ''}</span></div>
-        <div class="row"><span class="pill grey">NEXT</span><span class="grow ell" style="font-size:21px;font-weight:600;color:var(--text-2)">${esc((b.next.text || '').split('\n')[0] || '—')}</span></div>`;
+      body = `<div class="row"><span class="pill">LIVE</span><span class="grow" style="font-size:21px;font-weight:600">${esc(b.presentation || '')}${b.current.text ? ' · ' + esc(b.current.text.split('\n')[0]) : ''}</span></div>
+        <div class="row"><span class="pill grey">NEXT</span><span class="grow" style="font-size:21px;font-weight:600;color:var(--text-2)">${esc((b.next.text || '').split('\n')[0] || '—')}</span></div>`;
     return `<div class="panel" style="height:100%"><div class="row"><div class="label grow">BROADCAST GRAPHICS</div></div>${body}</div>`;
   };
 
@@ -448,7 +456,7 @@
         const col = d.battery < 20 ? 'var(--red)' : d.battery < 35 ? 'var(--yellow)' : 'var(--green)';
         const who = first
           ? `<span class="av" style="width:${av}px;height:${av}px;font-size:${Math.max(9, Math.round(av / 3))}px">${r.photo ? `<img src="${esc(r.photo)}" alt="" style="object-position:${r.focusX}% ${r.focusY}%">` : esc(r.initials)}</span>
-            <span class="grow ell" style="font-size:${f}px;font-weight:600;line-height:1.1">${esc(r.name)}</span>`
+            <span class="grow" style="font-weight:600;${fitLine(r.name, W0 / cols - f * 3.1 - av - f * 6.5 - 60, f, 9)}">${esc(r.name)}</span>`
           : `<span style="width:${av}px;flex:none;align-self:stretch;border-left:2px solid var(--line);margin-left:${Math.round(av / 2)}px;width:${Math.round(av / 2)}px"></span><span class="grow"></span>`;
         const meter = d.battery == null && !d.off
           ? `<span style="width:${Math.round(f * 6.5)}px;flex:none;text-align:right;font-size:${Math.max(10, f - 3)}px;color:var(--dim)">${d.ch.startsWith('IEM') ? 'assigned' : ''}</span>`
@@ -533,19 +541,40 @@
     return `<div class="panel" style="height:100%"><div class="label">SET KEYS · LIVE ARRANGEMENT</div><div class="keys" style="grid-template-columns:repeat(${Math.max(1, songs.length)}, minmax(0,1fr))">${tiles}</div></div>`;
   };
 
-  W.worshipDirection = (o, s) => {
-    const cards = (s.daySongs || [])
-      .map(
-        (sg) => `<div class="card">
-        <div class="row" style="gap:10px;align-items:baseline"><span class="t">${esc(sg.title)}</span>${sg.key ? `<span class="key">KEY ${esc(sg.key)}</span>` : ''}${sg.lead ? `<span style="font-size:13px;font-weight:600;color:var(--muted)">Lead ${esc(sg.lead)}</span>` : ''}${sg.cue ? `<span class="cue" style="margin-left:auto;font-size:13px">${esc(sg.cue)}</span>` : ''}</div>
+  // Worship direction never cuts a song off. If every song fits, all show.
+  // If not, the songs are split into pages of whole cards that rotate every
+  // 12 seconds (1/2, 2/2…), starting from the song that's live or up next.
+  W.worshipDirection = (o, s, ctx) => {
+    const songs = s.daySongs || [];
+    const W0 = (ctx && ctx.w) || 700, H0 = (ctx && ctx.h) || 700;
+    const card = (sg) => `<div class="card">
+        <div class="row" style="gap:10px;align-items:baseline;flex-wrap:wrap"><span class="t">${esc(sg.title)}</span>${sg.key ? `<span class="key">KEY ${esc(sg.key)}</span>` : ''}${sg.lead ? `<span style="font-size:13px;font-weight:600;color:var(--muted)">Lead ${esc(sg.lead)}</span>` : ''}${sg.cue ? `<span class="cue" style="margin-left:auto;font-size:13px">${esc(sg.cue)}</span>` : ''}</div>
         ${sg.feel ? `<div class="f"><b>Feel </b>${esc(sg.feel)}</div>` : ''}
         ${sg.progression ? `<div class="pg"><b>Progression </b>${esc(sg.progression)}</div>` : ''}
         ${sg.notes ? `<div class="nt"><b>Notes </b>${esc(sg.notes)}</div>` : ''}
         ${!sg.inBank ? '<div class="nt">Not in the song bank yet</div>' : ''}
-      </div>`
-      )
-      .join('');
-    return `<div class="wd"><div class="row"><div class="label grow">WORSHIP DIRECTION</div><div style="font-size:13px;color:var(--dim)">Song bank</div></div>${cards}</div>`;
+      </div>`;
+    // Rough height of a card at full size, to decide what fits on a page.
+    const lines = (txt, px) => (txt ? Math.ceil((String(txt).length + 12) / Math.max(10, (W0 - 30) / (px * 0.5))) : 0);
+    const est = (sg) => 22 + 26 + lines(sg.feel, 14) * 18 + lines(sg.progression, 13) * 18 + lines(sg.notes, 13) * 17 + (sg.inBank ? 0 : 17) + 10;
+    const avail = H0 - 30;
+    const pages = [[]];
+    let used = 0;
+    // Start from the live / next song when the Encounter is running.
+    const curTitle = s.isLive && s.current && s.current.isSong ? s.current.title : '';
+    let order = songs;
+    const at = curTitle ? songs.findIndex((x) => curTitle.toLowerCase().includes(x.title.toLowerCase()) || x.title.toLowerCase().includes(curTitle.toLowerCase().replace(/\[[^\]]*\]\s*/g, ''))) : -1;
+    if (at > 0) order = songs.slice(at).concat(songs.slice(0, at));
+    for (const sg of order) {
+      const h = est(sg) + 8;
+      if (used + h > avail && pages[pages.length - 1].length) { pages.push([]); used = 0; }
+      pages[pages.length - 1].push(sg);
+      used += h;
+    }
+    const n = pages.length;
+    const pg = n > 1 ? Math.floor((s.now || 0) / 12000) % n : 0;
+    const tag = n > 1 ? `<span style="font-size:13px;font-weight:800;color:var(--pink-text)">${pg + 1} / ${n}</span>` : '';
+    return `<div class="wd"><div class="row"><div class="label grow">WORSHIP DIRECTION</div>${tag}<div style="font-size:13px;color:var(--dim)">Song bank</div></div>${pages[pg].map(card).join('') || '<div class="missing">No songs in this plan</div>'}</div>`;
   };
 
   W.runOfShowDay = (o, s) => {
@@ -579,11 +608,13 @@
     return `<div class="panel" style="height:100%;padding:16px"><div class="label">RUN OF SHOW</div><div class="rd" style="grid-template-columns:repeat(${Math.max(1, cols.length)}, minmax(0,1fr))">${html}</div></div>`;
   };
 
-  W.nowNext = (o, s) => {
+  W.nowNext = (o, s, ctx) => {
     const cur = s.current;
     const nx = s.next;
     if (!cur) return `<div class="nn"><span class="n2">Waiting for the plan…</span></div>`;
-    return `<div class="nn"><span class="pill">NOW</span><span class="n1 ell">${esc(cur.title)}</span>${!o.nowOnly && nx ? `<span style="color:var(--dim);font-size:20px">→</span><span class="n2 ell">${esc(nx.title)}</span>` : ''}</div>`;
+    const room = ((ctx && ctx.w) || 1200) - 48 - 90 - (nx && !o.nowOnly ? 50 : 0);
+    const r1 = nx && !o.nowOnly ? room * 0.58 : room, r2 = room - r1;
+    return `<div class="nn"><span class="pill">NOW</span><span class="n1" style="${fitLine(cur.title, r1, 26, 12)}">${esc(cur.title)}</span>${!o.nowOnly && nx ? `<span style="color:var(--dim);font-size:20px">→</span><span class="n2" style="${fitLine(nx.title, r2, 21, 11)}">${esc(nx.title)}</span>` : ''}</div>`;
   };
 
   W.slide = (o, s) => {
@@ -609,7 +640,7 @@
       `<div class="sp-box"><span class="sp-tag ${which}">${which === 'cur' ? 'LIVE' : 'NEXT'}</span>${
         t ? `<img src="/prop-thumb/${src}/${encodeURIComponent(t.uuid)}/${idx}" alt="" onerror="this.style.display='none'">` : ''
       }<span class="sp-txt">${esc((text || '').split('\n')[0])}</span></div>`;
-    return `<div class="panel sp" style="height:100%"><div class="row"><div class="label grow">${label}</div><span class="dim ell" style="max-width:50%">${esc(p.presentation || '')}</span></div>
+    return `<div class="panel sp" style="height:100%"><div class="row"><div class="label grow">${label}</div><span class="dim" style="max-width:50%;text-align:right">${esc(p.presentation || '')}</span></div>
       <div class="sp-row">${pic('cur', t ? t.current : 0, p.current && p.current.text)}${o.showNext === false ? '' : pic('nxt', t ? t.next : 0, p.next && p.next.text)}</div></div>`;
   };
 
