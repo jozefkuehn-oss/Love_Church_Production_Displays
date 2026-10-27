@@ -181,8 +181,8 @@ The 11:45 isn't streamed. On Sundays you record it, turn on **Recording the
   default; set **recordStart** / **recordEnd** on that Encounter to change it),
 - Broadcast Control and Broadcast Audio go Pre-Encounter → Live with no Preshow,
 - the **Broadcast team** face cards on every screen become the crew that stays:
-  Cam 1–3, Broadcast ProP, Broadcast Audio and Broadcast Producer. They start as
-  whoever Planning Center has in those spots; type over any name if someone
-  else fills in, then **Save crew**.
+  Cam 1–3 and the Broadcast Producer. Broadcast ProP and Broadcast Audio stay
+  under **Production**. All six start as whoever Planning Center has in those
+  spots; type over any name if someone else fills in, then **Save crew**.
 
 It only applies to that Sunday's plan, so it's off again the next week.

@@ -411,7 +411,7 @@
       const LABEL = { 'Broadcast ProPresenter Operator': 'Broadcast ProP', 'Broadcast Audio': 'Broadcast Audio', 'Broadcast Producer': 'Broadcast Producer' };
       $('#rc').innerHTML = `<div class="row sp"><strong>Recording the ${esc(r.label)}</strong>
           <label class="inline" style="flex:none"><input type="checkbox" id="rcon" ${r.on ? 'checked' : ''}> ${r.on ? 'On this Sunday' : 'Off'}</label></div>
-        <p class="dim" style="margin:0">When on, the ${esc(r.label)} gets recording countdowns, Broadcast Control and Broadcast Audio go Pre-Encounter → Live (no Preshow), and the Broadcast team on every screen becomes the crew below. Change anyone who’s filling in.</p>
+        <p class="dim" style="margin:0">When on, the ${esc(r.label)} gets recording countdowns, Broadcast Control and Broadcast Audio go Pre-Encounter → Live (no Preshow), and the Broadcast team on every screen becomes Cams 1–3 and the Broadcast Producer below, while Broadcast ProP and Broadcast Audio show under Production. Change anyone who’s filling in.</p>
         <div class="wkrows" style="${r.on ? '' : 'opacity:.55'}">${r.crew
           .map((c, i) => `<label class="wkf">${esc(LABEL[c.position] || c.position)}<input list="rcnames" data-rc="${esc(c.position)}" value="${esc(c.name)}" placeholder="${esc(c.planName || 'Type a name')}"></label>`)
           .join('')}</div>

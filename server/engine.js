@@ -657,7 +657,17 @@ function makeEngine({ config, db, clock, log }) {
     const people = buildPeople();
     // From the end of the 10:00 until the recording wraps, the Broadcast team
     // everywhere is just the crew staying to record.
-    if (enc && enc.recorded) people.broadcast = recordCrew().filter((c) => c.name);
+    // Cams 1–3 and the Broadcast Producer are the Broadcast team; Broadcast
+    // ProP and Broadcast Audio stay under Production, with whoever the crew
+    // list says is on them.
+    if (enc && enc.recorded) {
+      const crew = recordCrew().filter((c) => c.name);
+      const prodPos = ['Broadcast ProPresenter Operator', 'Broadcast Audio'];
+      people.broadcast = crew.filter((c) => !prodPos.includes(c.position));
+      const prod = (people.production || []).filter((c) => !prodPos.includes(c.position));
+      const swapIn = crew.filter((c) => prodPos.includes(c.position));
+      people.production = [...prod, ...swapIn].sort((x, y) => PRODUCTION_ORDER.indexOf(x.position) - PRODUCTION_ORDER.indexOf(y.position));
+    }
     const wl = buildWireless(people);
     // Singers in VOX order (VOX 1 … VOX 5, from this week's mic plan), then
     // everyone else in their usual order.
