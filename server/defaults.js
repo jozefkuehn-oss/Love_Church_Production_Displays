@@ -240,13 +240,12 @@ const profiles = {
     layouts: {
       pre: {
         widgets: [
-          w('t', 'title', 0, 0, 5, 2, { kicker: 'GREENROOM · PRE-ENCOUNTER', title: '{next} Encounter', sub: 'date' }),
-          w('c', 'clock', 5, 0, 5, 2, { seconds: true }),
-          w('bs', 'countdown', 10, 0, 5, 2, { target: 'nextBandToStage', label: 'BAND TO STAGE IN', accent: true }),
-          w('es', 'countdown', 15, 0, 4, 2, { target: 'nextStart', label: 'ENCOUNTER STARTS IN' }),
-          w('ss', 'countdown', 19, 0, 5, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
-          w('wm', 'worshipMics', 0, 2, 17, 9, {}),
-          w('gt', 'goto', 17, 2, 7, 9, {}),
+          w('t', 'title', 0, 0, 6, 2, { title: '{encounter} Encounter', sub: 'phase' }),
+          w('c', 'clock', 6, 0, 6, 2, { seconds: true }),
+          w('ss', 'countdown', 12, 0, 6, 2, { target: 'nextStreamStart', label: 'STREAM STARTS IN' }),
+          w('es', 'countdown', 18, 0, 6, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }),
+          w('ros', 'runOfShowDay', 0, 2, 6, 9, {}),
+          w('mic', 'worshipMics', 6, 2, 18, 9, {}),
           w('mb', 'messageBar', 0, 11, 24, 1, {}),
         ],
       },
@@ -576,6 +575,7 @@ const LAYOUT_REVISIONS = {
   'dock.pre': 2,
   'dock.preshow': 2,
   'dock.live': 2,
+  'greenroom.pre': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };
