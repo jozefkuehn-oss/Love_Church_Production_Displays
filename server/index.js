@@ -201,6 +201,15 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Spoken-word mics are no longer standard assignments (set weekly instead).
+(function migrateSpokenMics() {
+  if ((db.data.profilesVersion || 1) >= 12) return;
+  const w = db.data.wireless || {};
+  for (const k of Object.keys(w)) if (/^(Bible Teacher|Encounter Host|Online Host|Online Co-Host|TIP Host)(#\d+)?$/.test(k)) delete w[k];
+  db.data.profilesVersion = 12;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});

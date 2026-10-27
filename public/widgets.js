@@ -467,7 +467,8 @@
   // Spoken-word mics at a glance (HH-1, HH-2, TEACH, BP-1, BP-2): who has each
   // one right now, plus battery and RF straight from the receiver.
   W.handhelds = (o, s, ctx) => {
-    const list = s.handhelds || [];
+    // Only mics someone has been given show up.
+    const list = (s.handhelds || []).filter((h) => h.name);
     const W0 = (ctx && ctx.w) || 600, H0 = (ctx && ctx.h) || 200;
     const gap = 10;
     const fit = fitGrid(list.length, W0, H0, gap, 2.4);
@@ -491,7 +492,7 @@
             <span style="font-size:${sm}px;font-weight:800;color:${h.battery != null && h.battery < 35 ? col : '#fff'};white-space:nowrap">${state}</span>${h.off || h.battery == null ? '' : `<span class="rf ${rfClass(h)}"></span>`}</div>
         </div></div>`;
     };
-    return `<div style="height:100%;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols},minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">${list.map(tile).join('') || '<div class="missing">No mics</div>'}</div>`;
+    return `<div style="height:100%;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols},minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">${list.map(tile).join('') || '<div class="missing">No spoken mics assigned yet</div>'}</div>`;
   };
 
   function needTags(it, s) {

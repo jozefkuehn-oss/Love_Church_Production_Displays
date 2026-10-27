@@ -151,9 +151,6 @@ const wireless = {
   Drums: { mic: 'WIRED', iem: 'IEM 8' },
   'Rhythm Electric Guitar': { mic: 'WIRED', iem: 'IEM 9' },
   'Lead Electric Guitar': { mic: 'WIRED', iem: 'IEM 10' },
-  'Bible Teacher': { mic: 'TEACH' },
-  'Encounter Host#1': { mic: 'HH-1' },
-  'Encounter Host#2': { mic: 'HH-2' },
 };
 // The first build's placeholder names; installs still using them get the
 // real channel names above.

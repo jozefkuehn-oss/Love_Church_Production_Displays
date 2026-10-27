@@ -1281,7 +1281,7 @@
         <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>` : ''}
         <div id="rst"></div></div>
       ${admin ? `<h2>Standard assignments</h2>
-      <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics.</p>
+      <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics. Spoken-word mics (HH-1, HH-2, TEACH, BP-1, BP-2) have no standard: they come from the plan notes or are set each week above or on the Handhelds page.</p>
       <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>` : ''}
       <datalist id="chl"></datalist>`;
 

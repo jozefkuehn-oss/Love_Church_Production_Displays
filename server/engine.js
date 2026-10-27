@@ -346,8 +346,10 @@ function makeEngine({ config, db, clock, log }) {
     // Assignments written in the plan's notes come next; standard ones last.
     const nm = notesMics(people);
     const rows = [];
-    const add = (c, key) => {
-      const std = assign[key] || assign[c.position] || {};
+    // standard = false: no standing assignment (spoken-word mics are set each
+    // week by producers / the Floor Manager, or written in the plan notes).
+    const add = (c, key, standard = true) => {
+      const std = standard ? assign[key] || assign[c.position] || {} : {};
       const n = nm[c.name] || {};
       const a = { mic: n.mic || std.mic || '', iem: n.iem || std.iem || '' };
       const w = wk[c.name] || {};
@@ -363,7 +365,7 @@ function makeEngine({ config, db, clock, log }) {
       .filter((c) => ['Bible Teacher', 'Encounter Host'].includes(c.position))
       .forEach((c) => {
         n[c.position] = (n[c.position] || 0) + 1;
-        add(c, assign[`${c.position}#${n[c.position]}`] ? `${c.position}#${n[c.position]}` : c.position);
+        add(c, c.position, false);
       });
     // Handhelds (HH-1, HH-2) move around during the day — preshow, host
     // moment… The Floor Manager says who has each one right now, and that
