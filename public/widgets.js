@@ -128,14 +128,23 @@
 
 
   W.clock = (o, s, ctx) => {
-    const secs = o.seconds && !o.compact;
+    const secs = !!o.seconds;
     // Shrink the digits in narrow boxes so the AM/PM always fits.
     const fs = !o.compact && ctx && ctx.w ? Math.min(58, Math.floor((ctx.w - 48) / (secs ? 5.4 : 4.1))) : null;
     return `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">${esc(o.label || 'TIME OF DAY')}</div><div class="v" style="white-space:nowrap;${fs ? `font-size:${fs}px` : ''}">${clockText(s.now, s.tz, secs)}<span class="ampm">${ampm(s.now, s.tz)}</span></div></div>`;
   };
 
   const COUNT_LABELS = { streamEnd: 'STREAM ENDS IN', encounterStart: 'ENCOUNTER STARTS IN', bandToStage: 'BAND TO STAGE IN', positions: 'POSITIONS IN', firstStream: 'FIRST STREAM IN', nextEncounter: 'NEXT ENCOUNTER IN', streamStart: 'STREAM STARTS IN' };
-  W.countdown = (o, s) => {
+  // Huge numbers grow to fill their box (as big as the height allows, and
+  // never wider than the box).
+  function hugeV(ctx, text) {
+    if (!ctx || !ctx.w || !ctx.h) return '';
+    const chars = Math.max(4, String(text).length);
+    const fs = Math.floor(Math.min((ctx.h - 90) * 0.92, (ctx.w - 60) / (chars * 0.6)));
+    return fs > 0 ? `font-size:${fs}px` : '';
+  }
+
+  W.countdown = (o, s, ctx) => {
     const target = s.targets && s.targets[o.target];
     const left = target ? target - s.now : null;
     let cls = o.accent ? 'accent' : '';
@@ -144,7 +153,7 @@
     if (left == null && /^next/.test(o.target)) text = 'Done for today';
     if (left == null && ((s.targets && s.targets.notStreamed) || []).includes(o.target)) text = 'Not streamed';
     if (o.huge) {
-      return `<div class="stat huge ${cls}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v">${text}</div></div>`;
+      return `<div class="stat huge ${cls}"><div class="k">${esc(fill(o.label || COUNT_LABELS[o.target] || '', s))}</div><div class="v" style="${hugeV(ctx, text)}">${text}</div></div>`;
     }
     if (o.target === 'streamEnd' && left != null && left > 0) {
       if (left <= 2 * 60e3) cls += ' alert flash';
@@ -225,13 +234,14 @@
     }
     const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
     const big = o.huge ? 'huge' : o.compact ? 'compact' : '';
+    const hv = (t) => (o.huge ? hugeV(ctx, t) : '');
     if (p.state === 'waiting') {
       const left = p.startMs - s.now;
-      if (left <= 10000) return `<div class="stat ${big} flashwarn"><div class="k">${label} STARTS IN</div><div class="v">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
-      return `<div class="stat ${big}"><div class="k">${label} STARTS IN</div><div class="v">${dur(left)}</div></div>`;
+      if (left <= 10000) return `<div class="stat ${big} flashwarn"><div class="k">${label} STARTS IN</div><div class="v" style="${hv('0:00')}">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;
+      return `<div class="stat ${big}"><div class="k">${label} STARTS IN</div><div class="v" style="${hv(dur(left))}">${dur(left)}</div></div>`;
     }
-    if (p.state === 'running') return `<div class="stat ${big} accent"><div class="k">${label}</div><div class="v">${dur(p.remainingMs)}</div></div>`;
-    return `<div class="stat ${big} flashred"><div class="k">${label} · OVER</div><div class="v">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
+    if (p.state === 'running') return `<div class="stat ${big} accent"><div class="k">${label}</div><div class="v" style="${hv('0:00')}">${dur(p.remainingMs)}</div></div>`;
+    return `<div class="stat ${big} flashred"><div class="k">${label} · OVER</div><div class="v" style="${hv('−0:00')}">−${dur(-p.remainingMs).replace('+', '')}</div></div>`;
   };
 
   W.runOfShow = (o, s, ctx) => {
@@ -534,7 +544,12 @@
     return `<div class="mb ${m.level} ${m.flash ? 'flash' : ''} ${o.big ? 'big' : ''}"><span class="badge">${m.flash ? 'MIC CHANGE' : badge}</span><span class="txt">${esc(m.text)}</span><span class="from">— ${esc(m.from)}</span>${sample}</div>`;
   };
 
-  W.text = (o) => `<div class="panel" style="height:100%"><div class="label">${esc(o.label || '')}</div><div style="font-size:${o.size || 24}px;font-weight:600;white-space:pre-line">${esc(o.text || '')}</div></div>`;
+  // Text block. source 'preshowPoints' shows the Pre-Show Teleprompter points
+  // edited on the Live page instead of fixed text.
+  W.text = (o, s) => {
+    const t = o.source === 'preshowPoints' ? (s && s.preshowPoints) || '' : o.text || '';
+    return `<div class="panel" style="height:100%"><div class="label">${esc(o.label || '')}</div><div style="font-size:${o.size || 24}px;font-weight:600;white-space:pre-line">${esc(t)}</div></div>`;
+  };
 
   W.image = (o) => `<div style="height:100%;border-radius:16px;overflow:hidden;background:#000">${o.src ? `<img src="${esc(o.src)}" alt="" style="width:100%;height:100%;object-fit:${o.fit || 'cover'}">` : '<div class="missing">No image chosen</div>'}</div>`;
 

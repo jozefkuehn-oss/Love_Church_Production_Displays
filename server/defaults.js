@@ -43,7 +43,7 @@ const configDefaults = {
 };
 
 // Order locations appear in on a screen's room picker.
-const LOCATIONS = ['Broadcast', 'The Dock', 'The Greenroom', 'FOH', 'Stage'];
+const LOCATIONS = ['Broadcast', 'The Dock', 'The Greenroom', 'FOH', 'Stage', 'Pre-Show'];
 
 // Preshow dashboards start as a copy of the Live one with the item timer
 // swapped for "Encounter starts in" (the preshow timer tile is already there
@@ -320,26 +320,27 @@ const profiles = {
   // on the stream, and producer messages.
   'preshow-confidence': {
     name: 'Pre-Show Teleprompter',
-    location: 'Stage',
+    location: 'Pre-Show',
     modeSetting: 'auto',
     style: { black: true },
     layouts: {
-      // Same look as the old ProPresenter preshow stage display: live time on
-      // top, the host's talking points, then the big 4:30 countdown.
+      // Like the old ProPresenter preshow stage display: live time on top, the
+      // host's talking points (edited on the Live page), then a very large
+      // countdown into and through the 4:30 preshow.
       pre: {
         widgets: [
-          w('c', 'clock', 0, 0, 24, 2, { seconds: true }),
-          w('pts', 'text', 0, 2, 24, 4, { label: 'PRESHOW POINTS', text: PRESHOW_POINTS, size: 46 }),
-          w('ps', 'preshow', 0, 6, 24, 4, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
-          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+          w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
+          w('pts', 'text', 0, 1, 24, 3, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 46 }),
+          w('ps', 'preshow', 0, 4, 24, 7, { huge: true, fallback: 'countdown', fallbackOpts: { target: 'nextStart', label: '{next} ENCOUNTER STARTS IN', huge: true } }),
+          w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
         ],
       },
       preshow: {
         widgets: [
-          w('c', 'clock', 0, 0, 24, 2, { seconds: true }),
-          w('pts', 'text', 0, 2, 24, 4, { label: 'PRESHOW POINTS', text: PRESHOW_POINTS, size: 46 }),
-          w('ps', 'preshow', 0, 6, 24, 5, { huge: true }),
-          w('mb', 'messageBar', 0, 11, 24, 1, {}),
+          w('c', 'clock', 0, 0, 24, 1, { seconds: true, compact: true }),
+          w('pts', 'text', 0, 1, 24, 3, { label: 'PRESHOW POINTS', source: 'preshowPoints', size: 46 }),
+          w('ps', 'preshow', 0, 4, 24, 7, { huge: true }),
+          w('mb', 'messageBar', 0, 11, 24, 1, { big: true }),
         ],
       },
       live: {
@@ -592,6 +593,8 @@ const LAYOUT_REVISIONS = {
   'greenroom.pre': 1,
   'greenroom.preshow': 1,
   'greenroom.live': 1,
+  'preshow-confidence.pre': 1,
+  'preshow-confidence.preshow': 1,
   'broadcast.preshow': 1,
   'broadcast.live': 2,
 };

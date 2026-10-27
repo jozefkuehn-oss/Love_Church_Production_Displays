@@ -52,9 +52,12 @@ launcher can draw its own menu:
 ]
 ```
 
-Starting set: Broadcast Control (Broadcast Top), The Dock, Greenroom (×2:
-*Team & Mics*, *Countdown*), FOH (×3), Stage. Admins add, rename, re-locate and
-redesign dashboards in Admin → Displays; the list above updates by itself.
+Locations: Broadcast (Broadcast Control, Broadcast Audio), The Dock, The
+Greenroom, FOH (FOH Audio, FOH Audio Compact, Service Producer, FOH ProP,
+Lighting, Lighting Compact), Stage (Stage Display) and Pre-Show (Pre-Show
+Teleprompter). The two Compact dashboards are drawn for a 1920×720 bar
+screen. Admins add, rename, re-locate and redesign dashboards in Admin →
+Displays; the list above updates by itself.
 
 ## Rendering
 

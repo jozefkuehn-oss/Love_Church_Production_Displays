@@ -182,6 +182,15 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Pre-Show gets its own location for the teleprompter.
+(function migratePreShowLocation() {
+  if ((db.data.profilesVersion || 1) >= 10) return;
+  const p = db.data.profiles['preshow-confidence'];
+  if (p) p.location = 'Pre-Show';
+  db.data.profilesVersion = 10;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
@@ -438,6 +447,7 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
   const s = engine.snapshot();
   ok(res, {
     encounter: s.encounter,
+    preshowPoints: s.preshowPoints,
     isLive: s.isLive,
     items: s.items,
     index: s.index,
@@ -453,6 +463,16 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
 });
 
 // Preshow: start now / end / back to the schedule.
+// Pre-Show Teleprompter talking points.
+app.put('/api/preshow-points', auth.requirePerm('live'), (req, res) => {
+  const text = String((req.body || {}).text || '').slice(0, 2000);
+  db.data.preshowPoints = text;
+  db.save();
+  log(`Preshow points updated by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
 app.post('/api/preshow/:action', auth.requirePerm('live'), (req, res) => {
   const a = req.params.action;
   if (!['start', 'end', 'reset'].includes(a)) return bad(res, 'Unknown action.');

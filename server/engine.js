@@ -72,6 +72,8 @@ const BROADCAST_ORDER = [
 ];
 const COMMS_ORDER = ['Encounter Host', 'Online Host', 'Online Co-Host', 'Bible Teacher', 'TIP Host'];
 
+const DEFAULT_PRESHOW_POINTS = '• Welcome\n• 1, 2, 5\n• Take A Next Step!\n• Pitch to :30 Countdown';
+
 const SHORT = {
   'Worship Leader': 'WORSHIP LEADER', MD: 'MD', 'Bass Guitar': 'BASS', 'Acoustic Guitar': 'AG', Frontline: 'FRONTLINE',
   Keys: 'KEYS', Drums: 'DRUMS', 'Rhythm Electric Guitar': 'RHYTHM EG', 'Lead Electric Guitar': 'LEAD EG',
@@ -729,6 +731,8 @@ function makeEngine({ config, db, clock, log }) {
       isPreshow: !!preshowEnc,
       nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs } : null,
       preshow,
+      // Pre-Show Teleprompter talking points (edited on the Live page).
+      preshowPoints: d().preshowPoints != null ? d().preshowPoints : DEFAULT_PRESHOW_POINTS,
       encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : e === preshowEnc ? 'preshow' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
       items: items.map(({ id, title, key, length, isSong, status, position }) => ({ id, title, key, length, isSong, status, position })),
       index,

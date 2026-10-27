@@ -337,6 +337,9 @@
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
       <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
       <div class="card" id="ps" style="margin-top:12px"></div>
+      <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-Show Teleprompter points</strong><span class="dim">Shows on the Pre-Show Teleprompter</span></div>
+        <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
+        <div class="row"><button class="primary" id="pps">Save points</button></div></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
@@ -382,6 +385,8 @@
         }
       } else pl.hidden = true;
     }
+    api('/api/live').then((d) => { if ($('#ppt')) $('#ppt').value = d.preshowPoints || ''; }).catch(() => {});
+    $('#pps').onclick = () => api('/api/preshow-points', { method: 'PUT', body: { text: $('#ppt').value } }).then(() => toast('Points saved')).catch(fail);
     load();
     S.timers.push(setInterval(load, 2500));
   }
@@ -413,7 +418,7 @@
     slidePreview: { name: 'ProPresenter slide preview (pictures)', opts: [['source', ['broadcast', 'auditorium']], ['label', 'text'], ['showNext', 'bool']] },
     propTimers: { name: 'ProPresenter timers + stage message', opts: [['source', ['auditorium', 'broadcast']], ['names', 'text'], ['label', 'text']] },
     messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool'], ['hidePreshowCues', 'bool']] },
-    text: { name: 'Text', opts: [['label', 'text'], ['text', 'text'], ['size', 'number']] },
+    text: { name: 'Text', opts: [['label', 'text'], ['source', ['', 'preshowPoints']], ['text', 'text'], ['size', 'number']] },
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },
   };
 
