@@ -43,7 +43,7 @@ const configDefaults = {
 };
 
 // Order locations appear in on a screen's room picker.
-const LOCATIONS = ['Broadcast', 'The Dock', 'The Greenroom', 'FOH', 'Stage', 'Pre-Show'];
+const LOCATIONS = ['Broadcast', 'The Dock', 'The Greenroom', 'FOH', 'Stage', 'Pre-/Post-Show'];
 
 // Preshow dashboards start as a copy of the Live one with the item timer
 // swapped for "Encounter starts in" (the preshow timer tile is already there
@@ -319,8 +319,8 @@ const profiles = {
   // the Broadcast ProPresenter stage display). Big preshow countdown, what's
   // on the stream, and producer messages.
   'preshow-confidence': {
-    name: 'Pre-Show Teleprompter',
-    location: 'Pre-Show',
+    name: 'Pre-/Post-Show Teleprompter',
+    location: 'Pre-/Post-Show',
     modeSetting: 'auto',
     style: { black: true },
     layouts: {

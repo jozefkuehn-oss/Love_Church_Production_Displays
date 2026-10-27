@@ -337,7 +337,7 @@
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
       <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
       <div class="card" id="ps" style="margin-top:12px"></div>
-      <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-Show Teleprompter points</strong><span class="dim">Shows on the Pre-Show Teleprompter</span></div>
+      <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
       <div class="card" id="pl" hidden style="margin-top:12px"></div>

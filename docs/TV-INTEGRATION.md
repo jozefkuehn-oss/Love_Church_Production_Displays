@@ -54,7 +54,7 @@ launcher can draw its own menu:
 
 Locations: Broadcast (Broadcast Control, Broadcast Audio), The Dock, The
 Greenroom, FOH (FOH Audio, FOH Audio Compact, Service Producer, FOH ProP,
-Lighting, Lighting Compact), Stage (Stage Display) and Pre-Show (Pre-Show
+Lighting, Lighting Compact), Stage (Stage Display) and Pre-/Post-Show (Pre-/Post-Show
 Teleprompter). The two Compact dashboards are drawn for a 1920×720 bar
 screen. Admins add, rename, re-locate and redesign dashboards in Admin →
 Displays; the list above updates by itself.

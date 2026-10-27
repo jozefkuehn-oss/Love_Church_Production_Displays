@@ -191,6 +191,16 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Renamed: Pre-/Post-Show.
+(function migratePrePostShow() {
+  if ((db.data.profilesVersion || 1) >= 11) return;
+  for (const p of Object.values(db.data.profiles)) if (p.location === 'Pre-Show') p.location = 'Pre-/Post-Show';
+  const t = db.data.profiles['preshow-confidence'];
+  if (t) { t.location = 'Pre-/Post-Show'; if (/^Pre-Show Teleprompter$|^Preshow Confidence$/.test(t.name)) t.name = 'Pre-/Post-Show Teleprompter'; }
+  db.data.profilesVersion = 11;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
