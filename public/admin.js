@@ -185,7 +185,7 @@
   function tabsFor() {
     const perms = (S.me && S.me.perms) || [];
     const t = [{ id: 'messages', name: 'Messages' }];
-    if (perms.includes('live')) t.push({ id: 'live', name: 'Live' });
+    if (['live', 'subs', 'recording', 'rehearsal'].some((x) => perms.includes(x))) t.push({ id: 'live', name: 'Live' });
     if (perms.includes('handhelds')) t.push({ id: 'handhelds', name: 'Speaking Mics' });
     if (S.me && S.me.role !== 'admin' && perms.includes('wireless')) t.push({ id: 'wireless', name: 'Mics' });
     if (S.me && S.me.role === 'admin')
@@ -196,6 +196,7 @@
         { id: 'schedule', name: 'Schedule' },
         { id: 'wireless', name: 'Wireless' }
       );
+    if (S.me && S.me.role === 'admin') t.push({ id: 'perms', name: 'Permissions' });
     if (perms.includes('roles')) t.push({ id: 'accounts', name: 'Roles & PINs' });
     if (S.me && S.me.role === 'admin') t.push({ id: 'settings', name: 'Settings' });
     return t;
@@ -332,17 +333,19 @@
 
   // ---------------- Live ----------------
   async function viewLive() {
-    app.innerHTML = `<div class="card"><div class="row sp"><div><h2 style="margin:0" id="lh">Live</h2><div class="dim" id="ls"></div></div>
+    const my = (S.me && S.me.perms) || [];
+    const has = (x) => my.includes(x);
+    app.innerHTML = `<div class="card" ${has('live') ? '' : 'hidden'}><div class="row sp"><div><h2 style="margin:0" id="lh">Live</h2><div class="dim" id="ls"></div></div>
       <div class="row"><button id="lp">◀ Back</button><button class="primary" id="ln">Next ▶</button></div></div>
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
       <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
-      <div class="card" id="ps" style="margin-top:12px"></div>
-      <div class="card" id="pp" style="margin-top:12px"><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
+      <div class="card" id="ps" style="margin-top:12px" ${has('live') ? '' : 'hidden'}></div>
+      <div class="card" id="pp" style="margin-top:12px" ${has('live') ? '' : 'hidden'}><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
-      <div class="card" id="sbc" style="margin-top:12px"></div>
-      <div class="card" id="rc" style="margin-top:12px"></div>
-      <div class="card" id="rh" style="margin-top:12px"></div>
+      ${has('subs') ? '<div class="card" id="sbc" style="margin-top:12px"></div>' : ''}
+      ${has('recording') ? '<div class="card" id="rc" style="margin-top:12px"></div>' : ''}
+      ${has('rehearsal') ? '<div class="card" id="rh" style="margin-top:12px"></div>' : ''}
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
@@ -1540,12 +1543,65 @@
   }
 
   // ---------------- Accounts ----------------
+  // ---------------- Permissions (any admin) ----------------
+  const PERM_LABELS = { messages: 'Send messages', live: 'Live control', subs: 'Subs', recording: 'Recording the 11:45', wireless: 'Mics & IEMs', handhelds: 'Speaking mics', rehearsal: 'Rehearsal', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
+  const PERM_DESC = {
+    messages: 'Send messages to the screens',
+    live: 'Move the run of show, start/end the preshow timer, edit teleprompter points',
+    subs: 'Put a sub in someone’s spot (all day or one Encounter)',
+    recording: 'Turn on Recording the 11:45 and set its crew',
+    wireless: 'Assign every mic and IEM for this Sunday (Mics page)',
+    handhelds: 'Say who has HH-1, HH-2, TEACH, BP-1, BP-2',
+    rehearsal: 'Run the screens as if it were Sunday, to test midweek',
+    admin: 'Everything above, plus Displays, People, Songs, Schedule, Wireless setup, Permissions and Settings',
+    roles: 'Manage Roles & PINs and admin accounts',
+  };
+  async function viewPerms() {
+    const d = await api('/api/role-perms');
+    const roles = d.roles.map((r) => ({ ...r, perms: [...r.perms] }));
+    function draw() {
+      app.innerHTML = `<h1>Permissions</h1>
+        <p class="muted">What each role can do when someone signs in with it. Tick or untick, then <b>Save</b>. A role with <em>Everything</em> can do all of it except Roles &amp; PINs. Personal admin accounts can always do everything.${d.canRoles ? '' : ' Only the Technical Director (or the overall administrator) can change who manages Roles &amp; PINs, or change the Technical Director’s role.'}</p>
+        <div class="card" style="overflow-x:auto"><table class="pm"><thead><tr><th style="text-align:left">Permission</th>${roles.map((r) => `<th>${esc(r.name)}</th>`).join('')}</tr></thead><tbody>${d.perms
+          .map((p) => `<tr><td><b>${esc(PERM_LABELS[p] || p)}</b><div class="dim" style="font-size:13px">${esc(PERM_DESC[p] || '')}</div></td>${roles
+            .map((r, i) => {
+              const locked = !d.canRoles && (p === 'roles' || r.perms.includes('roles') && d.roles[i].perms.includes('roles'));
+              const implied = r.perms.includes('admin') && p !== 'admin' && p !== 'roles' && !r.perms.includes(p);
+              if (implied) return '<td style="text-align:center"><span class="dim" title="Included with Everything">✓</span></td>';
+              return `<td style="text-align:center"><input type="checkbox" data-ri="${i}" data-p="${p}" ${r.perms.includes(p) ? 'checked' : ''} ${locked ? 'disabled' : ''} aria-label="${esc(r.name + ': ' + (PERM_LABELS[p] || p))}"></td>`;
+            })
+            .join('')}</tr>`)
+          .join('')}</tbody></table></div>
+        <div class="row" style="margin-top:12px"><button class="primary" id="pmsave">Save</button></div>`;
+      $$('[data-ri]').forEach((el) => (el.onchange = () => {
+        const r = roles[el.dataset.ri];
+        r.perms = el.checked ? [...new Set([...r.perms, el.dataset.p])] : r.perms.filter((x) => x !== el.dataset.p);
+        draw();
+      }));
+      $('#pmsave').onclick = () => api('/api/role-perms', { method: 'PUT', body: { perms: Object.fromEntries(roles.map((r) => [r.id, r.perms])) } }).then(() => toast('Permissions saved')).catch(fail);
+    }
+    draw();
+  }
+
   async function viewAccounts() {
     const [{ roles, perms }, accounts] = await Promise.all([api('/api/roles'), api('/api/accounts')]);
-    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Speaking mics (HH, TEACH, BP)', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
+    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', subs: 'Subs', recording: 'Recording the 11:45', wireless: 'Mics & IEMs', handhelds: 'Speaking mics', rehearsal: 'Rehearsal', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
+    const PERM_HELP = {
+      messages: 'Send messages to the screens',
+      live: 'Move the run of show, start/end the preshow timer, edit teleprompter points',
+      subs: 'Put a sub in someone’s spot (all day or one Encounter)',
+      recording: 'Turn on Recording the 11:45 and set its crew',
+      wireless: 'Assign every mic and IEM for this Sunday (Mics page)',
+      handhelds: 'Say who has HH-1, HH-2, TEACH, BP-1, BP-2',
+      rehearsal: 'Run the screens as if it were Sunday, to test midweek',
+      admin: 'Everything above, plus Displays, People, Songs, Schedule, Wireless setup and Settings',
+      roles: 'Manage Roles & PINs and admin accounts',
+    };
     const list = roles.map((r) => ({ ...r, positionsText: r.positions.join(', '), pin: '' }));
     app.innerHTML = `<h1>Roles &amp; PINs</h1>
       <p class="muted">Leaders sign in by picking the role they’re serving in that day and entering the role’s PIN. Share each PIN only with the people who serve in that role. Sign-ins end at midnight. If Planning Center has exactly one person in that role, their name shows on messages they send.</p>
+      <p class="muted">The <b>Permissions</b> tab shows every role side by side with what it can do.</p>
+      <h2>Roles</h2>
       <div class="list" id="rl"></div>
       <div class="row" style="margin-top:12px"><button class="small" id="radd">Add role</button><button class="primary" id="rsave">Save roles</button></div>
       <h2>Admins</h2>
@@ -1560,7 +1616,9 @@
         <div class="grid2"><label>Name<input id="a_n"></label><label>Name in Planning Center<input id="a_p" placeholder="Same as name"></label>
         <label>Starting PIN (4–8 digits)<input id="a_pin" inputmode="numeric"></label></div>
         <button class="primary" id="a_go">Add admin</button></div>`;
+    const drawMatrix = () => {};
     function drawRoles() {
+      drawMatrix();
       $('#rl').innerHTML = list
         .map(
           (r, i) => `<div class="card" style="gap:10px">
@@ -1571,12 +1629,13 @@
               <span class="grow"></span>${r.person ? `<span class="dim">Today: ${esc(r.person)}</span>` : ''}<button class="small danger" data-rd="${i}">Remove</button></div></div>`
         )
         .join('');
-      $$('#rl [data-f]').forEach((el) => (el.oninput = () => (list[el.dataset.i][el.dataset.f] = el.value)));
+      $$('#rl [data-f]').forEach((el) => (el.oninput = () => { list[el.dataset.i][el.dataset.f] = el.value; if (el.dataset.f === 'name') drawMatrix(); }));
       $$('#rl [data-p]').forEach(
         (el) =>
           (el.onchange = () => {
             const r = list[el.dataset.i];
             r.perms = el.checked ? [...new Set([...r.perms, el.dataset.p])] : r.perms.filter((x) => x !== el.dataset.p);
+            drawMatrix();
           })
       );
       $$('#rl [data-rd]').forEach(
@@ -1725,6 +1784,7 @@
     schedule: viewSchedule,
     wireless: viewWireless,
     handhelds: viewHandhelds,
+    perms: viewPerms,
     accounts: viewAccounts,
     settings: viewSettings,
   };

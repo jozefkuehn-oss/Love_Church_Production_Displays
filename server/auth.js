@@ -35,7 +35,7 @@ function parseCookies(header) {
 // admin = everything (directors) except managing roles. roles = manage
 // Roles & PINs and admin accounts (Technical Director). handhelds = say who
 // has HH-1 / HH-2.
-const PERMS = ['messages', 'live', 'wireless', 'handhelds', 'admin', 'roles'];
+const PERMS = ['messages', 'live', 'subs', 'recording', 'wireless', 'handhelds', 'rehearsal', 'admin', 'roles'];
 
 function makeAuth(db, opts = {}) {
   const d = db.data;

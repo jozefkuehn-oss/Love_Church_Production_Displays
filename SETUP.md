@@ -121,11 +121,13 @@ Leaders don't need their own accounts. When they open the producer page (`http:/
 Admin page → **Roles & PINs**:
 
 - Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
-- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Speaking mics (HH, TEACH, BP)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
+- Choose what each role can do on the **Permissions** tab (any admin): **Send messages**, **Live control**, **Subs**, **Recording the 11:45**, **Mics & IEMs**, **Speaking mics**, **Rehearsal**, **Everything (director / admin)** and **Manage Roles & PINs and admins** (that last one only the Technical Director or overall administrator can give). Defaults:
   - **Technical Director** (David): everything, and the only role that can manage Roles & PINs and admin accounts.
   - **Production Director, Broadcast Director:** everything except Roles & PINs.
   - **FOH Audio:** messages, Mics (every mic and IEM) and Speaking mics.
-  - **Service Producer / Broadcast Producer:** everything FOH Audio has, plus Live (run of show, preshow, subs, recording the 11:45, rehearsal).
+  - **Service Producer:** everything FOH Audio has, plus Live control and Subs.
+  - **Broadcast Producer:** the same as Service Producer, plus Recording the 11:45.
+  - **Rehearsal:** admins only (directors and personal admin accounts).
   - **Floor Manager:** messages and Speaking mics — their phone opens on the Speaking Mics screen to say who has HH-1 / HH-2 (preshow, the host moment, announcements…) and TEACH / BP-1 / BP-2.
   - **Stage Manager:** messages.
 - **Planning Center positions** tells the app which scheduled positions count as the role. When exactly one person is scheduled in it, their name shows on the sign-in button and on the messages they send.

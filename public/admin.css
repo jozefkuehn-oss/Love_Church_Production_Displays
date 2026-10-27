@@ -132,3 +132,10 @@ code { background: var(--panel-2); padding: 2px 6px; border-radius: 6px; }
 .hhm { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: var(--pink); padding: 3px 8px; border-radius: 6px; }
 [hidden] { display: none !important; }
 .hhres { display: flex; flex-direction: column; gap: 6px; }
+
+/* permissions matrix */
+.pm { border-collapse: collapse; width: 100%; min-width: 640px; }
+.pm th, .pm td { padding: 8px 10px; border-bottom: 1px solid var(--line, #2c2c31); vertical-align: middle; }
+.pm th { font-size: 13px; white-space: nowrap; }
+.pm input[type=checkbox] { width: 20px; height: 20px; }
+.pm td:first-child, .pm th:first-child { min-width: 260px; position: sticky; left: 0; background: var(--panel, #151517); z-index: 1; }

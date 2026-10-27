@@ -103,6 +103,20 @@ const auth = makeAuth(db, {
   db.save();
 })();
 
+// Finer permissions: Subs (producers), Recording the 11:45 (Broadcast
+// Producer only) and Rehearsal (admins only, nothing to add).
+(function migrateRoles5() {
+  if ((db.data.rolesVersion || 1) >= 5) return;
+  for (const r of db.data.roles || []) {
+    const p = new Set(r.perms || []);
+    if (p.has('live') && !p.has('admin')) p.add('subs');
+    if (r.id === 'broadcast-producer') p.add('recording');
+    r.perms = [...p];
+  }
+  db.data.rolesVersion = 5;
+  db.save();
+})();
+
 // Displays saved by an earlier build: give every dashboard a location and
 // add the second Greenroom TV and the extra FOH monitors.
 (function migrateLocations() {
@@ -533,12 +547,12 @@ function rehearsalDate(plan) {
   const today = parts(Date.now(), config.data.timezone).dateKey;
   return plan && plan.date && plan.date >= today ? plan.date : nextSundayKey();
 }
-app.get('/api/rehearsal', auth.requirePerm('live'), (req, res) => {
+app.get('/api/rehearsal', auth.requirePerm('rehearsal'), (req, res) => {
   const r = clock.rehearsal();
   const plan = engine.getPlan();
   ok(res, { active: !!r, time: r ? r.time : '', date: r ? r.dateKey : '', until: r ? r.until : 0, nextSunday: rehearsalDate(plan) });
 });
-app.post('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
+app.post('/api/rehearsal', auth.requirePerm('rehearsal'), async (req, res) => {
   const time = String((req.body || {}).time || '');
   if (!/^\d{1,2}:\d{2}$/.test(time)) return bad(res, 'Pick a start time.');
   const plan = engine.getPlan();
@@ -549,7 +563,7 @@ app.post('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
   pushNow();
   ok(res);
 });
-app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
+app.delete('/api/rehearsal', auth.requirePerm('rehearsal'), async (req, res) => {
   clock.stopRehearsal();
   log(`Rehearsal stopped by ${req.account.name}`);
   await engine.refreshPlan().catch(() => {});
@@ -560,7 +574,7 @@ app.delete('/api/rehearsal', auth.requirePerm('live'), async (req, res) => {
 // Subs: when someone doesn't show, put someone else in their spot for today.
 // Every screen (face cards, mics, go-to people, the 11:45 crew) uses the sub.
 const SUB_TEAMS = [/worship/i, /communicator/i, /broadcast/i, /production/i, /service management/i];
-app.get('/api/subs', auth.requirePerm('live'), (req, res) => {
+app.get('/api/subs', auth.requirePerm('subs'), (req, res) => {
   engine.snapshot();
   const plan = engine.getPlan();
   if (!plan) return ok(res, { groups: [], names: [] });
@@ -580,7 +594,7 @@ app.get('/api/subs', auth.requirePerm('live'), (req, res) => {
   const names = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
   ok(res, { date: plan.date, encounters: encLabels, groups, names });
 });
-app.put('/api/subs', auth.requirePerm('live'), (req, res) => {
+app.put('/api/subs', auth.requirePerm('subs'), (req, res) => {
   const plan = engine.getPlan();
   if (!plan) return bad(res, 'No plan loaded yet.');
   const { key } = req.body || {};
@@ -607,7 +621,7 @@ function recordLabel() {
   const e = encs.find((x) => !x.streamStart && !x.streamEnd);
   return e ? e.label : '';
 }
-app.get('/api/recording', auth.requirePerm('live'), (req, res) => {
+app.get('/api/recording', auth.requirePerm('recording'), (req, res) => {
   engine.snapshot();
   const plan = engine.getPlan();
   const r = db.data.recording && plan && db.data.recording.date === plan.date ? db.data.recording : null;
@@ -624,7 +638,7 @@ app.get('/api/recording', auth.requirePerm('live'), (req, res) => {
     names,
   });
 });
-app.put('/api/recording', auth.requirePerm('live'), (req, res) => {
+app.put('/api/recording', auth.requirePerm('recording'), (req, res) => {
   const plan = engine.getPlan();
   if (!plan) return bad(res, 'No plan loaded yet.');
   const body = req.body || {};
@@ -1021,6 +1035,27 @@ app.delete('/api/profiles/:id', auth.requireAdmin, (req, res) => {
 // Accounts
 // Sign-in roles: names, which Planning Center positions count, what each can
 // do, and its shared PIN (write-only).
+// Permissions per role: any admin can change them. Only someone who can manage
+// Roles & PINs can give or take that permission, or change a role that has it.
+app.get('/api/role-perms', auth.requireAdmin, (req, res) => {
+  ok(res, { perms: auth.PERMS, canRoles: auth.can(req.account, 'roles'), roles: (db.data.roles || []).map((r) => ({ id: r.id, name: r.name, perms: r.perms || [] })) });
+});
+app.put('/api/role-perms', auth.requireAdmin, (req, res) => {
+  const want = (req.body || {}).perms || {};
+  const canRoles = auth.can(req.account, 'roles');
+  for (const r of db.data.roles || []) {
+    if (!Array.isArray(want[r.id])) continue;
+    const had = r.perms || [];
+    if (!canRoles && had.includes('roles')) continue; // e.g. Technical Director
+    let next = [...new Set(want[r.id].filter((p) => auth.PERMS.includes(p)))];
+    if (!canRoles) next = next.filter((p) => p !== 'roles').concat(had.includes('roles') ? ['roles'] : []);
+    r.perms = next;
+  }
+  db.save();
+  log(`Role permissions changed by ${req.account.name}`);
+  ok(res);
+});
+
 app.get('/api/roles', auth.requirePerm('roles'), (req, res) => {
   ok(res, { perms: auth.PERMS, roles: (db.data.roles || []).map((r) => ({ id: r.id, name: r.name, positions: r.positions || [], perms: r.perms || [], hasPin: !!r.pinHash, person: auth.scheduledFor(r.name) })) });
 });
