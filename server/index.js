@@ -740,8 +740,9 @@ app.put('/api/wireless-week', auth.requirePerm('wireless'), (req, res) => {
   ok(res);
 });
 
-// Handhelds: the Floor Manager (or FOH) says who has HH-1 / HH-2 right now.
-const HANDHELDS = ['HH-1', 'HH-2'];
+// Speaking mics: the Floor Manager (or FOH / producers) says who has each
+// handheld, the teaching mic and the belt packs right now.
+const HANDHELDS = ['HH-1', 'HH-2', 'TEACH', 'BP-1', 'BP-2'];
 function weekDoc() {
   const plan = engine.getPlan();
   if (!plan) return null;
@@ -777,7 +778,7 @@ app.get('/api/handhelds', auth.requirePerm(['handhelds', 'wireless']), (req, res
 });
 app.put('/api/handhelds/:ch', auth.requirePerm(['handhelds', 'wireless']), (req, res) => {
   const ch = HANDHELDS.find((x) => x.replace('-', '') === String(req.params.ch).toUpperCase().replace(/[^A-Z0-9]/g, ''));
-  if (!ch) return bad(res, 'Unknown handheld.');
+  if (!ch) return bad(res, 'Unknown mic.');
   const wk = weekDoc();
   if (!wk) return bad(res, 'No plan loaded yet.');
   const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim().slice(0, 80);

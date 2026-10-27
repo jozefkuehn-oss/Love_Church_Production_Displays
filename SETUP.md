@@ -121,12 +121,12 @@ Leaders don't need their own accounts. When they open the producer page (`http:/
 Admin page → **Roles & PINs**:
 
 - Set a 4–8 digit PIN for each role and share it only with the people who serve in that role. Roles without a PIN are greyed out on the sign-in screen.
-- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Handhelds (HH-1/HH-2)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
+- Choose what each role can do: **Send messages**, **Live control**, **Mics (This Sunday)**, **Speaking mics (HH, TEACH, BP)**, **Everything (director / admin)** and **Manage Roles & PINs and admins**. Defaults:
   - **Technical Director** (David): everything, and the only role that can manage Roles & PINs and admin accounts.
   - **Production Director, Broadcast Director:** everything except Roles & PINs.
-  - **FOH Engineer:** messages, Live, Mics and Handhelds.
+  - **FOH Engineer:** messages, Live, Mics and Speaking mics.
   - **Service Producer, Broadcast Producer:** messages and Live.
-  - **Floor Manager:** messages and Handhelds — their phone opens on the Handhelds screen to say who has HH-1 / HH-2 for preshow, the host moment, announcements…
+  - **Floor Manager:** messages and Speaking mics — their phone opens on the Speaking Mics screen to say who has HH-1 / HH-2 (preshow, the host moment, announcements…) and TEACH / BP-1 / BP-2.
   - **Stage Manager:** messages.
 - **Planning Center positions** tells the app which scheduled positions count as the role. When exactly one person is scheduled in it, their name shows on the sign-in button and on the messages they send.
 - Add or remove roles as the team changes. Changing a PIN doesn't sign anyone out; removing a role does.

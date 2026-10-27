@@ -186,7 +186,7 @@
     const perms = (S.me && S.me.perms) || [];
     const t = [{ id: 'messages', name: 'Messages' }];
     if (perms.includes('live')) t.push({ id: 'live', name: 'Live' });
-    if (perms.includes('handhelds')) t.push({ id: 'handhelds', name: 'Handhelds' });
+    if (perms.includes('handhelds')) t.push({ id: 'handhelds', name: 'Speaking Mics' });
     if (S.me && S.me.role !== 'admin' && perms.includes('wireless')) t.push({ id: 'wireless', name: 'Mics' });
     if (S.me && S.me.role === 'admin')
       t.push(
@@ -411,7 +411,7 @@
     graphics: { name: 'Broadcast graphics', opts: [] },
     faces: { name: 'Face cards', opts: [['group', ['stage', 'communicators', 'broadcast', 'production', 'service', 'production+service', 'production+service+broadcast', 'leadership', 'stage+communicators', 'leadership+stage+communicators']], ['label', 'text'], ['look', ['fill', 'portrait', 'badge', 'avatar']], ['collage', 'bool'], ['columns', 'number'], ['roleColor', 'text']] },
     worshipMics: { name: 'Worship team mics & IEMs', opts: [['columns', 'number']] },
-    handhelds: { name: 'Spoken mics (HH-1, HH-2, TEACH, BP-1, BP-2)', opts: [] },
+    handhelds: { name: 'Speaking mics (HH-1, HH-2, TEACH, BP-1, BP-2)', opts: [] },
     goto: { name: 'Go-to people', opts: [] },
     wirelessList: { name: 'Wireless list', opts: [] },
     nowNext: { name: 'Now / next strip', opts: [['compact', 'bool'], ['nowOnly', 'bool']] },
@@ -1281,7 +1281,7 @@
         <div class="row"><button class="small" id="ra">Add receiver</button><button class="primary" id="rs">Save receivers</button></div>` : ''}
         <div id="rst"></div></div>
       ${admin ? `<h2>Standard assignments</h2>
-      <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics. Spoken-word mics (HH-1, HH-2, TEACH, BP-1, BP-2) have no standard: they come from the plan notes or are set each week above or on the Handhelds page.</p>
+      <p class="muted">The usual mic and IEM for each Planning Center position — the starting point for every Sunday. Type the mic exactly as the receiver channel is named (like <code>VOX 4</code> or <code>HH-1</code>); spaces, dashes and capitals don’t matter. For positions with more than one person, number them: <code>Frontline#1</code>, <code>Frontline#2</code>… in worship-team order. Use <code>WIRED</code> for wired mics. Speaking mics (HH-1, HH-2, TEACH, BP-1, BP-2) have no standard: they come from the plan notes or are set each week above or on the Speaking Mics page.</p>
       <div class="card"><div style="overflow-x:auto"><table id="wt"></table></div><div class="row"><button class="small" id="wa">Add row</button><button class="primary" id="ws">Save assignments</button></div></div>` : ''}
       <datalist id="chl"></datalist>`;
 
@@ -1383,7 +1383,7 @@
   }
 
   // ---------------- Handhelds ----------------
-  // Floor Manager / FOH: who has HH-1 and HH-2. Pick from the list (today's
+  // Floor Manager / FOH: who has each speaking mic (HH-1, HH-2, TEACH, BP-1, BP-2). Pick from the list (today's
   // communicators + usual hosts, A–Z by first name) or search everyone; a
   // search with no match is used as typed. Save pushes a flashing alert to
   // every screen except the Dock.
@@ -1398,8 +1398,9 @@
       return `<span class="status"><span class="dot ${l.rf === false ? 'bad' : 'ok'}"></span>${l.battery != null ? l.battery + '%' : ''}${l.minutes != null ? ' · ' + fmtMin(l.minutes) : ''}</span>`;
     }
     function draw() {
-      app.innerHTML = `<h1>Handhelds</h1>
-        <div class="hhgrid">${data.handhelds
+      const groups = [['Handhelds', (h) => /^HH/.test(h.ch)], ['Teaching & belt packs', (h) => !/^HH/.test(h.ch)]];
+      app.innerHTML = `<h1>Speaking Mics</h1>${groups.map(([title, test]) => `<h2>${title}</h2>
+        <div class="hhgrid">${data.handhelds.filter(test)
           .map((h) => {
             const pick = pending[h.ch];
             return `<div class="card hh" data-ch="${h.ch}">
@@ -1412,7 +1413,7 @@
               ${h.set ? '<button class="small ghost" data-clear style="align-self:flex-start">Clear</button>' : ''}
             </div>`;
           })
-          .join('')}</div>`;
+          .join('')}</div>`).join('')}`;
       $$('.hh').forEach((card) => {
         const ch = card.dataset.ch;
         const choose = (n) => {
@@ -1469,7 +1470,7 @@
   // ---------------- Accounts ----------------
   async function viewAccounts() {
     const [{ roles, perms }, accounts] = await Promise.all([api('/api/roles'), api('/api/accounts')]);
-    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Handhelds (HH-1/HH-2)', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
+    const PERM_NAMES = { messages: 'Send messages', live: 'Live control', wireless: 'Mics (This Sunday)', handhelds: 'Speaking mics (HH, TEACH, BP)', admin: 'Everything (director / admin)', roles: 'Manage Roles & PINs and admins' };
     const list = roles.map((r) => ({ ...r, positionsText: r.positions.join(', '), pin: '' }));
     app.innerHTML = `<h1>Roles &amp; PINs</h1>
       <p class="muted">Leaders sign in by picking the role they’re serving in that day and entering the role’s PIN. Share each PIN only with the people who serve in that role. Sign-ins end at midnight. If Planning Center has exactly one person in that role, their name shows on messages they send.</p>

@@ -472,7 +472,7 @@
       <div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:${gap}px ${cols > 1 ? 10 : 0}px;grid-auto-flow:column;grid-template-rows:repeat(${rowsFor(cols)},${Math.floor(rh)}px)">${html || '<div class="missing">No wireless assigned</div>'}</div></div>`;
   };
 
-  // Spoken-word mics at a glance (HH-1, HH-2, TEACH, BP-1, BP-2): who has each
+  // Speaking mics at a glance (HH-1, HH-2, TEACH, BP-1, BP-2): who has each
   // one right now, plus battery and RF straight from the receiver.
   W.handhelds = (o, s, ctx) => {
     // Only mics someone has been given show up.
@@ -500,7 +500,7 @@
             <span style="font-size:${sm}px;font-weight:800;color:${h.battery != null && h.battery < 35 ? col : '#fff'};white-space:nowrap">${state}</span>${h.off || h.battery == null ? '' : `<span class="rf ${rfClass(h)}"></span>`}</div>
         </div></div>`;
     };
-    return `<div style="height:100%;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols},minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">${list.map(tile).join('') || '<div class="missing">No spoken mics assigned yet</div>'}</div>`;
+    return `<div style="height:100%;display:grid;gap:${gap}px;grid-template-columns:repeat(${fit.cols},minmax(0,1fr));grid-auto-rows:minmax(0,1fr)">${list.map(tile).join('') || '<div class="missing">No speaking mics assigned yet</div>'}</div>`;
   };
 
   function needTags(it, s) {
