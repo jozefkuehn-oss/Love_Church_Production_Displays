@@ -680,9 +680,18 @@ app.get('/api/subs', auth.requirePerm('subs'), (req, res) => {
     for (const l of encLabels) if (((S.byEnc || {})[l] || {})[key]) byEnc[l] = S.byEnc[l][key];
     g.rows.push({ key, position: p.position, name: p.name, sub: (S.byKey || {})[key] || '', byEnc, status: p.status });
   }
+  // Each team offers only its own people: everyone assigned to that team in
+  // Planning Center, plus anyone on it this week. Until the rosters have
+  // loaded (or in sample mode) it falls back to everyone.
+  const rosters = engine.getTeamRosters() || {};
+  const haveRosters = Object.keys(rosters).length > 0;
+  const everyone = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
+  for (const g of groups) {
+    const own = new Set([...(rosters[g.team] || []), ...plan.people.filter((p) => p.team === g.team).map((p) => p.name)]);
+    g.names = haveRosters ? [...own].sort(byFirst) : everyone;
+  }
   groups.sort((a, b) => SUB_TEAMS.findIndex((re) => re.test(a.team)) - SUB_TEAMS.findIndex((re) => re.test(b.team)));
-  const names = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
-  ok(res, { date: plan.date, encounters: encLabels, groups, names });
+  ok(res, { date: plan.date, encounters: encLabels, groups, names: everyone });
 });
 app.put('/api/subs', auth.requirePerm('subs'), (req, res) => {
   const plan = engine.getPlan();

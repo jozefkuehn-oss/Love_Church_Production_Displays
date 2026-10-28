@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { parts, zoned } = require('./time');
-const { fetchPlan, fetchHosts } = require('./sources/pco');
+const { fetchPlan, fetchHosts, fetchTeamRosters } = require('./sources/pco');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
@@ -164,6 +164,7 @@ function makeEngine({ config, db, clock, log }) {
 
   // Usual Encounter / Online hosts from Planning Center (refreshed with photos).
   let hosts = [];
+  let teamRosters = {}; // { team: [everyone assigned to it in PCO] }
   async function refreshHosts() {
     const p = cfg().pco;
     if (cfg().sampleMode || !p.appId || !p.secret) return;
@@ -171,6 +172,11 @@ function makeEngine({ config, db, clock, log }) {
       hosts = await fetchHosts(p);
     } catch (e) {
       log('Planning Center hosts list failed: ' + e.message);
+    }
+    try {
+      teamRosters = await fetchTeamRosters(p);
+    } catch (e) {
+      log('Planning Center team rosters failed: ' + e.message);
     }
   }
 
@@ -911,7 +917,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

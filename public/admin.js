@@ -448,7 +448,7 @@
         return bits.length ? ` <span style="color:var(--yellow)">· ${esc(bits.join(' · '))}</span>` : '';
       };
       $('#sbc').innerHTML = `<details ${open ? 'open' : ''}><summary class="row sp" style="cursor:pointer"><strong>Subs today</strong><span class="dim">${n ? n + ' sub' + (n > 1 ? 's' : '') : 'Someone didn’t show? Put a sub in their spot'}</span></summary>
-        <p class="dim">Pick <b>All day</b> or one Encounter, pick the team, type who’s filling in, and tap Save. Every screen uses them: face cards, mics, go-to people. An Encounter’s sub wins over an all-day one. Clear the box and Save to undo.</p>
+        <p class="dim">Pick <b>All day</b> or one Encounter, pick the team, type who’s filling in (the list shows that team’s people in Planning Center), and tap Save. Every screen uses them: face cards, mics, go-to people. An Encounter’s sub wins over an all-day one. Clear the box and Save to undo.</p>
         <div class="dim" style="margin-top:6px">When</div>
         <div class="row" style="flex-wrap:wrap;gap:6px">${scopes.map(([v, t]) => `<button class="small ${v === subScope ? 'primary' : 'ghost'}" data-scope="${esc(v)}">${esc(t)}</button>`).join('')}</div>
         <div class="dim" style="margin-top:10px">Team</div>
@@ -461,7 +461,7 @@
             <input list="sbnames" data-sk="${esc(x.key)}" value="${esc(val(x))}" placeholder="${esc(ph(x))}"></label>
             <button class="small ${val(x) ? '' : 'ghost'}" data-sks="${esc(x.key)}">Save</button></div>`)
           .join('')}`).join('')}
-        <datalist id="sbnames">${r.names.map((nm) => `<option value="${esc(nm)}">`).join('')}</datalist></details>`;
+        <datalist id="sbnames">${((r.groups.find((g) => g.team === subTeam) || {}).names || r.names).map((nm) => `<option value="${esc(nm)}">`).join('')}</datalist></details>`;
       $$('[data-scope]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); subScope = b.dataset.scope; drawSubs(true); }));
       $$('[data-team]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); subTeam = b.dataset.team; drawSubs(true); }));
       $$('[data-sks]').forEach((b) => (b.onclick = () => {

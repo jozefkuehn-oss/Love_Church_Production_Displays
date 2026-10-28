@@ -135,4 +135,33 @@ async function fetchHosts(cfg) {
   return [...names];
 }
 
-module.exports = { fetchPlan, fetchHosts };
+// Everyone assigned to each team in Planning Center (through any of the
+// team's positions), whether or not they're on this week's plan. Used for the
+// Subs list, so a team only offers its own people.  { teamName: [names] }
+async function fetchTeamRosters(cfg) {
+  const st = cfg.serviceTypeId;
+  const pos = await getAll(cfg, `/service_types/${st}/team_positions?include=team&per_page=100`);
+  const teams = {};
+  pos.included.filter((x) => x.type === 'Team').forEach((t) => (teams[t.id] = t.attributes.name));
+  const out = {};
+  const todo = pos.data.slice();
+  async function worker() {
+    for (let tp = todo.shift(); tp; tp = todo.shift()) {
+      const team = teams[tp.relationships && tp.relationships.team && tp.relationships.team.data && tp.relationships.team.data.id] || '';
+      if (!team) continue;
+      const set = (out[team] = out[team] || new Set());
+      const a = await getAll(cfg, `/service_types/${st}/team_positions/${tp.id}/person_team_position_assignments?include=person&per_page=100`);
+      a.included.filter((x) => x.type === 'Person').forEach((p) => {
+        const n = p.attributes.full_name || [p.attributes.first_name, p.attributes.last_name].filter(Boolean).join(' ');
+        if (n) set.add(n.trim());
+      });
+    }
+  }
+  // A few at a time keeps well under Planning Center's rate limit.
+  await Promise.all([worker(), worker(), worker()]);
+  const res = {};
+  for (const [t, set] of Object.entries(out)) res[t] = [...set];
+  return res;
+}
+
+module.exports = { fetchPlan, fetchHosts, fetchTeamRosters };
