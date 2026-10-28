@@ -42,54 +42,71 @@ invisibly. If a Homebrew ffmpeg is installed, the app uses that instead.
 
 ## Samsung TVs (Green Room, The Dock, Broadcast Audio)
 
-### On each TV
+The Dock is done (192.168.10.232, device ID KLCPHIWA3IAY2). Tizen Studio and
+the **LoveChurch** certificate are already set up on the Mac mini.
 
-1. **Settings → General → Network → Expert Settings → Power On with Mobile: On.**
-   (On some models: *IP Remote: On* as well.) This lets the Mac turn it on.
-2. **Settings → General → System Manager → Time → Sleep Timer: Off**, and
-   **Settings → General → Eco Solution → Auto Power Off: Off** (and
-   *No Signal Power Off: Off*).
-3. **Settings → General → Smart Features → Autorun Last App: On.** A backup:
-   if the network wake ever fails, the TV still reopens the dashboard when
-   someone turns it on.
-4. Turn on **Developer Mode** so the app can be installed: open **Apps**, then
-   on the remote press **1 2 3 4 5**. Turn Developer mode **On**, enter the
-   **Mac's IP address** as the Host PC IP, and restart the TV (hold the power
-   button until it restarts).
+### 1. On the TV (remote)
 
-### Build and install the app (from the Mac, once per TV)
+1. **Settings → General → Network → Expert Settings → Power On with Mobile: On**
+   (and **IP Remote: On** if listed). Lets the Mac turn it on.
+2. **Settings → General → Eco Solution → Auto Power Off: Off** and
+   **No Signal Power Off: Off**.
+3. **Settings → General → Smart Features → Autorun Last App: On.**
+4. Note the TV's IP: **Settings → General → Network → Network Status → IP
+   Settings**. Have it reserved on the router.
+5. **Developer Mode:** open **Apps** (the Apps page itself), press **123** for the
+   on-screen number pad, enter **1 2 3 4 5**. Turn it **On**, Host PC IP
+   **192.168.10.193**, OK. Then **hold the power button ~5 s** until the TV
+   restarts by itself. Apps now shows **Developer Mode** at the top.
 
-One-time on the Mac:
-
-1. Install **Tizen Studio** from https://developer.samsung.com/smarttv/develop/getting-started/setting-up-sdk/installing-tv-sdk.html
-2. In Tizen Studio's **Package Manager**, install **Samsung Certificate
-   Extension** and the **TV Extensions** (Extension SDK tab).
-3. In **Tools → Certificate Manager**, make a **Samsung** certificate profile
-   (sign in with a free Samsung account). Name it `LoveChurch`. When it asks
-   for device IDs (DUIDs), add every Samsung TV: **Tools → Device Manager**
-   lists them once they're connected (Remote Device Manager → **+** → the TV's IP).
-
-Then build and install on all three TVs at once (in the app folder):
+### 2. Check and connect (Mac mini, Terminal)
 
 ```
-bash tv/samsung/build.sh http://<mac-ip>:8080 LoveChurch <green-room-ip> <dock-ip> <broadcast-audio-ip>
+ping -c 4 <tv-ip>
+nc -vz <tv-ip> 26101
+~/tizen-studio/tools/sdb connect <tv-ip>
+~/tizen-studio/tools/sdb devices
 ```
 
-### Finish in Admin
+- ping fails: the network blocks the Mac from the TV (ask David).
+- nc says *refused*: Developer Mode isn't on yet; redo step 1.5.
+- `sdb devices` lists the TV's model: connected.
 
-1. In **Admin → Displays → TVs**, type each TV's **IP address**. (Its MAC
-   address fills itself in the first time the app opens.)
-2. Press **Pair**, then press **Allow** on the TV with its remote. You only do
-   this once per TV.
-3. Press **Launch now**. The TV turns on (if it was off) and opens the
-   dashboard.
+If Device Manager in Tizen Studio says *failed to connect* but `nc` works, run
+`~/tizen-studio/tools/sdb kill-server` and connect again from Terminal.
 
-> If the app opens and says *This TV isn't set up yet*, it shows its IP. A
-> **New TV found** card also appears in Admin with an **Add this TV** button.
+### 3. Add the TV to the certificate (Tizen Studio, while connected)
 
-The Samsung Developer Mode stays on after restarts; the app stays installed.
-A big firmware update can occasionally remove sideloaded apps. If a TV
-stops opening the dashboard after an update, run the build command for it again.
+**Tools → Certificate Manager →** select **LoveChurch** → edit the
+**distributor** certificate → **+** to add the TV's device ID (DUID; Device
+Manager shows it for the connected TV) → Finish. Keep every TV's ID in the
+list: Dock **KLCPHIWA3IAY2**.
+
+### 4. Install the app
+
+```
+cd ~/Documents/Love_Church_Production_Displays
+bash tv/samsung/build.sh http://192.168.10.193:8080 LoveChurch <tv-ip>
+```
+
+Look for **Tizen application is successfully installed**. Several TVs at once:
+list their IPs after `LoveChurch`, separated by spaces (connect each with
+`sdb connect` first).
+
+### 5. Finish in Admin → Displays → TVs
+
+On the TV's card: enter its **IP** → **Pair** (press **Allow** on the TV) →
+**Launch now**. Test **Turn off** then **Launch now**, and **Back, Back** on
+the remote to leave the dashboard.
+
+### Later
+
+- **Reinstall after app updates to the TV shell only** (tv/samsung files):
+  run step 4 again. Dashboard changes don't need a reinstall; they come from
+  the Mac.
+- A big Samsung firmware update can remove the app. Run step 4 again.
+- If the Mac mini's address ever changes, rebuild every TV app (step 4) with the
+  new address.
 
 ---
 
