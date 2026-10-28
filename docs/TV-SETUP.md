@@ -42,7 +42,7 @@ invisibly. If a Homebrew ffmpeg is installed, the app uses that instead.
 
 ## Samsung TVs (Green Room, The Dock, Broadcast Audio)
 
-The Dock is done (192.168.10.232, device ID KLCPHIWA3IAY2). Tizen Studio and
+Done: The Dock (192.168.10.232) and Broadcast Audio (192.168.10.250). Tizen Studio and
 the **LoveChurch** certificate are already set up on the Mac mini.
 
 ### 1. On the TV (remote)
@@ -77,16 +77,27 @@ If Device Manager in Tizen Studio says *failed to connect* but `nc` works, run
 
 ### 3. Add the TV to the certificate (Tizen Studio, while connected)
 
-**Tools → Certificate Manager →** select **LoveChurch** → edit the
-**distributor** certificate → **+** to add the TV's device ID (DUID; Device
-Manager shows it for the connected TV) → Finish. Keep every TV's ID in the
-list: Dock **KLCPHIWA3IAY2**.
+The pencil on a certificate only changes its password; it can't add a TV. To
+add one, make a **new profile** that reuses the same author certificate:
+
+**Tools → Certificate Manager →** small **+** next to *Certificate Profile* →
+**Samsung → TV** → name it the next number (**LoveChurch3**, …) → **Select an
+existing author certificate** = `~/SamsungCertificate/LoveChurch/author.p12` →
+sign in to Samsung → **Create a new distributor certificate**, **Public** →
+check **every** TV's device ID is in the list → finish until it says *created
+successfully* → select the new profile and click the **check mark**.
+
+Check it saved: `find ~/SamsungCertificate -name "*.p12"` lists the new folder.
+Use the newest profile name in step 4.
+
+Device IDs so far: Dock **KLCPHIWA3IAY2**, Broadcast Audio **SHCMGLVRZTPGC**
+(profile **LoveChurch2**).
 
 ### 4. Install the app
 
 ```
 cd ~/Documents/Love_Church_Production_Displays
-bash tv/samsung/build.sh http://192.168.10.193:8080 LoveChurch <tv-ip>
+bash tv/samsung/build.sh http://192.168.10.193:8080 <newest profile> <tv-ip>
 ```
 
 Look for **Tizen application is successfully installed**. Several TVs at once:
