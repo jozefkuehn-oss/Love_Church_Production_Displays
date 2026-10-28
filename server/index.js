@@ -683,12 +683,37 @@ app.get('/api/subs', auth.requirePerm('subs'), (req, res) => {
   // Each team offers only its own people: everyone assigned to that team in
   // Planning Center, plus anyone on it this week. Until the rosters have
   // loaded (or in sample mode) it falls back to everyone.
-  const rosters = engine.getTeamRosters() || {};
-  const haveRosters = Object.keys(rosters).length > 0;
+  // Each spot offers only the right people from Planning Center: first
+  // whoever is assigned to that same position, then the rest of the team.
+  // Communicators are narrower: a host spot offers the Encounter / Online
+  // hosts and co-hosts, any other spot (Bible Teacher, TIP Host…) only people
+  // in that exact position. Until the rosters load (or in sample mode) it
+  // falls back to everyone.
+  const R = engine.getTeamRosters() || {};
+  const teamsR = R.teams || {};
+  const posR = R.positions || {};
+  const haveRosters = Object.keys(teamsR).length > 0;
   const everyone = [...new Set([...plan.people.map((p) => p.name), ...photos.roster()])].sort(byFirst);
+  const HOST = /^(encounter|online)\s+(co-?\s*)?host$/i;
   for (const g of groups) {
-    const own = new Set([...(rosters[g.team] || []), ...plan.people.filter((p) => p.team === g.team).map((p) => p.name)]);
-    g.names = haveRosters ? [...own].sort(byFirst) : everyone;
+    const comm = /communicator/i.test(g.team);
+    const teamAll = [...new Set([...(teamsR[g.team] || []), ...plan.people.filter((p) => p.team === g.team).map((p) => p.name)])].sort(byFirst);
+    for (const row of g.rows) {
+      if (!haveRosters) {
+        row.names = everyone;
+        continue;
+      }
+      const posKeys = Object.keys(posR).filter((k) => {
+        const [t, pos] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
+        if (t !== g.team) return false;
+        if (pos === row.position) return true;
+        return comm && HOST.test(row.position) && HOST.test(pos);
+      });
+      const same = new Set(posKeys.flatMap((k) => posR[k]));
+      plan.people.filter((p) => p.team === g.team && (p.position === row.position || (comm && HOST.test(row.position) && HOST.test(p.position)))).forEach((p) => same.add(p.name));
+      const first = [...same].sort(byFirst);
+      row.names = comm ? first : [...first, ...teamAll.filter((n) => !same.has(n))];
+    }
   }
   groups.sort((a, b) => SUB_TEAMS.findIndex((re) => re.test(a.team)) - SUB_TEAMS.findIndex((re) => re.test(b.team)));
   ok(res, { date: plan.date, encounters: encLabels, groups, names: everyone });
@@ -830,14 +855,15 @@ app.put('/api/config', auth.requireAdmin, (req, res) => {
   for (const k of allowed) if (k in body) config.data[k] = body[k];
   config.saveNow();
   engine.restartProPresenter();
-  if (wasSample !== config.data.sampleMode || body.pco) engine.refreshPlan().then(engine.refreshPhotos).then(engine.refreshHosts);
+  if (wasSample !== config.data.sampleMode || body.pco) engine.refreshPlan().then(engine.refreshHosts).then(engine.refreshPhotos);
   log(`Settings updated by ${req.account.name}`);
   ok(res);
 });
 
 app.post('/api/refresh', auth.requireAdmin, async (req, res) => {
   await engine.refreshPlan();
-  await engine.refreshPhotos();
+  await engine.refreshHosts(); // team rosters + Planning Center photos
+  await engine.refreshPhotos(); // Slack photos (only changed ones download)
   pushNow();
   ok(res, engine.health());
 });

@@ -2,9 +2,7 @@
 // in the workspace (its "Bot User OAuth Token", starting xoxb-). Photos are
 // downloaded once and kept in data/photos, so the screens never depend on
 // Slack being reachable during an Encounter.
-const fs = require('fs');
-const path = require('path');
-const { PHOTO_DIR } = require('../store');
+const { cache } = require('./photocache');
 
 async function listUsers(token) {
   const users = [];
@@ -23,7 +21,7 @@ async function listUsers(token) {
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim();
 
-// Returns { 'Planning Center Name': '/photos/slack-U123.jpg' } for everyone it
+// Returns { photos: { 'Planning Center Name': '/photos/slack-U123.jpg?v=…' }, changed } for everyone it
 // can match. nameMap holds the people whose Slack name differs.
 async function syncPhotos(token, names, nameMap) {
   const users = await listUsers(token);
@@ -34,25 +32,16 @@ async function syncPhotos(token, names, nameMap) {
       if (n && !byName.has(norm(n))) byName.set(norm(n), u);
     }
   }
-  const out = {};
+  const items = [];
   for (const name of names) {
     const u = byName.get(norm(nameMap[name] || name)) || byName.get(norm(name));
     if (!u || !u.profile || !u.profile.is_custom_image) continue; // skip default avatars
     const src = u.profile.image_original || u.profile.image_1024 || u.profile.image_512;
-    if (!src) continue;
-    const file = `slack-${u.id}.jpg`;
-    const dest = path.join(PHOTO_DIR, file);
-    try {
-      const res = await fetch(src);
-      if (!res.ok) continue;
-      fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-      out[name] = `/photos/${file}`;
-    } catch (e) {
-      // keep any copy downloaded on an earlier sync
-      if (fs.existsSync(dest)) out[name] = `/photos/${file}`;
-    }
+    if (src) items.push({ name, id: u.id, url: src });
   }
-  return out;
+  // Downloads only photos that changed since last time.
+  const { photos, changed } = await cache('slack', items);
+  return { photos, changed };
 }
 
 module.exports = { syncPhotos };

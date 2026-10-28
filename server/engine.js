@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { parts, zoned } = require('./time');
 const { fetchPlan, fetchHosts, fetchTeamRosters } = require('./sources/pco');
+const { cache: photoCache } = require('./sources/photocache');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
@@ -164,7 +165,8 @@ function makeEngine({ config, db, clock, log }) {
 
   // Usual Encounter / Online hosts from Planning Center (refreshed with photos).
   let hosts = [];
-  let teamRosters = {}; // { team: [everyone assigned to it in PCO] }
+  let teamRosters = { teams: {}, positions: {}, photos: {} }; // everyone assigned in PCO, by team and position
+  let pcoPhotos = {}; // name -> local copy of their Planning Center photo
   async function refreshHosts() {
     const p = cfg().pco;
     if (cfg().sampleMode || !p.appId || !p.secret) return;
@@ -175,6 +177,9 @@ function makeEngine({ config, db, clock, log }) {
     }
     try {
       teamRosters = await fetchTeamRosters(p);
+      const { photos: got, changed } = await photoCache('pco', Object.entries(teamRosters.photos || {}).map(([name, url]) => ({ name, url })));
+      pcoPhotos = got;
+      if (changed) log(`Planning Center photos: ${changed} new or changed`);
     } catch (e) {
       log('Planning Center team rosters failed: ' + e.message);
     }
@@ -184,9 +189,12 @@ function makeEngine({ config, db, clock, log }) {
     const token = cfg().slack.botToken;
     if (!token || !plan) return;
     try {
-      const names = [...new Set(plan.people.map((p) => p.name))];
-      const got = await syncPhotos(token, names, d().nameMap || {});
+      // Everyone on this week's plan plus everyone on the teams in PCO, so
+      // subs have their photos too.
+      const names = [...new Set([...plan.people.map((p) => p.name), ...Object.values(teamRosters.teams || {}).flat()])];
+      const { photos: got, changed } = await syncPhotos(token, names, d().nameMap || {});
       slackPhotos = { ...slackPhotos, ...got };
+      if (changed) log(`Slack photos: ${changed} new or changed`);
       slackSyncedAt = Date.now();
       slackError = '';
     } catch (e) {
@@ -196,10 +204,12 @@ function makeEngine({ config, db, clock, log }) {
   }
 
   function startLoops() {
-    refreshPlan().then(refreshPhotos).then(refreshHosts);
-    setInterval(() => refreshHosts(), 6 * 3600e3);
+    // Hosts + team rosters (and their PCO photos) first, so the Slack sync
+    // also covers everyone on the teams.
+    refreshPlan().then(refreshHosts).then(refreshPhotos);
+    setInterval(() => refreshHosts(), 3600e3);
     setInterval(() => refreshPlan(), Math.max(1, cfg().pco.refreshMinutes || 5) * 60e3);
-    setInterval(() => refreshPhotos(), Math.max(1, cfg().slack.refreshHours || 12) * 3600e3);
+    setInterval(() => refreshPhotos(), 3600e3); // hourly: only changed photos download
     aud.start(() => cfg().propresenter.auditorium, cfg().propresenter.pollMs || 1000);
     bc.start(() => cfg().propresenter.broadcast, (cfg().propresenter.pollMs || 1000) * 2);
     shure.configure(receiverHosts());
@@ -236,14 +246,13 @@ function makeEngine({ config, db, clock, log }) {
   // ---- people ----
   function photoFor(name) {
     const o = (d().people || {})[name] || {};
-    // Order: an uploaded override, then the hand-cropped starter photo that
-    // ships with the app, then the person's Slack photo, then Planning Center.
+    // Order: a photo uploaded in Admin → People, then the person's current
+    // Slack photo, then their Planning Center photo (both kept up to date as
+    // people change them), then the starter photo that shipped with the app.
     const seed = photos.seedPhoto(name);
-    // Planning Center profile photo as the last resort (skips its default
-    // initials / no-photo avatars). Lets faces work without a Slack app.
     const pcoPerson = plan && plan.people.find((pp) => pp.name === name && pp.photo);
-    const pco = pcoPerson && !/initials|no_photo|default|blank/i.test(pcoPerson.photo) ? pcoPerson.photo : '';
-    let src = o.photo || seed || slackPhotos[name] || pco || '';
+    const pcoRemote = pcoPerson && !/initials|no_photo|default|blank/i.test(pcoPerson.photo) ? pcoPerson.photo : '';
+    let src = o.photo || slackPhotos[name] || pcoPhotos[name] || seed || pcoRemote || '';
     if (o.hidePhoto) src = '';
     return { photo: src, focusX: o.focusX ?? 50, focusY: o.focusY ?? 15, zoom: o.zoom ?? 1 };
   }

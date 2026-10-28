@@ -135,33 +135,47 @@ async function fetchHosts(cfg) {
   return [...names];
 }
 
-// Everyone assigned to each team in Planning Center (through any of the
-// team's positions), whether or not they're on this week's plan. Used for the
-// Subs list, so a team only offers its own people.  { teamName: [names] }
+// PCO full names can carry nicknames: 'Todd "PT" Doxzon', 'Ben (Benjamin)
+// Norvig'. Plans show the plain name ("Todd Doxzon"), so match on that.
+function plainName(n) {
+  return String(n || '').replace(/\([^)]*\)/g, ' ').replace(/"[^"]*"|“[^”]*”/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Everyone assigned to each team and each position in Planning Center,
+// whether or not they're on this week's plan, plus their PCO photo. Used for
+// the Subs lists (a team or position only offers its own people) and photos.
+//   { teams: { team: [names] }, positions: { 'team|position': [names] }, photos: { name: url } }
 async function fetchTeamRosters(cfg) {
   const st = cfg.serviceTypeId;
   const pos = await getAll(cfg, `/service_types/${st}/team_positions?include=team&per_page=100`);
   const teams = {};
   pos.included.filter((x) => x.type === 'Team').forEach((t) => (teams[t.id] = t.attributes.name));
-  const out = {};
+  const byTeam = {};
+  const byPos = {};
+  const pics = {};
   const todo = pos.data.slice();
   async function worker() {
     for (let tp = todo.shift(); tp; tp = todo.shift()) {
       const team = teams[tp.relationships && tp.relationships.team && tp.relationships.team.data && tp.relationships.team.data.id] || '';
       if (!team) continue;
-      const set = (out[team] = out[team] || new Set());
+      const tset = (byTeam[team] = byTeam[team] || new Set());
+      const pset = (byPos[team + '|' + tp.attributes.name] = byPos[team + '|' + tp.attributes.name] || new Set());
       const a = await getAll(cfg, `/service_types/${st}/team_positions/${tp.id}/person_team_position_assignments?include=person&per_page=100`);
       a.included.filter((x) => x.type === 'Person').forEach((p) => {
-        const n = p.attributes.full_name || [p.attributes.first_name, p.attributes.last_name].filter(Boolean).join(' ');
-        if (n) set.add(n.trim());
+        const at = p.attributes;
+        const n = plainName(at.full_name || [at.first_name, at.last_name].filter(Boolean).join(' '));
+        if (!n) return;
+        tset.add(n);
+        pset.add(n);
+        const url = at.photo_url || at.photo_thumbnail_url || '';
+        if (url && !/initials|no_photo|default|blank/i.test(url)) pics[n] = url;
       });
     }
   }
   // A few at a time keeps well under Planning Center's rate limit.
   await Promise.all([worker(), worker(), worker()]);
-  const res = {};
-  for (const [t, set] of Object.entries(out)) res[t] = [...set];
-  return res;
+  const list = (o) => Object.fromEntries(Object.entries(o).map(([k, set]) => [k, [...set]]));
+  return { teams: list(byTeam), positions: list(byPos), photos: pics };
 }
 
-module.exports = { fetchPlan, fetchHosts, fetchTeamRosters };
+module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, plainName };
