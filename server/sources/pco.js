@@ -6,10 +6,36 @@ const { parts } = require('../time');
 
 const BASE = 'https://api.planningcenteronline.com/services/v2';
 
+// Planning Center allows 100 requests per 20 seconds per account. Every call
+// goes through this pacer, which keeps us under ~70 per 20 s, and a 429 waits
+// out PCO's Retry-After and tries again.
+const WINDOW_MS = 20000;
+const MAX_PER_WINDOW = 70;
+const sent = [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function pace() {
+  for (;;) {
+    const now = Date.now();
+    while (sent.length && now - sent[0] > WINDOW_MS) sent.shift();
+    if (sent.length < MAX_PER_WINDOW) {
+      sent.push(now);
+      return;
+    }
+    await sleep(WINDOW_MS - (now - sent[0]) + 50);
+  }
+}
+
 async function get(cfg, path) {
   const url = path.startsWith('http') ? path : BASE + path;
   const auth = Buffer.from(`${cfg.appId}:${cfg.secret}`).toString('base64');
-  const res = await fetch(url, { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' } });
+  let res;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await pace();
+    res = await fetch(url, { headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' } });
+    if (res.status !== 429) break;
+    const wait = Number(res.headers.get('retry-after')) || 20;
+    await sleep(Math.min(60, wait) * 1000 + 250);
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Planning Center ${res.status}: ${body.slice(0, 200)}`);
@@ -195,8 +221,8 @@ async function fetchTeamRosters(cfg) {
       });
     }
   }
-  // A few at a time keeps well under Planning Center's rate limit.
-  await Promise.all([worker(), worker(), worker()]);
+  // Two at a time; the pacer above keeps the total under PCO's limit.
+  await Promise.all([worker(), worker()]);
   const list = (o) => Object.fromEntries(Object.entries(o).map(([k, set]) => [k, [...set]]));
   return { teams: list(byTeam), positions: list(byPos), photos: pics };
 }
