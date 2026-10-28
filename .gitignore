@@ -4,3 +4,5 @@ logs/
 .DS_Store
 *.log
 scripts/screens.conf
+tv/samsung/build/
+tv/roku/build/

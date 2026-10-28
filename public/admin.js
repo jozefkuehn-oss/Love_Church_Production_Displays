@@ -507,6 +507,176 @@
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },
   };
 
+  // ---------------- TVs (power schedule + launching the dashboard app) ----------------
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function tvStatus(t) {
+    const st = t.state || {};
+    if (st.status === 'trying') return { dot: 'warn', text: st.message || 'Starting…' };
+    if (st.status === 'failed') return { dot: 'bad', text: st.message || 'Didn’t work' };
+    if (t.online || st.showing) return { dot: 'ok', text: 'Showing the dashboard' };
+    if (st.reachable === false) return { dot: '', text: t.ip ? 'Off or not answering' : 'Needs its IP address' };
+    if (st.power === 'on') return { dot: 'warn', text: 'On, not showing the dashboard' };
+    if (st.power === 'standby') return { dot: '', text: 'Off (standby)' };
+    return { dot: '', text: st.message || '—' };
+  }
+  async function drawTvs(profiles) {
+    const box = $('#tvs');
+    if (!box) return;
+    const d = await api('/api/tvs');
+    const dashOpts = (cur) =>
+      `<option value="">— pick a dashboard —</option>` +
+      Object.entries(profiles)
+        .filter(([, p]) => !String(p.location || '').startsWith('_'))
+        .map(([id, p]) => `<option value="${id}" ${id === cur ? 'selected' : ''}>${esc((p.location || 'Other') + ' — ' + p.name)}</option>`)
+        .join('');
+    const s = d.schedule;
+    box.innerHTML = `<div class="card"><div class="row sp"><strong>Schedule</strong><label class="inline"><input type="checkbox" id="tvs-en" ${s.enabled ? 'checked' : ''}> On</label></div>
+        <div class="grid2"><label>Turn on at<input type="time" id="tvs-on" value="${esc(s.on)}"></label><label>Turn off at<input type="time" id="tvs-off" value="${esc(s.off)}"></label></div>
+        <div class="chips">${DAYS.map((x) => `<button class="chip ${s.days.includes(x) ? 'on' : ''}" data-day="${x}">${x.slice(0, 3)}</button>`).join('')}</div>
+        <div class="row"><button class="primary small" id="tvs-all-on">Launch all now</button><button class="small" id="tvs-all-off">Turn all off</button></div></div>
+      ${d.found
+        .map((f) => `<div class="card"><div class="row sp"><strong>New TV found</strong><span class="dim">${esc(f.model || f.platform)}</span></div>
+          <div class="dim">The dashboard app opened on a TV that isn’t set up yet: IP ${esc(f.ip)}${f.mac ? ', MAC ' + esc(f.mac) : ''}.</div>
+          <div class="row"><button class="small primary" data-claim="${esc(f.ip)}" data-mac="${esc(f.mac)}" data-plat="${esc(f.platform)}">Add this TV</button></div></div>`)
+        .join('')}
+      <div class="list">${d.tvs
+        .map((t) => {
+          const st = tvStatus(t);
+          return `<div class="card" data-tv="${esc(t.id)}"><div class="row sp"><div><strong style="font-size:17px">${esc(t.name)}</strong><div class="dim">${esc(d.platforms[t.platform] || t.platform)}${t.state && t.state.model ? ' · ' + esc(t.state.model) : ''}</div></div>
+            <span class="status"><span class="dot ${st.dot}" data-tvdot></span><span data-tvtext>${esc(st.text)}</span></span></div>
+            <div class="grid2"><label>Dashboard<select data-tvdash="${esc(t.id)}">${dashOpts(t.profile)}</select></label>
+              <label>IP address<input data-tvf="ip" value="${esc(t.ip)}" placeholder="192.168.10.x" inputmode="decimal"></label>
+              ${t.platform === 'roku' ? '' : `<label>MAC address${t.platform === 'samsung' ? ' (for turning on)' : ''}<input data-tvf="mac" value="${esc(t.mac)}" placeholder="learned from the TV if blank"></label>`}
+              ${t.platform === 'firetv' ? `<label>Fully Kiosk password<input data-tvf="password" type="password" placeholder="${t.hasPassword ? 'saved · type to change' : 'Remote Administration password'}"></label>` : ''}</div>
+            ${t.platform === 'roku' && t.stream ? `<div class="dim" data-tvstream>Stream: ${t.stream.running ? (t.stream.ready ? 'running' : 'starting…') : 'stopped'}${t.stream.error ? ' · ' + esc(t.stream.error) : ''}</div>` : ''}
+            <div class="row"><button class="small primary" data-tva="launch">Launch now</button><button class="small" data-tva="off">Turn off</button><button class="small ghost" data-tva="check">Check</button>
+              ${t.platform === 'samsung' ? `<button class="small ghost" data-tva="pair">${t.paired ? 'Paired ✓' : 'Pair'}</button>` : ''}
+              <label class="inline" style="margin-left:auto"><input type="checkbox" data-tvf="enabled" ${t.enabled ? 'checked' : ''}> On the schedule</label>
+              <button class="small ghost" data-tvrm>Remove</button></div></div>`;
+        })
+        .join('')}</div>
+      <div class="row"><button class="small" id="tvs-add">Add a TV</button><span class="dim">TVs reach this Mac at ${esc(d.server)}</span></div>`;
+
+    const putSched = async (body) => {
+      try {
+        await api('/api/tv-schedule', { method: 'PUT', body });
+        toast('Schedule saved');
+      } catch (e) {
+        fail(e);
+        drawTvs(profiles);
+      }
+    };
+    $('#tvs-en').onchange = (e) => putSched({ enabled: e.target.checked });
+    $('#tvs-on').onchange = (e) => putSched({ on: e.target.value });
+    $('#tvs-off').onchange = (e) => putSched({ off: e.target.value });
+    $$('[data-day]', box).forEach(
+      (b) =>
+        (b.onclick = () => {
+          b.classList.toggle('on');
+          putSched({ days: $$('[data-day].on', box).map((x) => x.dataset.day) });
+        })
+    );
+    $('#tvs-all-on').onclick = async () => {
+      await api('/api/tvs-all/launch', { body: {} }).catch(fail);
+      toast('Turning the TVs on…');
+    };
+    $('#tvs-all-off').onclick = async () => {
+      if (!confirm('Turn off every dashboard TV now, even ones being used for something else?')) return;
+      await api('/api/tvs-all/off', { body: {} }).catch(fail);
+      toast('Turning the TVs off…');
+    };
+    $$('[data-tvdash]', box).forEach(
+      (sel) =>
+        (sel.onchange = async () => {
+          if (!sel.value) return;
+          await api('/api/devices/' + encodeURIComponent(sel.dataset.tvdash), { method: 'PUT', body: { profile: sel.value } }).catch(fail);
+          toast('Dashboard changed');
+        })
+    );
+    $$('[data-tv]', box).forEach((card) => {
+      const id = card.dataset.tv;
+      $$('[data-tvf]', card).forEach(
+        (inp) =>
+          (inp.onchange = async () => {
+            const v = inp.type === 'checkbox' ? inp.checked : inp.value.trim();
+            try {
+              await api('/api/tvs/' + encodeURIComponent(id), { method: 'PUT', body: { [inp.dataset.tvf]: v } });
+              toast('Saved');
+              if (inp.dataset.tvf === 'password') inp.value = '';
+            } catch (e) {
+              fail(e);
+            }
+          })
+      );
+      $$('[data-tva]', card).forEach(
+        (b) =>
+          (b.onclick = async () => {
+            const a = b.dataset.tva;
+            if (a === 'pair') toast('Look at the TV and press Allow with its remote…');
+            b.disabled = true;
+            try {
+              await api(`/api/tvs/${encodeURIComponent(id)}/${a}`, { body: {} });
+              toast({ launch: 'Launching…', off: 'Turned off', check: 'Checked', pair: 'Paired' }[a]);
+            } catch (e) {
+              fail(e);
+            }
+            b.disabled = false;
+            refreshTvs();
+          })
+      );
+      const rm = $('[data-tvrm]', card);
+      rm.onclick = async () => {
+        if (!confirm('Remove this TV from the schedule? Its screen stays in the Screens list.')) return;
+        await api('/api/tvs/' + encodeURIComponent(id), { method: 'DELETE' }).catch(fail);
+        drawTvs(profiles);
+      };
+    });
+    const addTv = async (pre = {}) => {
+      const name = prompt('Name for this TV (for example “Green Room”)');
+      if (!name) return;
+      let platform = pre.platform;
+      if (!platform) {
+        const p = prompt('What kind of TV? Type samsung, roku or firetv', 'samsung');
+        if (!p) return;
+        platform = p.trim().toLowerCase().replace(/\s+/g, '');
+      }
+      try {
+        await api('/api/tvs', { body: { name, platform, ip: pre.ip || '', mac: pre.mac || '' } });
+        toast('TV added: now pick its dashboard');
+      } catch (e) {
+        fail(e);
+      }
+      drawTvs(profiles);
+    };
+    $('#tvs-add').onclick = () => addTv();
+    $$('[data-claim]', box).forEach((b) => (b.onclick = () => addTv({ ip: b.dataset.claim, mac: b.dataset.mac, platform: b.dataset.plat })));
+
+    // Live status, without redrawing the inputs.
+    async function refreshTvs() {
+      if (!document.body.contains(box)) return;
+      let r;
+      try {
+        r = await api('/api/tvs');
+      } catch (e) {
+        return;
+      }
+      for (const t of r.tvs) {
+        const card = $(`[data-tv="${CSS.escape(t.id)}"]`, box);
+        if (!card) continue;
+        const st = tvStatus(t);
+        $('[data-tvdot]', card).className = 'dot ' + st.dot;
+        $('[data-tvtext]', card).textContent = st.text;
+        const sEl = $('[data-tvstream]', card);
+        if (sEl && t.stream) sEl.textContent = `Stream: ${t.stream.running ? (t.stream.ready ? 'running' : 'starting…') : 'stopped'}${t.stream.error ? ' · ' + t.stream.error : ''}`;
+        const pb = $('[data-tva="pair"]', card);
+        if (pb) pb.textContent = t.paired ? 'Paired ✓' : 'Pair';
+      }
+    }
+    clearInterval(drawTvs.timer);
+    drawTvs.timer = setInterval(refreshTvs, 4000);
+    S.timers.push(drawTvs.timer);
+  }
+
   async function viewDisplays() {
     const [profiles, devices] = await Promise.all([api('/api/profiles'), api('/api/devices').catch(() => [])]);
     const modeSel = (id, p) => `<label>Shows<select data-mode="${id}">
@@ -515,6 +685,7 @@
         <option value="preshow" ${p.modeSetting === 'preshow' ? 'selected' : ''}>Preshow only</option>
         <option value="live" ${p.modeSetting === 'live' ? 'selected' : ''}>Live only</option></select></label>`;
     const ago = (t) => {
+      if (!t) return 'never';
       const m = Math.round((Date.now() - t) / 60000);
       return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
     };
@@ -522,6 +693,9 @@
       <p class="muted">Every room has three dashboards: <b>Pre-Encounter</b> (until preshow), <b>Preshow</b> (5 minutes before each Encounter) and <b>Live</b> (from the Encounter start until shortly after its stream ends). On Automatic, rooms switch by themselves (timing is on the Schedule tab).</p>
       <div class="card"><div class="row sp"><strong>All rooms at once</strong></div>
         <div class="row"><button class="small" data-all="auto">Automatic</button><button class="small" data-all="pre">All Pre-Encounter</button><button class="small" data-all="preshow">All Preshow</button><button class="small" data-all="live">All Live</button></div></div>
+      <h2>TVs</h2>
+      <p class="muted">Turns the dashboard TVs on and opens the dashboard on each one, then turns them off again. Anyone can press <b>Back</b> on a TV’s remote to leave the dashboard and use the TV for something else; at the off time, TVs being used for something else are left alone.</p>
+      <div id="tvs"><div class="card dim">Loading…</div></div>
       <h2>Screens</h2>
       <p class="muted">Every TV or output that opens <b>${location.origin}/display</b> asks which room it’s in and shows up here. Move a screen to a different room from here and it switches within a second.</p>
       <div class="list">${
@@ -595,6 +769,7 @@
         })
     );
     $$('[data-edit]').forEach((b) => (b.onclick = () => editLayout(b.dataset.edit, b.dataset.l, profiles)));
+    drawTvs(profiles).catch(fail);
     $('#mb').onclick = () => mockBuilder(profiles);
     $('#np').onclick = async () => {
       const name = prompt('Name for the new dashboard (for example “FOH · Lighting”)');

@@ -276,3 +276,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 @keyframes flashwarn { 0%, 49% { background: var(--yellow); color: #111; } 50%, 100% { background: var(--red); color: #fff; } }
 .stat.flashwarn { animation: flashwarn 1s steps(1) infinite; }
 .stat.flashwarn .k { color: inherit; }
+
+/* TV apps: "Leave the dashboard?" prompt after pressing Back. */
+.exitask { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); z-index: 50; }
+.exitask[hidden] { display: none; }
+.exitask > div { display: flex; flex-direction: column; gap: 0.6vw; padding: 2.2vw 3vw; border-radius: 1.2vw; background: #1A1A1C; border: 0.25vw solid #E6007E; text-align: center; font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; color: #fff; }
+.exitask b { font-size: 3vw; font-weight: 800; }
+.exitask span { font-size: 1.5vw; color: #B4B4BA; }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="MainScene" extends="Scene">
+  <interface>
+    <field id="tv" type="string"/>
+    <field id="server" type="string" onChange="onConfig"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/MainScene.brs"/>
+  <children>
+    <Rectangle id="bg" width="1920" height="1080" color="0x0E0E0FFF"/>
+    <Video id="video" width="1920" height="1080" translation="[0,0]" enableUI="false" enableTrickPlay="false"/>
+    <Label id="status" width="1600" height="240" translation="[160,420]" horizAlign="center" vertAlign="center" wrap="true" color="0xFFFFFFFF" font="font:LargeBoldSystemFont"/>
+    <Rectangle id="exitBox" visible="false" width="1100" height="220" translation="[410,430]" color="0x1A1A1CF0">
+      <Label width="1100" height="140" translation="[0,20]" horizAlign="center" vertAlign="center" color="0xFFFFFFFF" font="font:LargeBoldSystemFont" text="Leave the dashboard?"/>
+      <Label width="1100" height="60" translation="[0,140]" horizAlign="center" vertAlign="center" color="0xB4B4BAFF" font="font:MediumSystemFont" text="Press Back again to exit · any other button to stay"/>
+    </Rectangle>
+    <Timer id="retry" duration="5" repeat="false"/>
+    <Timer id="exitTimer" duration="6" repeat="false"/>
+  </children>
+</component>

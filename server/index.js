@@ -13,6 +13,8 @@ const { makeAuth } = require('./auth');
 const { makeClock, parts, zoned } = require('./time');
 const { makeEngine } = require('./engine');
 const photos = require('./photos');
+const { makeStreams } = require('./stream');
+const { makeTvs } = require('./tvs');
 
 const LOG_DIR = path.join(DATA_DIR, 'logs');
 fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -388,6 +390,14 @@ app.get('/api/locations', (req, res) => {
     l.dashboards.push({ id: d.id, name: d.name, url: d.url });
   }
   ok(res, out);
+});
+
+// Which dashboard a screen was last on (or was moved to while it was off).
+// Lets a TV whose browser storage was wiped go straight back to its room.
+app.get('/api/devices/:id/room', (req, res) => {
+  const d = db.data.devices[req.params.id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40)];
+  const room = d && (d.pendingProfile || d.profile);
+  ok(res, { profile: room && db.data.profiles[room] ? room : null });
 });
 
 // A screen picked its room on the picker page.
@@ -1321,6 +1331,20 @@ setInterval(() => {
 }, 15000);
 
 const PORT = Number(process.env.PORT || config.data.port || 8080);
+
+// TVs: power schedule, launching the dashboard app on each TV, and the video
+// stream for the Roku TVs (see server/tvs.js and docs/TV-SETUP.md).
+const streams = makeStreams({ config, log, port: PORT });
+makeTvs({
+  app,
+  db,
+  config,
+  log,
+  auth,
+  streams,
+  port: PORT,
+  isOnline: (id) => [...wss.clients].some((c) => c.device === id && c.readyState === 1),
+});
 server.listen(PORT, '0.0.0.0', () => {
   log(`Love Church Displays running on port ${PORT} (${config.data.sampleMode ? 'sample mode' : 'live mode'})`);
   engine.startLoops();

@@ -1,5 +1,8 @@
 # Putting the displays on a TV
 
+**Setting up the church's TVs? See [TV-SETUP.md](TV-SETUP.md).** This page is
+the reference for anyone building a launcher for a new kind of TV.
+
 For whoever builds the launcher / OS on each TV. Every screen is a normal web
 page served by the display server (the Mac) on the church network. A TV needs a
 full-screen web view (Chromium/WebKit-class, with WebSockets and ES2019) pointed
@@ -27,6 +30,7 @@ remote: arrow keys + Enter; Back returns to locations.
 | `location=<slug>` | `/display` only: skip straight to that location's dashboards, e.g. `location=foh`. |
 | `lock=1` | The TV's remote can't change the dashboard (R / Back / long-press do nothing). Admins can still move it from Admin → Displays. `lock=0` unlocks. |
 | `choose=1` | `/display` only: show the picker even if a dashboard is already saved. |
+| `tv=<platform>` | Running inside a TV's own app (`tizen`, `firetv`…). Back on the remote asks *Leave the dashboard?* and a second Back exits the app instead of opening the picker. Remembered like `device`. |
 
 Example launcher URLs:
 
@@ -77,3 +81,40 @@ Displays; the list above updates by itself.
 Admin → Displays lists every screen (by `name`, last seen, IP). Changing its
 dashboard there switches the TV within a second, even when locked. If the TV is
 off, it switches the next time it connects.
+
+## TV apps in this repo
+
+- `tv/samsung/`: Tizen web app (LC Displays). Asks the server who it is, then
+  shows that screen's `/display` page in a full-screen frame. Build and install
+  with `tv/samsung/build.sh`.
+- `tv/roku/`: Roku app that plays the dashboard as an HLS stream rendered on
+  the Mac (`server/stream.js`). Build with `tv/roku/build.sh`.
+- Fire TV: no app; Fully Kiosk Browser opens the `/display` URL.
+
+### Talking to the dashboard page from a launcher
+
+A launcher that shows `/display` inside a frame gets `postMessage` events from
+the page: `{ lcd: 'alive' }` every 10 s (reload the frame if none arrive for a
+minute) and `{ lcd: 'exit' }` when the person chose to leave (close the app).
+Post `{ lcd: 'back' }` to the frame to forward a Back press it didn't receive.
+
+### Endpoints for launchers (no sign-in, church network only)
+
+| Endpoint | Use |
+|---|---|
+| `POST /api/tv/hello` `{platform, mac, model}` | "Who am I?" Matched by the caller's IP, then MAC, against Admin → Displays → TVs. Returns `{device, name, profile, url}`, or `{unknown: true, ip}` (the TV then appears in Admin as *New TV found*). |
+| `GET /api/devices/<id>/room` | The dashboard this screen was last on (or was moved to). The picker uses it when the browser's storage was wiped. |
+| `GET /api/tv/stream?tv=<id>` | Starts that TV's video stream (matched by IP if no id). Returns `{url, ready}`; poll until `ready`, then play `url` (HLS). Streams stop after 10 minutes unwatched. |
+
+### Power and launching
+
+`server/tvs.js` turns TVs on and off and opens the app, per platform:
+
+- **Samsung:** Wake-on-LAN to turn on; `POST http://<tv>:8001/api/v2/applications/LvChDisp01.Displays`
+  to open the app; the TV's remote-control WebSocket (port 8002, paired once) for the power key.
+- **Roku:** ECP on port 8060: `keypress/PowerOn`, `launch/dev`, `keypress/PowerOff`.
+- **Fire TV:** Fully Kiosk Remote Administration on port 2323: `screenOn`, `loadURL`, `screenOff`.
+
+A TV counts as *showing the dashboard* when its screen is connected to the
+server (Samsung, Fire TV) or the sideloaded app is in front (Roku). The 3:00
+turn-off skips any TV that isn't.

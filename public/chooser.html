@@ -73,7 +73,20 @@ window.onerror = function (msg, src, line) { var d = document.createElement('div
   if (params.has('lock')) store.set('lcd_lock', params.get('lock') === '1' ? '1' : '');
   document.getElementById('devname').textContent = store.get('lcd_name') || 'Screen ' + device.slice(0, 4).toUpperCase();
 
-  const saved = store.get('lcd_room');
+  // Inside a TV's dashboard app (?tv=...): remember it, and keep the app's
+  // watchdog happy while the picker waits for a choice.
+  if (params.get('tv')) store.set('lcd_tv', params.get('tv').replace(/[^a-z]/g, '').slice(0, 12));
+  const tvApp = store.get('lcd_tv');
+  const inFrame = window.parent !== window;
+  if (inFrame) setInterval(function () { window.parent.postMessage({ lcd: 'alive' }, '*'); }, 10000);
+  const exitApp = () => {
+    try {
+      if (window.fully && typeof window.fully.exit === 'function') return window.fully.exit();
+    } catch (e) {}
+    if (inFrame) window.parent.postMessage({ lcd: 'exit' }, '*');
+  };
+
+  let saved = store.get('lcd_room');
   if (saved && !params.has('choose') && !params.has('location')) {
     location.replace('/display/' + encodeURIComponent(saved));
     return;
@@ -108,6 +121,9 @@ window.onerror = function (msg, src, line) { var d = document.createElement('div
     } else if ((['Escape', 'Backspace', 'BrowserBack', 'GoBack', 'XF86Back'].includes(e.key) || [8, 27, 461, 10009].includes(e.keyCode)) && wrap.dataset.step === 'dash') {
       e.preventDefault();
       showLocations();
+    } else if ((['Escape', 'Backspace', 'BrowserBack', 'GoBack', 'XF86Back'].includes(e.key) || [8, 27, 461, 10009].includes(e.keyCode)) && tvApp) {
+      e.preventDefault();
+      exitApp();
     }
   });
 
@@ -130,6 +146,21 @@ window.onerror = function (msg, src, line) { var d = document.createElement('div
     buttons(loc.dashboards.map((d) => ({ ...d, desc: DESC[d.id] || '' })), choose, saved);
   }
 
+  // No room saved in this browser (first start, or its storage was wiped):
+  // ask the server, which remembers this screen's room by its id.
+  const askServer = saved || params.has('choose') || params.has('location')
+    ? Promise.resolve(null)
+    : fetch('/api/devices/' + encodeURIComponent(device) + '/room').then((r) => r.json()).then((j) => j.profile).catch(() => null);
+  askServer.then((room) => {
+    if (room) {
+      store.set('lcd_room', room);
+      location.replace('/display/' + encodeURIComponent(room));
+      return;
+    }
+    loadPicker();
+  });
+
+  function loadPicker() {
   fetch('/api/locations')
     .then((r) => r.json())
     .then((list) => {
@@ -140,6 +171,7 @@ window.onerror = function (msg, src, line) { var d = document.createElement('div
       else showLocations();
     })
     .catch(() => (wrap.innerHTML = '<div class="err">Can’t reach the display server. Check this screen is on the church network.</div>'));
+  }
 
   function choose(id) {
     store.set('lcd_room', id);

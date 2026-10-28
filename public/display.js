@@ -24,6 +24,35 @@
   }
   const locked = preview || store.get('lcd_lock') === '1';
   const changeRoom = () => !locked && location.assign('/display?choose=1');
+  // Running inside a TV's dashboard app (?tv=tizen or ?tv=firetv): Back on
+  // the remote leaves the app instead of opening the room picker. Rooms are
+  // changed from Admin → Displays.
+  if (params.get('tv') && !preview) store.set('lcd_tv', params.get('tv').replace(/[^a-z]/g, '').slice(0, 12));
+  const tvApp = !preview && store.get('lcd_tv');
+  const inFrame = window.parent !== window;
+  if (inFrame) setInterval(() => window.parent.postMessage({ lcd: 'alive' }, '*'), 10000);
+  let exitBox = null;
+  let exitTimer = null;
+  function exitApp() {
+    try {
+      if (window.fully && typeof window.fully.exit === 'function') return window.fully.exit();
+    } catch (e) {}
+    if (inFrame) window.parent.postMessage({ lcd: 'exit' }, '*');
+  }
+  function askExit() {
+    if (!exitBox) {
+      exitBox = document.createElement('div');
+      exitBox.className = 'exitask';
+      exitBox.innerHTML = '<div><b>Leave the dashboard?</b><span>Press Back again to exit · any other button to stay</span></div>';
+      document.body.appendChild(exitBox);
+    }
+    exitBox.hidden = false;
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(() => (exitBox.hidden = true), 6000);
+  }
+  const tvBack = () => (exitBox && !exitBox.hidden ? exitApp() : askExit());
+  // The Samsung app's shell forwards Back if the page didn't have focus.
+  window.addEventListener('message', (e) => tvApp && e.data && e.data.lcd === 'back' && tvBack());
 
   // Change the dashboard from the TV:
   //  • Back on the remote (or R / Escape on a keyboard) goes straight to the picker.
@@ -34,6 +63,15 @@
   let hintTimer = null;
   const BACK_KEYS = ['r', 'R', 'Escape', 'Backspace', 'BrowserBack', 'GoBack', 'XF86Back'];
   document.addEventListener('keydown', (e) => {
+    if (tvApp) {
+      const back = BACK_KEYS.indexOf(e.key) >= 0 || [8, 27, 461, 10009].indexOf(e.keyCode) >= 0;
+      const asking = exitBox && !exitBox.hidden;
+      if (back || (asking && (e.key === 'Enter' || e.keyCode === 13))) e.preventDefault();
+      if (asking && (back || e.key === 'Enter' || e.keyCode === 13)) return exitApp();
+      if (back) return askExit();
+      if (asking) exitBox.hidden = true;
+      return;
+    }
     if (locked) return;
     if (BACK_KEYS.indexOf(e.key) >= 0 || [8, 27, 461, 10009].indexOf(e.keyCode) >= 0) {
       e.preventDefault();

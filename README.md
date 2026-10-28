@@ -4,7 +4,7 @@ Auto-updating, configurable displays for the Love Church Elkhorn South productio
 
 **Setting up the Mac mini? Start with [SETUP.md](SETUP.md).**
 
-For the TVs' own launchers, see [docs/TV-INTEGRATION.md](docs/TV-INTEGRATION.md).
+**Setting up the TVs** (Sunday power schedule, the Samsung and Roku apps, the Fire TV Stick): [docs/TV-SETUP.md](docs/TV-SETUP.md). For anyone building a launcher for another kind of TV: [docs/TV-INTEGRATION.md](docs/TV-INTEGRATION.md).
 
 ## What it does
 
@@ -62,6 +62,9 @@ server/
   auth.js         role sign-in (shared role PINs) + admin accounts, hashed PINs, lockout
   store.js        JSON-file storage in ./data
   time.js         time-zone-safe clock (demo clock in sample mode)
+  tvs.js          TV power schedule + opening the dashboard app on each TV
+  tv/             Samsung, Roku and Fire TV (Fully Kiosk) control
+  stream.js       video stream of a dashboard, for the Roku TV
   sources/        Planning Center, Slack, ProPresenter, wireless connectors
   seed/           sample plan + song bank + starter photos
 public/
@@ -69,6 +72,9 @@ public/
   widgets.js      every widget a display can show
   admin.*         admin + leader page
 scripts/          Mac mini install, screen launcher, updater
+tv/
+  samsung/        LC Displays app for the Samsung TVs (Tizen) + build script
+  roku/           LC Displays app for the Roku TV + build script
 ```
 
 ## Updating
