@@ -250,7 +250,7 @@
   // preshow is near, shows the fallback widget (e.g. projected finish).
   W.preshow = (o, s, ctx) => {
     const p = s.preshow;
-    const near = p && (p.state !== 'waiting' || p.startMs - s.now < (o.showBeforeMin ?? 15) * 60e3);
+    const near = p && (p.state !== 'waiting' || p.startMs - s.now < (o.showBeforeMin != null ? o.showBeforeMin : 15) * 60e3);
     if (!near) {
       const fb = o.fallback && W[o.fallback];
       return fb ? fb(o.fallbackOpts || {}, s, ctx) : `<div class="stat ${o.compact ? 'compact' : ''}"><div class="k">PRESHOW</div><div class="v" style="color:var(--dim)">—</div></div>`;
