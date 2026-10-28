@@ -6,3 +6,4 @@ logs/
 scripts/screens.conf
 tv/samsung/build/
 tv/roku/build/
+scripts/.slack-review/

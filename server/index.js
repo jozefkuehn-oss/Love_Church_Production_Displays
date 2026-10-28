@@ -912,6 +912,7 @@ app.get('/api/people', auth.requireAdmin, (req, res) => {
   const plan = engine.getPlan();
   const slack = engine.getSlackPhotos();
   const pcoPics = engine.getPcoPhotos();
+  const ghPics = engine.getGhPhotos();
   const onPlan = new Map();
   for (const p of (plan && plan.people) || []) onPlan.set(p.name, [...(onPlan.get(p.name) || []), p.position]);
   let names = [...onPlan.keys()];
@@ -927,7 +928,7 @@ app.get('/api/people', auth.requireAdmin, (req, res) => {
         positions: [...new Set(onPlan.get(name) || [])],
         onPlan: onPlan.has(name),
         override: o,
-        slackPhoto: slack[name] || '',
+        slackPhoto: ghPics[name] || slack[name] || '',
         pcoPhoto: pcoPics[name] || '',
         seedPhoto: photos.seedPhoto(name),
         slackName: db.data.nameMap[name] || '',
@@ -958,7 +959,7 @@ app.put('/api/people/:name', auth.requireAdmin, (req, res) => {
     focusY: num(b.focusY, 0, 100, cur.focusY ?? 15),
     zoom: num(b.zoom, 1, 3, cur.zoom ?? 1),
     hidePhoto: b.hidePhoto ?? cur.hidePhoto ?? false,
-    useStarter: b.useStarter ?? cur.useStarter ?? false,
+    usePco: b.usePco ?? cur.usePco ?? false,
   };
   if (b.reset) Object.assign(db.data.people[name], { focusX: 50, focusY: 15, zoom: 1 });
   if ('slackName' in b) {

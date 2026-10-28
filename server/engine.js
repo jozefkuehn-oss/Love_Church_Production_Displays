@@ -6,6 +6,7 @@ const fs = require('fs');
 const { parts, zoned } = require('./time');
 const { fetchPlan, fetchHosts, fetchTeamRosters } = require('./sources/pco');
 const { cache: photoCache } = require('./sources/photocache');
+const ghPhotos = require('./sources/ghphotos');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
@@ -167,6 +168,7 @@ function makeEngine({ config, db, clock, log }) {
   let hosts = [];
   let teamRosters = { teams: {}, positions: {}, photos: {} }; // everyone assigned in PCO, by team and position
   let pcoPhotos = {}; // name -> local copy of their Planning Center photo
+  let ghSlackPhotos = {}; // name -> Slack photo refreshed weekly via GitHub (newer than the starter)
   async function refreshHosts() {
     const p = cfg().pco;
     if (cfg().sampleMode || !p.appId || !p.secret) return;
@@ -185,7 +187,19 @@ function makeEngine({ config, db, clock, log }) {
     }
   }
 
+  // Weekly Slack refresh (scheduled task → GitHub → here). Checked hourly.
+  async function refreshGhPhotos() {
+    try {
+      const { photos: got, changed } = await ghPhotos.sync();
+      ghSlackPhotos = got;
+      if (changed) log(`Slack photos from the weekly refresh: ${changed} new or changed`);
+    } catch (e) {
+      log('Weekly Slack photo check failed: ' + e.message);
+    }
+  }
+
   async function refreshPhotos() {
+    refreshGhPhotos();
     const token = cfg().slack.botToken;
     if (!token || !plan) return;
     try {
@@ -259,14 +273,15 @@ function makeEngine({ config, db, clock, log }) {
   // ---- people ----
   function photoFor(name) {
     const o = (d().people || {})[name] || {};
-    // Order: a photo uploaded in Admin → People, then the person's current
-    // Slack photo, then their Planning Center photo (both kept up to date as
-    // people change them), then the starter photo that shipped with the app.
+    // Order: a photo uploaded in Admin → People; then their Slack photo (the
+    // starter photos are Slack photos, refreshed weekly through GitHub); then
+    // their Planning Center photo (updated hourly) for anyone without one.
+    // "Use their Planning Center photo" in Admin → People puts PCO first.
     const seed = photos.seedPhoto(name);
     const pcoPerson = plan && plan.people.find((pp) => pp.name === name && pp.photo);
     const pcoRemote = pcoPerson && !/initials|no_photo|default|blank/i.test(pcoPerson.photo) ? pcoPerson.photo : '';
-    // "Use the starter photo" (Admin → People) puts the starter photo ahead of Slack / PCO.
-    let src = o.photo || (o.useStarter && seed) || slackPhotos[name] || pcoPhotos[name] || seed || pcoRemote || '';
+    const slack = ghSlackPhotos[name] || slackPhotos[name] || seed;
+    let src = o.photo || (o.usePco && pcoPhotos[name]) || slack || pcoPhotos[name] || pcoRemote || '';
     if (o.hidePhoto) src = '';
     return { photo: src, focusX: o.focusX ?? 50, focusY: o.focusY ?? 15, zoom: o.zoom ?? 1 };
   }
@@ -941,7 +956,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos };
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };
