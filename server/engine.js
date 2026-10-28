@@ -265,7 +265,8 @@ function makeEngine({ config, db, clock, log }) {
     const seed = photos.seedPhoto(name);
     const pcoPerson = plan && plan.people.find((pp) => pp.name === name && pp.photo);
     const pcoRemote = pcoPerson && !/initials|no_photo|default|blank/i.test(pcoPerson.photo) ? pcoPerson.photo : '';
-    let src = o.photo || slackPhotos[name] || pcoPhotos[name] || seed || pcoRemote || '';
+    // "Use the starter photo" (Admin → People) puts the starter photo ahead of Slack / PCO.
+    let src = o.photo || (o.useStarter && seed) || slackPhotos[name] || pcoPhotos[name] || seed || pcoRemote || '';
     if (o.hidePhoto) src = '';
     return { photo: src, focusX: o.focusX ?? 50, focusY: o.focusY ?? 15, zoom: o.zoom ?? 1 };
   }
@@ -940,7 +941,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos };
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

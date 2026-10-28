@@ -1210,7 +1210,7 @@
     }
     const { people, helpText } = data;
     app.innerHTML = `<h1>People &amp; photos</h1>
-      <p class="muted">Tap a face to upload a new photo or adjust how it’s framed. Anyone without a usable photo shows their initials.</p>
+      <p class="muted">Tap a face to upload a new photo or adjust how it’s framed. Photos people set in Planning Center come in by themselves (checked every hour); an uploaded photo here always wins. Anyone without a usable photo shows their initials.</p>
       <div class="row" style="margin-bottom:12px">
         <div class="seg" style="min-width:280px"><button class="small ${S.peopleScope === 'plan' ? 'on info' : ''}" data-sc="plan">On today’s plan</button><button class="small ${S.peopleScope === 'all' ? 'on info' : ''}" data-sc="all">Everyone</button></div>
         <input id="pf" class="grow" placeholder="Search names…" style="min-width:180px">
@@ -1226,14 +1226,15 @@
         .map(([k, v]) => `<label>${esc(k)}<input data-h="${esc(k)}" value="${esc(v)}"></label>`)
         .join('')}<button class="primary" id="hs">Save</button></div>`;
 
-    const src = (p) => (p.override.hidePhoto ? '' : p.override.photo || p.seedPhoto || p.slackPhoto || '');
+    // Same order as the screens: upload, (starter if chosen), Slack, Planning Center, starter.
+    const src = (p) => (p.override.hidePhoto ? '' : p.override.photo || (p.override.useStarter && p.seedPhoto) || p.slackPhoto || p.pcoPhoto || p.seedPhoto || '');
     const initials = (name) => {
       const w = name.split(/\s+/).filter((x) => /[A-Za-z]/.test(x[0] || ''));
       return ((w[0] || '')[0] || '') + (w.length > 1 ? w[w.length - 1][0] : '');
     };
     const fromLabel = (p) => {
       const o = p.override;
-      return o.hidePhoto ? 'Initials (photo hidden)' : o.photo ? 'Uploaded photo' : p.seedPhoto ? 'Starter photo' : p.slackPhoto ? 'Slack photo' : 'Initials — no photo';
+      return o.hidePhoto ? 'Initials (photo hidden)' : o.photo ? 'Uploaded photo' : o.useStarter && p.seedPhoto ? 'Starter photo (chosen)' : p.slackPhoto ? 'Slack photo' : p.pcoPhoto ? 'Planning Center photo (updates when they change it)' : p.seedPhoto ? 'Starter photo' : 'Initials — no photo';
     };
     const imgStyle = (o) => {
       const fx = o.focusX ?? 50, fy = o.focusY ?? 15, z = o.zoom ?? 1;
@@ -1277,6 +1278,7 @@
             </div>
             <div class="row"><button class="small ghost" data-rm hidden>Remove upload</button>
               <label class="inline"><input type="checkbox" data-hide> Use initials instead</label></div>
+            ${p.seedPhoto ? '<label class="inline"><input type="checkbox" data-starter> Use the starter photo instead of their Planning Center photo</label>' : ''}
             <label>Slack name (if different)<input data-slack placeholder="${esc(p.name)}"></label>
           </div>
         </div></div>`;
@@ -1286,16 +1288,17 @@
       const zoomEl = $('[data-z]', dlg);
       const st = { fx: o.focusX ?? 50, fy: o.focusY ?? 15, z: o.zoom ?? 1 };
       $('[data-hide]', dlg).checked = !!o.hidePhoto;
+      if ($('[data-starter]', dlg)) $('[data-starter]', dlg).checked = !!o.useStarter;
       $('[data-slack]', dlg).value = p.slackName || '';
 
       let saveT;
       const save = (extra = {}) => {
         clearTimeout(saveT);
         saveT = setTimeout(async () => {
-          const body = { focusX: Math.round(st.fx * 10) / 10, focusY: Math.round(st.fy * 10) / 10, zoom: st.z, hidePhoto: $('[data-hide]', dlg).checked, slackName: $('[data-slack]', dlg).value.trim(), ...extra };
+          const body = { focusX: Math.round(st.fx * 10) / 10, focusY: Math.round(st.fy * 10) / 10, zoom: st.z, hidePhoto: $('[data-hide]', dlg).checked, useStarter: $('[data-starter]', dlg) ? $('[data-starter]', dlg).checked : !!o.useStarter, slackName: $('[data-slack]', dlg).value.trim(), ...extra };
           try {
             await api('/api/people/' + encodeURIComponent(p.name), { method: 'PUT', body });
-            Object.assign(o, { focusX: body.focusX, focusY: body.focusY, zoom: body.zoom, hidePhoto: body.hidePhoto });
+            Object.assign(o, { focusX: body.focusX, focusY: body.focusY, zoom: body.zoom, hidePhoto: body.hidePhoto, useStarter: body.useStarter });
             p.slackName = body.slackName;
           } catch (e) {
             fail(e);
@@ -1380,6 +1383,11 @@
       };
       $('[data-hide]', dlg).onchange = () => {
         o.hidePhoto = $('[data-hide]', dlg).checked;
+        paint();
+        save();
+      };
+      if ($('[data-starter]', dlg)) $('[data-starter]', dlg).onchange = () => {
+        o.useStarter = $('[data-starter]', dlg).checked;
         paint();
         save();
       };
