@@ -344,14 +344,17 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '15mb' }));
 
 const PUBLIC = path.join(__dirname, '..', 'public');
+// TV pages and their scripts go out rewritten for older TV browsers (legacy.js).
+const legacy = require('./legacy');
+app.use('/static', legacy.scripts(PUBLIC, ['display.js', 'widgets.js']));
 app.use('/static', express.static(PUBLIC, { maxAge: '1h' }));
 app.use('/photos', express.static(PHOTO_DIR, { maxAge: '1d' }));
 app.use('/seed-photos', express.static(path.join(__dirname, 'seed', 'photos'), { maxAge: '1d' }));
 
 app.get('/', (req, res) => res.redirect('/admin'));
 app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC, 'admin.html')));
-app.get('/display', (req, res) => res.sendFile(path.join(PUBLIC, 'chooser.html')));
-app.get('/display/:profile', (req, res) => res.sendFile(path.join(PUBLIC, 'display.html')));
+app.get('/display', legacy.sendPage(path.join(PUBLIC, 'chooser.html')));
+app.get('/display/:profile', legacy.sendPage(path.join(PUBLIC, 'display.html')));
 
 const ok = (res, body = { ok: true }) => res.json(body);
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
