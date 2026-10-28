@@ -27,6 +27,9 @@ echo "window.LCD_SERVER = '${SERVER%/}';" > "$OUT/src/config.js"
 
 "$TIZEN" package -t wgt -s "$PROFILE" -o "$OUT" -- "$OUT/src"
 WGT="$(ls "$OUT"/*.wgt | head -1)"
+# The package is named after the app ("LC Displays.wgt"); the installer
+# doesn't like spaces, so give it a plain name.
+mv "$WGT" "$OUT/LCDisplays.wgt" 2>/dev/null && WGT="$OUT/LCDisplays.wgt"
 echo "Built $WGT"
 
 for IP in "$@"; do
