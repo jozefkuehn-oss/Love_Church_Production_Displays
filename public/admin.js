@@ -347,6 +347,9 @@
         <p class="dim" style="margin:4px 0">Usually these come from the Details of the Message item in Planning Center. If they’re missing (or need fixing), paste them here for this Sunday — what’s here wins. Clear it and Save to go back to Planning Center’s.</p>
         <textarea id="mnt" rows="6" placeholder="Paste the message notes here"></textarea>
         <div class="row"><button class="primary" id="mnsave">Save notes</button></div></div>
+      <div class="card" id="anc" style="margin-top:12px" ${has('live') ? '' : 'hidden'}><div class="row sp"><strong>Midweek announcements</strong><span class="dim">Shows on every screen Monday–Saturday</span></div>
+        <textarea id="ant" rows="4" placeholder="• Team night Thursday 7 PM"></textarea>
+        <div class="row"><button class="primary" id="ansave">Save announcements</button></div></div>
       ${has('subs') ? '<div class="card" id="sbc" style="margin-top:12px"></div>' : ''}
       ${has('recording') ? '<div class="card" id="rc" style="margin-top:12px"></div>' : ''}
       ${has('rehearsal') ? '<div class="card" id="rh" style="margin-top:12px"></div>' : ''}
@@ -397,6 +400,7 @@
     }
     api('/api/live').then((d) => {
       if ($('#ppt')) $('#ppt').value = d.preshowPoints || '';
+      if ($('#ant')) $('#ant').value = d.announcements || '';
       if ($('#mnt')) {
         $('#mnt').value = d.messageNotesTyped || '';
         const mn = d.messageNotes || {};
@@ -482,6 +486,7 @@
       }));
     }
     drawSubs(false);
+    if ($('#ansave')) $('#ansave').onclick = () => api('/api/announcements', { method: 'PUT', body: { text: $('#ant').value } }).then(() => toast('Announcements saved')).catch(fail);
     if ($('#mnsave')) $('#mnsave').onclick = () => api('/api/message-notes', { method: 'PUT', body: { text: $('#mnt').value } }).then(() => {
       toast($('#mnt').value.trim() ? 'Message notes saved' : 'Back to Planning Center’s notes');
       api('/api/live').then((d) => { const mn = d.messageNotes || {}; $('#mns').textContent = mn.source === 'manual' ? 'Showing: typed here' : mn.source === 'pco' ? `Showing: Planning Center (${mn.title})` : 'None yet'; });
@@ -520,8 +525,9 @@
     slidePreview: 'Pictures of the current and next slides from ProPresenter, as they look on screen.',
     propTimers: 'ProPresenter’s running timers and the stage message, from FOH or broadcast ProPresenter.',
     messageBar: 'Producer messages sent from the control app, plus MIC CHANGE banners. “Big” makes it a large block. Messages clear on their own (1 minute by default).',
+    weekEvents: 'What’s happening in the next 7 days, by day: every Planning Center Services plan for this campus (Hallelujah Night, VALOR, Prayer, Young Adult Night…) with its service and rehearsal times, plus Planning Center Calendar events if the account can read the Calendar. Built for the Midweek screen.',
     messageNotes: 'The pastor’s message notes, for the FOH ProPresenter operator: the Details of the Message item in the Planning Center plan, or what was typed in “Message notes” on the Live page (that wins when filled in). When the slide up in ProPresenter matches a paragraph — a scripture, a point — that paragraph lights up and the notes scroll to it.',
-    text: 'Fixed text you type here, or the preshow talking points edited on the Live page (source: preshowPoints).',
+    text: 'Fixed text you type here, the preshow talking points edited on the Live page (source: preshowPoints), or the midweek announcements edited on the Live page (source: announcements).',
     image: 'A picture from a web address (src), filling the box or fitting inside it.',
   };
   const OPT_DESC = {
@@ -559,8 +565,9 @@
     slidePreview: { name: 'ProPresenter slide preview (pictures)', opts: [['source', ['broadcast', 'auditorium']], ['label', 'text'], ['showNext', 'bool']] },
     propTimers: { name: 'ProPresenter timers + stage message', opts: [['source', ['auditorium', 'broadcast']], ['names', 'text'], ['label', 'text']] },
     messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool'], ['hidePreshowCues', 'bool']] },
+    weekEvents: { name: 'This week (events)', opts: [['label', 'text'], ['max', 'number']] },
     messageNotes: { name: 'Message notes', opts: [['label', 'text'], ['size', 'number'], ['source', ['auditorium', 'broadcast']], ['follow', 'bool']] },
-    text: { name: 'Text', opts: [['label', 'text'], ['source', ['', 'preshowPoints']], ['text', 'text'], ['size', 'number']] },
+    text: { name: 'Text', opts: [['label', 'text'], ['source', ['', 'preshowPoints', 'announcements']], ['text', 'text'], ['size', 'number']] },
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },
   };
 
@@ -1987,6 +1994,7 @@
         <div>Broadcast ProPresenter: ${pp(h.propresenter.broadcast)}</div></div>
 
       <div class="card" style="margin-top:14px"><h2 style="margin:0">General</h2>
+        <label class="inline"><input type="checkbox" id="c_midweek" ${c.midweek !== false ? 'checked' : ''}> Midweek screen — Monday–Saturday (no Encounter that day, no rehearsal) every TV shows the shared <b>Midweek</b> dashboard: this week’s events, time and date, announcements and messages. Edit it in Displays.</label>
         <label class="inline"><input type="checkbox" id="c_sample" ${c.sampleMode ? 'checked' : ''}> Sample mode — run on built-in data and a demo clock (turn off once Planning Center is connected)</label>
         <div class="grid2"><label>Demo clock starts at (sample mode)<input type="time" id="c_demo" value="${esc(c.demoStart)}"></label>
         <label>Campus label<input id="c_campus" value="${esc(c.campusLabel)}"></label>
@@ -2031,6 +2039,7 @@
       const lines = (id) => $(id).value.split('\n').map((s) => s.trim()).filter(Boolean);
       const body = {
         sampleMode: $('#c_sample').checked,
+        midweek: $('#c_midweek').checked,
         demoStart: $('#c_demo').value,
         campusLabel: $('#c_campus').value,
         timezone: $('#c_tz').value,

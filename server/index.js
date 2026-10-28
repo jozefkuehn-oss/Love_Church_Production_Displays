@@ -279,6 +279,14 @@ const REPLACED_PROFILES = { 'greenroom-2': 'greenroom' };
   db.save();
 })();
 
+// v14: the shared Midweek dashboard (every screen shows it Mon–Sat).
+(function addMidweek() {
+  if ((db.data.profilesVersion || 1) >= 14) return;
+  if (!db.data.profiles.midweek) db.data.profiles.midweek = structuredClone(dbDefaults.profiles.midweek);
+  db.data.profilesVersion = 14;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
@@ -548,6 +556,8 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     encounter: s.encounter,
     preshowPoints: s.preshowPoints,
     messageNotes: s.messageNotes,
+    announcements: s.announcements,
+    midweek: s.midweek,
     messageNotesTyped: (db.data.messageNotes && engine.getPlan() && db.data.messageNotes.date === engine.getPlan().date && db.data.messageNotes.text) || '',
     isLive: s.isLive,
     items: s.items,
@@ -785,6 +795,15 @@ app.put('/api/recording', auth.requirePerm('recording'), (req, res) => {
   ok(res);
 });
 
+// Midweek screen announcements (any leader who can run the Live page).
+app.put('/api/announcements', auth.requirePerm('live'), (req, res) => {
+  db.data.announcements = String((req.body || {}).text || '').slice(0, 4000);
+  db.save();
+  log(`Midweek announcements updated by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
 // Message notes for this Sunday, when they aren't in the PCO Message item's
 // Details (or need fixing). Empty text = go back to what PCO has.
 app.put('/api/message-notes', auth.requirePerm('live'), (req, res) => {
@@ -865,7 +884,7 @@ app.put('/api/config', auth.requireAdmin, (req, res) => {
   const body = req.body || {};
   for (const [a, b] of SECRET_FIELDS) if (body[a] && body[a][b] === MASK) body[a][b] = config.data[a][b];
   const wasSample = config.data.sampleMode;
-  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems'];
+  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems', 'midweek'];
   for (const k of allowed) if (k in body) config.data[k] = body[k];
   config.saveNow();
   engine.restartProPresenter();
@@ -1353,11 +1372,15 @@ wss.on('connection', (ws, req) => {
 function sendTo(ws, snap) {
   const p = db.data.profiles[ws.profile];
   if (!p) return ws.send(JSON.stringify({ type: 'missing', profile: ws.profile }));
-  const mode = snap.modes[ws.profile] || 'live';
+  // Midweek, every screen shows the shared Midweek dashboard (it keeps its
+  // own identity, so Sunday it's straight back on its own dashboard).
+  const mid = snap.midweek && ws.profile !== 'midweek' && db.data.profiles.midweek;
+  const src = mid ? db.data.profiles.midweek : p;
+  const mode = mid ? 'live' : snap.modes[ws.profile] || 'live';
   ws.send(
     JSON.stringify({
       type: 'snapshot',
-      profile: { id: ws.profile, name: p.name, location: p.location || '', mode, style: p.style || {}, layout: p.layouts[mode] || p.layouts.live },
+      profile: { id: ws.profile, name: src.name, location: p.location || '', mode, style: src.style || {}, layout: src.layouts[mode] || src.layouts.live },
       snap,
     })
   );

@@ -727,8 +727,36 @@
     return `<div class="panel mn" style="height:100%;display:flex;flex-direction:column">${head}<div class="mn-box" data-follow-box style="font-size:${Number(o.size) || 30}px">${body}</div></div>`;
   };
 
+  // This week, for the midweek screen: every Services plan in the next 7
+  // days (service + rehearsal times) and PCO Calendar events if allowed.
+  W.weekEvents = (o, s) => {
+    const evs = (s.weekEvents || []).slice(0, o.max || 14);
+    const head = `<div class="label">${esc(o.label || 'THIS WEEK')}</div>`;
+    if (!evs.length) return `<div class="panel" style="height:100%">${head}<div class="missing">Nothing on the calendar this week</div></div>`;
+    const dayKey = (ms) => new Date(ms).toLocaleDateString('en-US', { timeZone: s.tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const today = dayKey(s.now);
+    const tomorrow = dayKey(s.now + 86400e3);
+    const dayName = (ms) => {
+      const k = dayKey(ms);
+      return k === today ? 'TODAY' : k === tomorrow ? 'TOMORROW' : new Date(ms).toLocaleDateString('en-US', { timeZone: s.tz, weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase();
+    };
+    const tm = (ms) => new Date(ms).toLocaleTimeString('en-US', { timeZone: s.tz, hour: 'numeric', minute: '2-digit' });
+    let last = '';
+    const rows = evs
+      .map((e) => {
+        const d = dayName(e.startMs);
+        const hd = d !== last ? `<div class="wk-day">${esc(d)}</div>` : '';
+        last = d;
+        const when = e.kind === 'allday' ? 'All day' : tm(e.startMs);
+        const tag = e.kind === 'rehearsal' ? '<span class="wk-tag">REHEARSAL</span>' : '';
+        return `${hd}<div class="wk-row"><span class="wk-t">${esc(when)}</span><span class="wk-n">${esc(e.name)}${tag}${e.where ? `<span class="wk-w"> · ${esc(e.where)}</span>` : ''}</span></div>`;
+      })
+      .join('');
+    return `<div class="panel" style="height:100%">${head}<div class="wk">${rows}</div></div>`;
+  };
+
   W.text = (o, s) => {
-    const t = o.source === 'preshowPoints' ? (s && s.preshowPoints) || '' : o.text || '';
+    const t = o.source === 'preshowPoints' ? (s && s.preshowPoints) || '' : o.source === 'announcements' ? (s && s.announcements) || '' : o.text || '';
     return `<div class="panel" style="height:100%"><div class="label">${esc(o.label || '')}</div><div style="font-size:${o.size || 24}px;font-weight:600;white-space:pre-line">${esc(t)}</div></div>`;
   };
 

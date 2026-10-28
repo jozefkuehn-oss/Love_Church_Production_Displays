@@ -289,3 +289,14 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .mn-box p { margin: 0 0 .55em; padding: .1em .4em; border-left: 6px solid transparent; border-radius: 6px; }
 .mn-box p.h { color: var(--pink-text); font-weight: 800; letter-spacing: .02em; margin-top: .4em; }
 .mn-box p.now { border-left-color: var(--pink); background: rgba(230, 0, 126, .18); }
+
+/* This week (midweek screen) */
+.wk { display: flex; flex-direction: column; }
+.wk-day { font-size: 22px; font-weight: 800; letter-spacing: .14em; color: var(--pink-text); margin: 14px 0 6px; }
+.wk-day:first-child { margin-top: 2px; }
+.wk-row { display: flex; align-items: baseline; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.wk-row + .wk-day { margin-top: 18px; }
+.wk-t { width: 170px; flex: none; font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wk-n { font-size: 32px; font-weight: 600; }
+.wk-w { color: var(--muted, #9a9aa2); font-weight: 500; }
+.wk-tag { margin-left: 12px; font-size: 16px; font-weight: 800; letter-spacing: .12em; color: var(--yellow); vertical-align: middle; }

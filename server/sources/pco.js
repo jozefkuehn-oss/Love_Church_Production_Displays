@@ -227,4 +227,62 @@ async function fetchTeamRosters(cfg) {
   return { teams: list(byTeam), positions: list(byPos), photos: pics };
 }
 
-module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, plainName, detailsText };
+// What's happening this week, for the midweek screen: every Services plan in
+// the next 7 days across this campus's service types (Hallelujah Night,
+// VALOR, Prayer, Young Adult Night…), with service and rehearsal times. Plus
+// the PCO Calendar's approved events when the account is allowed to read it.
+//   [{ name, kind: 'service'|'rehearsal'|'other'|'event', startMs, endMs, where }]
+async function fetchWeek(cfg) {
+  const now = Date.now();
+  const until = now + 7 * 86400e3;
+  const out = [];
+  const types = await getAll(cfg, '/service_types?per_page=100');
+  for (const st of types.data) {
+    const name = String(st.attributes.name || '').trim();
+    if (!name || st.attributes.archived_at || /^lcno\b/i.test(name)) continue; // other campus
+    let plans;
+    try {
+      plans = await get(cfg, `/service_types/${st.id}/plans?filter=future&order=sort_date&per_page=4`);
+    } catch (e) {
+      continue;
+    }
+    for (const p of plans.data || []) {
+      const sd = Date.parse(p.attributes.sort_date || '');
+      if (!sd || sd > until) continue;
+      const times = await get(cfg, `/service_types/${st.id}/plans/${p.id}/plan_times?per_page=50`).catch(() => ({ data: [] }));
+      const label = name.replace(/^ES\s*\|\s*/i, '').trim();
+      const title = p.attributes.title ? `${label} · ${p.attributes.title}` : label;
+      for (const t of times.data || []) {
+        const a = t.attributes;
+        const startMs = Date.parse(a.starts_at || '');
+        if (!startMs || startMs > until || Date.parse(a.ends_at || a.starts_at) < now) continue;
+        const kind = a.time_type === 'rehearsal' ? 'rehearsal' : a.time_type === 'service' ? 'service' : 'other';
+        out.push({ name: kind === 'other' && a.name ? `${title} · ${a.name}` : title, kind, startMs, endMs: Date.parse(a.ends_at || '') || null, where: '' });
+      }
+    }
+  }
+  // PCO Calendar (only if this account may read it).
+  try {
+    const cal = await get(cfg, `https://api.planningcenteronline.com/calendar/v2/event_instances?filter=future,approved&order=starts_at&per_page=100`);
+    for (const ev of cal.data || []) {
+      const a = ev.attributes;
+      const startMs = Date.parse(a.starts_at || '');
+      if (!startMs || startMs > until) continue;
+      out.push({ name: a.name || 'Event', kind: a.all_day_event ? 'allday' : 'event', startMs, endMs: Date.parse(a.ends_at || '') || null, where: a.location || '' });
+    }
+  } catch (e) {
+    // No Calendar permission: Services plans only.
+  }
+  // Same thing from both sources: keep one.
+  const seen = new Set();
+  return out
+    .sort((a, b) => a.startMs - b.startMs)
+    .filter((e) => {
+      const k = e.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) + '|' + Math.round(e.startMs / 600e3);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+}
+
+module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek, plainName, detailsText };

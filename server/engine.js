@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { parts, zoned } = require('./time');
-const { fetchPlan, fetchHosts, fetchTeamRosters } = require('./sources/pco');
+const { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek } = require('./sources/pco');
 const { cache: photoCache } = require('./sources/photocache');
 const ghPhotos = require('./sources/ghphotos');
 const { syncPhotos } = require('./sources/slack');
@@ -168,6 +168,7 @@ function makeEngine({ config, db, clock, log }) {
   let hosts = [];
   let teamRosters = { teams: {}, positions: {}, photos: {} }; // everyone assigned in PCO, by team and position
   let pcoPhotos = {}; // name -> local copy of their Planning Center photo
+  let weekEvents = []; // this week's plans / events for the midweek screen
   let ghSlackPhotos = {}; // name -> Slack photo refreshed weekly via GitHub (newer than the starter)
   async function refreshHosts() {
     const p = cfg().pco;
@@ -184,6 +185,16 @@ function makeEngine({ config, db, clock, log }) {
       if (changed) log(`Planning Center photos: ${changed} new or changed`);
     } catch (e) {
       log('Planning Center team rosters failed: ' + e.message);
+    }
+  }
+
+  async function refreshWeek() {
+    const p = cfg().pco;
+    if (cfg().sampleMode || !p.appId || !p.secret) return;
+    try {
+      weekEvents = await fetchWeek(p);
+    } catch (e) {
+      log('This week’s events failed: ' + e.message);
     }
   }
 
@@ -220,8 +231,8 @@ function makeEngine({ config, db, clock, log }) {
   function startLoops() {
     // Hosts + team rosters (and their PCO photos) first, so the Slack sync
     // also covers everyone on the teams.
-    refreshPlan().then(refreshHosts).then(refreshPhotos);
-    setInterval(() => refreshHosts(), 3600e3);
+    refreshPlan().then(refreshHosts).then(refreshPhotos).then(refreshWeek);
+    setInterval(() => refreshHosts().then(refreshWeek), 3600e3);
     setInterval(() => refreshPlan(), Math.max(1, cfg().pco.refreshMinutes || 5) * 60e3);
     setInterval(() => refreshPhotos(), 3600e3); // hourly: only changed photos download
     aud.start(() => cfg().propresenter.auditorium, cfg().propresenter.pollMs || 1000);
@@ -860,9 +871,18 @@ function makeEngine({ config, db, clock, log }) {
       modes[id] = mode;
     }
 
+    // Midweek: any day but Sunday with no Encounters planned for it (no plan
+    // dated today, no schedule override) and no rehearsal running. Every
+    // screen then shows the shared Midweek dashboard.
+    const sOver = (d().schedule.overrides || {})[dateKey];
+    const midweek = cfg().midweek !== false && !clock.rehearsal() && p.weekday !== 'Sunday' && !(plan && plan.date === dateKey) && !(sOver && sOver.encounters && sOver.encounters.length);
+
     return {
       now,
       tz,
+      midweek,
+      weekEvents: weekEvents.filter((e) => (e.endMs || e.startMs + 3600e3) > now),
+      announcements: d().announcements || '',
       date: { key: dateKey, weekday: p.weekday, label: new Date(now).toLocaleDateString('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' }) },
       campus: cfg().campusLabel,
       sampleMode: !!cfg().sampleMode,

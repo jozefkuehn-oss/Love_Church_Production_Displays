@@ -322,6 +322,25 @@ const profiles = {
   // Confidence monitor for the online preshow hosts (replaces the timer on
   // the Broadcast ProPresenter stage display). Big preshow countdown, what's
   // on the stream, and producer messages.
+  // Shared Midweek dashboard: every screen shows it Monday–Saturday when no
+  // Encounter is planned that day (Settings → Midweek screen turns it off).
+  midweek: {
+    name: 'Midweek',
+    location: '_Midweek', // not offered in the TV room picker
+    modeSetting: 'live',
+    style: {},
+    layouts: {
+      live: {
+        widgets: [
+          w('t', 'title', 0, 0, 12, 2, { kicker: 'LOVE CHURCH', title: 'This Week', sub: 'date' }),
+          w('c', 'clock', 12, 0, 12, 2, {}),
+          w('ev', 'weekEvents', 0, 2, 15, 8, {}),
+          w('an', 'text', 15, 2, 9, 8, { label: 'ANNOUNCEMENTS', source: 'announcements', size: 34 }),
+          w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+        ],
+      },
+    },
+  },
   'preshow-confidence': {
     name: 'Pre-/Post-Show Teleprompter',
     location: 'Pre-/Post-Show',
