@@ -45,9 +45,25 @@ function makeStreams({ config, log, port }) {
       'chromium',
       'chromium-browser',
     ]);
-  const ffmpegPath = () => firstExisting([config.data.ffmpegPath, '/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-  // Apple's hardware encoder keeps CPU use tiny on the Mac mini.
-  const encoder = () => config.data.streamEncoder || (process.platform === 'darwin' ? 'h264_videotoolbox' : 'libx264');
+  // ffmpeg comes with the app (the ffmpeg-static package, installed by npm),
+  // so no Homebrew is needed; a Homebrew or hand-installed one also works.
+  let bundled = null;
+  try { bundled = require('ffmpeg-static'); } catch (e) {}
+  const ffmpegPath = () => firstExisting([config.data.ffmpegPath, '/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', bundled, 'ffmpeg']);
+  // Apple's hardware encoder keeps CPU use tiny on the Mac mini; fall back to
+  // the software one if this ffmpeg doesn't have it.
+  const hasEnc = new Map();
+  function ffmpegHas(enc) {
+    const bin = ffmpegPath();
+    const k = bin + '|' + enc;
+    if (!hasEnc.has(k)) {
+      let out = '';
+      try { out = require('child_process').spawnSync(bin, ['-hide_banner', '-encoders'], { encoding: 'utf8', timeout: 10000 }).stdout || ''; } catch (e) {}
+      hasEnc.set(k, out.includes(enc));
+    }
+    return hasEnc.get(k);
+  }
+  const encoder = () => config.data.streamEncoder || (process.platform === 'darwin' && ffmpegHas('h264_videotoolbox') ? 'h264_videotoolbox' : 'libx264');
 
   function ffmpegArgs(dir) {
     const enc = encoder();

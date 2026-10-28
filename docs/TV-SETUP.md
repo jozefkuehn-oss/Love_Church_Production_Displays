@@ -33,15 +33,10 @@ setup below once, then its **IP address** typed into its card.
 
 ## On the Mac (once)
 
-Install **ffmpeg**, which makes the Roku TV's video stream:
-
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install ffmpeg
-```
-
-(The first line installs Homebrew; skip it if `brew` already works.) Google
-Chrome is already on the Mac from SETUP.md; the stream uses it invisibly.
+Nothing to install for the Roku TV's video stream: the app brings its own
+ffmpeg (installed with the app's packages; no Homebrew needed, works on older
+macOS). Google Chrome must be on the Mac (see SETUP.md); the stream uses it
+invisibly. If a Homebrew ffmpeg is installed, the app uses that instead.
 
 ---
 
