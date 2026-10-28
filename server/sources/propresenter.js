@@ -19,6 +19,8 @@ function makeProPresenter(name) {
   };
   let timer = null;
   let tick = 0;
+  let slides = []; // active presentation's slide texts (fallback)
+  let slidesFor = '';
 
   async function call(host, port, p) {
     const ctl = new AbortController();
@@ -39,9 +41,36 @@ function makeProPresenter(name) {
   async function poll(cfg) {
     const { host, port } = cfg;
     try {
-      const slide = await call(host, port, '/v1/status/slide');
-      status.current = { text: slideText(slide && slide.current), notes: slideNotes(slide && slide.current) };
-      status.next = { text: slideText(slide && slide.next), notes: slideNotes(slide && slide.next) };
+      // Some ProPresenter versions answer /v1/status/slide with nothing. Then
+      // the text comes from the active presentation's slides + the slide index.
+      let slide = null;
+      try {
+        slide = await call(host, port, '/v1/status/slide');
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+      }
+      const fromStatus = slide && (slide.current || slide.next);
+      if (fromStatus) {
+        status.current = { text: slideText(slide.current), notes: slideNotes(slide.current) };
+        status.next = { text: slideText(slide.next), notes: slideNotes(slide.next) };
+      } else {
+        const idx = await call(host, port, '/v1/presentation/slide_index').catch(() => null);
+        const pi = idx && (idx.presentation_index || idx);
+        const uuid = pi && pi.presentation_id && pi.presentation_id.uuid;
+        if (tick % 10 === 0) slidesFor = ''; // pick up edits to the presentation
+        if (uuid && uuid !== slidesFor) {
+          const active = await call(host, port, '/v1/presentation/active').catch(() => null);
+          const pr = active && (active.presentation || active);
+          slides = [];
+          for (const g of (pr && pr.groups) || []) for (const sl of g.slides || []) slides.push({ text: (sl.text || '').trim(), notes: sl.notes || '' });
+          slidesFor = (pr && pr.id && pr.id.uuid) || uuid;
+        }
+        const i = pi && typeof pi.index === 'number' ? pi.index : -1;
+        const cur = i >= 0 ? slides[i] : null;
+        const nxt = i >= 0 ? slides[i + 1] : null;
+        status.current = { text: (cur && cur.text) || '', notes: (cur && cur.notes) || '' };
+        status.next = { text: (nxt && nxt.text) || '', notes: (nxt && nxt.notes) || '' };
+      }
       // Timers every poll so they count in real time.
       const timers = await Promise.allSettled([call(host, port, '/v1/timers/current')]).then((r) => r[0]);
       if (timers.status === 'fulfilled' && Array.isArray(timers.value)) {
