@@ -278,7 +278,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .stat.flashwarn .k { color: inherit; }
 
 /* TV apps: "Leave the dashboard?" prompt after pressing Back. */
-.exitask { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); z-index: 50; }
+.exitask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); z-index: 50; }
 .exitask[hidden] { display: none; }
 .exitask > div { display: flex; flex-direction: column; gap: 0.6vw; padding: 2.2vw 3vw; border-radius: 1.2vw; background: #1A1A1C; border: 0.25vw solid #E6007E; text-align: center; font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; color: #fff; }
 .exitask b { font-size: 3vw; font-weight: 800; }

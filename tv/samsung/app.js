@@ -41,8 +41,19 @@
     return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
   }
 
+  // Size the dashboard to the whole screen in pixels; some Tizen versions
+  // leave an iframe at its tiny default size otherwise.
+  function sizeFrame() {
+    var W = window.innerWidth || document.documentElement.clientWidth || 1920;
+    var H = window.innerHeight || document.documentElement.clientHeight || 1080;
+    frame.style.width = W + 'px';
+    frame.style.height = H + 'px';
+  }
+  window.addEventListener('resize', sizeFrame);
+
   function show(url) {
     clearTimeout(helloTimer);
+    sizeFrame();
     lastAlive = Date.now();
     frame.src = url;
     frame.hidden = false;

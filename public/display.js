@@ -109,11 +109,24 @@
   const cache = new Map(); // widget id -> last html
   let layoutSig = '';
 
+  // Scale the 1920x1080 canvas to the window. Older TV browsers (Samsung
+  // Tizen) don't always send a resize event when the TV app shows the page,
+  // so check the size every second as well.
+  let fitKey = '';
   function fit() {
-    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    const de = document.documentElement;
+    const W = window.innerWidth || de.clientWidth;
+    const H = window.innerHeight || de.clientHeight;
+    if (!W || !H) return;
+    const k = W + 'x' + H;
+    if (k === fitKey) return;
+    fitKey = k;
+    const s = Math.min(W / 1920, H / 1080);
     screen.style.transform = `scale(${s})`;
   }
   window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  setInterval(fit, 1000);
   fit();
 
   function geometry(style) {
