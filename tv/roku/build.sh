@@ -10,6 +10,11 @@
 set -e
 cd "$(dirname "$0")"
 SERVER="${1:?Give the display server address, e.g. http://192.168.10.50:8080}"
+SERVER="${SERVER%/}"
+case "$SERVER" in http://*|https://*) ;; *) SERVER="http://$SERVER" ;; esac
+# No port given? The display server runs on 8080.
+echo "$SERVER" | grep -qE ':[0-9]+$' || SERVER="$SERVER:8080"
+echo "Display server: $SERVER"
 IP="$2"
 PASS="$3"
 OUT="$(pwd)/build"
