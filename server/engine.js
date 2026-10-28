@@ -243,6 +243,19 @@ function makeEngine({ config, db, clock, log }) {
   const minus = (hm, n) => fmtHM(hmToMin(hm) - n);
   const plus = (hm, n) => fmtHM(hmToMin(hm) + n);
 
+  // Message notes: what was typed on the Live page for this Sunday wins;
+  // otherwise the "Details" of the plan's Message item in Planning Center
+  // (the one for this Encounter if it has notes, else any Message item that does).
+  function messageNotes(encItems) {
+    const manual = d().messageNotes;
+    if (manual && plan && manual.date === plan.date && String(manual.text || '').trim()) return { text: manual.text, source: 'manual', title: '' };
+    const all = ((plan && plan.items) || []).filter((it) => /^\s*message\b/i.test(it.title || '') && it.details);
+    if (!all.length) return { text: '', source: '', title: '' };
+    const ids = new Set((encItems || []).map((x) => x.id));
+    const pick = all.find((it) => ids.has(it.id)) || all[0];
+    return { text: pick.details, source: 'pco', title: pick.title };
+  }
+
   // ---- people ----
   function photoFor(name) {
     const o = (d().people || {})[name] || {};
@@ -848,6 +861,7 @@ function makeEngine({ config, db, clock, log }) {
       preshow,
       // Pre-Show Teleprompter talking points (edited on the Live page).
       preshowPoints: d().preshowPoints != null ? d().preshowPoints : DEFAULT_PRESHOW_POINTS,
+      messageNotes: messageNotes(items),
       encounterStates: encs.map((e) => ({ label: e.label, state: e === liveEnc ? 'live' : e === preshowEnc ? 'preshow' : now > e.liveUntil ? 'done' : e === nextEnc ? 'next' : 'later' })),
       items: items.map(({ id, title, key, length, isSong, status, position }) => ({ id, title, key, length, isSong, status, position })),
       index,

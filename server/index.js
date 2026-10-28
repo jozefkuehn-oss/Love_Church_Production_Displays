@@ -547,6 +547,8 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
   ok(res, {
     encounter: s.encounter,
     preshowPoints: s.preshowPoints,
+    messageNotes: s.messageNotes,
+    messageNotesTyped: (db.data.messageNotes && engine.getPlan() && db.data.messageNotes.date === engine.getPlan().date && db.data.messageNotes.text) || '',
     isLive: s.isLive,
     items: s.items,
     index: s.index,
@@ -779,6 +781,18 @@ app.put('/api/recording', auth.requirePerm('recording'), (req, res) => {
   db.data.recording = { date: plan.date, label, on: body.on != null ? !!body.on : !!prev.on, crew };
   db.save();
   log(`Recording the ${label}: ${db.data.recording.on ? 'on' : 'off'} (${req.account.name})`);
+  pushNow();
+  ok(res);
+});
+
+// Message notes for this Sunday, when they aren't in the PCO Message item's
+// Details (or need fixing). Empty text = go back to what PCO has.
+app.put('/api/message-notes', auth.requirePerm('live'), (req, res) => {
+  const plan = engine.getPlan();
+  const text = String((req.body || {}).text || '').slice(0, 60000);
+  db.data.messageNotes = { date: plan ? plan.date : '', text };
+  db.save();
+  log(`Message notes ${text.trim() ? 'updated' : 'cleared'} by ${req.account.name}`);
   pushNow();
   ok(res);
 });

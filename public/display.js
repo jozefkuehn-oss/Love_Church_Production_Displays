@@ -174,6 +174,12 @@
         el.innerHTML = html;
         cache.set(w.id, html);
         window.LCD.fitBox(el);
+        // Blocks that follow along (message notes): keep the live paragraph in view.
+        const box = el.querySelector('[data-follow-box]');
+        if (box) {
+          const t = box.querySelector('.now');
+          box.scrollTop = t ? Math.max(0, t.offsetTop - 24) : 0;
+        }
       }
     }
   }

@@ -42,6 +42,27 @@ function label(hm) {
   return `${h12}:${String(m).padStart(2, '0')}`;
 }
 
+// PCO item details are HTML (often pasted from Pages/Word). Turn them into
+// plain text, one paragraph per line, blank paragraphs dropped.
+function detailsText(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'")
+    .split('\n')
+    .map((l) => l.replace(/[ \t\u00a0]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 // Today's plan if there is one, otherwise the next upcoming plan.
 async function fetchPlan(cfg, todayKey, tz) {
   const st = cfg.serviceTypeId;
@@ -99,6 +120,8 @@ async function fetchPlan(cfg, todayKey, tz) {
         length: it.attributes.length || 0,
         key: it.attributes.key_name || null,
         position: it.attributes.service_position,
+        // The item's "Details" in PCO (where the Message notes go), as text.
+        details: detailsText(it.attributes.html_details),
       })),
     people: people.data
       .filter((m) => m.attributes.status !== 'D')
@@ -178,4 +201,4 @@ async function fetchTeamRosters(cfg) {
   return { teams: list(byTeam), positions: list(byPos), photos: pics };
 }
 
-module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, plainName };
+module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, plainName, detailsText };

@@ -343,6 +343,10 @@
       <div class="card" id="pp" style="margin-top:12px" ${has('live') ? '' : 'hidden'}><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
+      <div class="card" id="mnc" style="margin-top:12px" ${has('live') ? '' : 'hidden'}><div class="row sp"><strong>Message notes</strong><span class="dim" id="mns"></span></div>
+        <p class="dim" style="margin:4px 0">Usually these come from the Details of the Message item in Planning Center. If they’re missing (or need fixing), paste them here for this Sunday — what’s here wins. Clear it and Save to go back to Planning Center’s.</p>
+        <textarea id="mnt" rows="6" placeholder="Paste the message notes here"></textarea>
+        <div class="row"><button class="primary" id="mnsave">Save notes</button></div></div>
       ${has('subs') ? '<div class="card" id="sbc" style="margin-top:12px"></div>' : ''}
       ${has('recording') ? '<div class="card" id="rc" style="margin-top:12px"></div>' : ''}
       ${has('rehearsal') ? '<div class="card" id="rh" style="margin-top:12px"></div>' : ''}
@@ -391,7 +395,14 @@
         }
       } else pl.hidden = true;
     }
-    api('/api/live').then((d) => { if ($('#ppt')) $('#ppt').value = d.preshowPoints || ''; }).catch(() => {});
+    api('/api/live').then((d) => {
+      if ($('#ppt')) $('#ppt').value = d.preshowPoints || '';
+      if ($('#mnt')) {
+        $('#mnt').value = d.messageNotesTyped || '';
+        const mn = d.messageNotes || {};
+        $('#mns').textContent = mn.source === 'manual' ? 'Showing: typed here' : mn.source === 'pco' ? `Showing: Planning Center (${mn.title})` : 'None yet';
+      }
+    }).catch(() => {});
     // Rehearsal: run the screens as if it were Sunday at a chosen time.
     async function drawRehearsal() {
       const r = await api('/api/rehearsal').catch(() => null);
@@ -471,12 +482,56 @@
       }));
     }
     drawSubs(false);
+    if ($('#mnsave')) $('#mnsave').onclick = () => api('/api/message-notes', { method: 'PUT', body: { text: $('#mnt').value } }).then(() => {
+      toast($('#mnt').value.trim() ? 'Message notes saved' : 'Back to Planning Center’s notes');
+      api('/api/live').then((d) => { const mn = d.messageNotes || {}; $('#mns').textContent = mn.source === 'manual' ? 'Showing: typed here' : mn.source === 'pco' ? `Showing: Planning Center (${mn.title})` : 'None yet'; });
+    }).catch(fail);
     $('#pps').onclick = () => api('/api/preshow-points', { method: 'PUT', body: { text: $('#ppt').value } }).then(() => toast('Points saved')).catch(fail);
     load();
     S.timers.push(setInterval(load, 2500));
   }
 
   // ---------------- Displays + layout editor ----------------
+  // What each widget actually shows, for the layout editor.
+  const WIDGET_DESC = {
+    title: 'The screen’s heading: a small kicker line, the title (use {encounter} for the Encounter time, e.g. “10:00 Encounter”), and an optional sub-line — the phase (Pre-Encounter / Preshow / Live), today’s date, or the day’s Encounter times.',
+    clock: 'Time of day, always hh:mm:ss. Follows the rehearsal clock when rehearsal mode is on.',
+    preshow: 'The online preshow countdown: counts down to the preshow, then runs the 4:30 preshow itself. When no preshow is coming up it can show something else instead (fallback): projected finish, the clock, item remaining, or a countdown. “Show before” sets how many minutes ahead it appears.',
+    countdown: 'A countdown to one moment you pick (target): next Encounter start, next stream start, next band-to-stage call, stream end, this Encounter’s start, band to stage, stream start, positions call, first stream, or next Encounter. {next} in the label becomes that Encounter’s time.',
+    encountersToday: 'A strip of today’s Encounter times, each tagged LIVE, PRESHOW, NEXT or DONE.',
+    firstUp: 'The first song or item of the next Encounter, with its key and the song bank’s feel — what the band and cameras open on.',
+    itemRemaining: 'Time left in the item that’s live now: its length in the Planning Center plan minus how long it’s been up (it starts when FOH ProPresenter, or a tap on the Live page, moves to it). Goes negative when the item runs over.',
+    projected: 'When this Encounter is on track to end, adding up the rest of the plan from now. With a label set it instead shows how far ahead or behind plan it’s running (FOH style).',
+    runOfShow: 'The run of show for the Encounter that’s live, from the Planning Center plan: done / now / next, with lengths. Follows FOH ProPresenter. Long plans scroll with the live item kept in view.',
+    runOfShowDay: 'The whole day’s plan, every item for every Encounter, with the live one highlighted.',
+    songNow: 'The song that’s live now: title, key and lead, plus the song bank’s feel and progression if switched on. Song bank entries are edited in Admin → Songs.',
+    songNext: 'The next item in the plan (song or not), with its key and length.',
+    worshipDirection: 'Worship direction for today’s songs from the song bank: feel (tempo first), progression and notes, one card per song. If they don’t all fit, the cards page through every 12 seconds.',
+    keys: 'Tiles with the key of every song in the set, the live one highlighted.',
+    needs: 'The next three items with when each starts and what it needs (video, mics, lyrics, walk-ups…).',
+    graphics: 'What Broadcast ProPresenter has up and next — the stream graphics.',
+    faces: 'Face cards for a group of people from today’s plan (photo, name, role): stage, communicators, broadcast, production, service management, leadership or a mix. Look sets the card style: fill, portrait, badge or avatar (round). Columns fixes how many across.',
+    worshipMics: 'Every worship team member with their mic and in-ear (IEM), with live battery and RF where the receivers report it.',
+    handhelds: 'The speaking mics — HH-1, HH-2, TEACH, BP-1, BP-2 — and who has each one. Only mics that are given out appear. Set them on the Speaking Mics page.',
+    goto: 'The go-to people for this room (by default FOH Audio, Service Producer and Broadcast Producer) with photos.',
+    wirelessList: 'Every wireless mic with its person and their IEM under it, plus battery and RF. Nothing is cut off; it switches to two columns when long.',
+    nowNext: 'One line: what’s live now and what’s next in the run of show.',
+    slide: 'The text of the slide that’s up in ProPresenter (FOH = auditorium, or broadcast), live. Pick current or next.',
+    slidePreview: 'Pictures of the current and next slides from ProPresenter, as they look on screen.',
+    propTimers: 'ProPresenter’s running timers and the stage message, from FOH or broadcast ProPresenter.',
+    messageBar: 'Producer messages sent from the control app, plus MIC CHANGE banners. “Big” makes it a large block. Messages clear on their own (1 minute by default).',
+    messageNotes: 'The pastor’s message notes, for the FOH ProPresenter operator: the Details of the Message item in the Planning Center plan, or what was typed in “Message notes” on the Live page (that wins when filled in). When the slide up in ProPresenter matches a paragraph — a scripture, a point — that paragraph lights up and the notes scroll to it.',
+    text: 'Fixed text you type here, or the preshow talking points edited on the Live page (source: preshowPoints).',
+    image: 'A picture from a web address (src), filling the box or fitting inside it.',
+  };
+  const OPT_DESC = {
+    kicker: 'Small line above the title', title: 'Main text ({encounter} = Encounter time)', sub: 'Line under the title', compact: 'Smaller, single-line version',
+    label: 'Heading shown on the block', huge: 'Very large numbers', fallback: 'What to show when nothing is coming up', showBeforeMin: 'Minutes before the preshow to start showing it',
+    target: 'Which moment to count down to', accent: 'Pink highlight', showFeel: 'Show the feel line', showProgression: 'Show the progression',
+    group: 'Which people', look: 'Card style', collage: 'Edge-to-edge photos, no gaps', columns: 'Cards across (blank = automatic)', roleColor: 'Color for the role line',
+    follow: 'Light up and scroll to the paragraph that matches the slide on screen (on unless unticked)',
+    which: 'Current or next slide', source: 'Where the content comes from', big: 'Large message block', size: 'Text size in pixels', text: 'The words to show', src: 'Picture address', fit: 'cover fills the box, contain shows it all',
+  };
   const WIDGETS = {
     title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'phase', 'date', 'encounters']], ['compact', 'bool']] },
     clock: { name: 'Time of day', opts: [['label', 'text'], ['compact', 'bool']] },
@@ -504,6 +559,7 @@
     slidePreview: { name: 'ProPresenter slide preview (pictures)', opts: [['source', ['broadcast', 'auditorium']], ['label', 'text'], ['showNext', 'bool']] },
     propTimers: { name: 'ProPresenter timers + stage message', opts: [['source', ['auditorium', 'broadcast']], ['names', 'text'], ['label', 'text']] },
     messageBar: { name: 'Message bar', opts: [['idleText', 'text'], ['legend', 'bool'], ['big', 'bool'], ['hidePreshowCues', 'bool']] },
+    messageNotes: { name: 'Message notes', opts: [['label', 'text'], ['size', 'number'], ['source', ['auditorium', 'broadcast']], ['follow', 'bool']] },
     text: { name: 'Text', opts: [['label', 'text'], ['source', ['', 'preshowPoints']], ['text', 'text'], ['size', 'number']] },
     image: { name: 'Image', opts: [['src', 'text'], ['fit', ['cover', 'contain']]] },
   };
@@ -1038,16 +1094,19 @@
       const w = layout.widgets.find((x) => x.id === sel);
       const add = `<label>Add a widget<select id="aw"><option value="">Choose…</option>${Object.entries(WIDGETS).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('')}</select></label>`;
       if (!w) {
-        s.innerHTML = `<h3 style="margin:0">Widgets</h3><p class="dim">Tap a box to change it.</p>${add}`;
+        s.innerHTML = `<h3 style="margin:0">Widgets</h3><p class="dim">Tap a box to change it.</p>${add}
+          <details style="margin-top:10px"><summary class="dim" style="cursor:pointer">What each widget shows</summary>${Object.entries(WIDGETS).map(([k, v]) => `<p style="margin:8px 0"><b>${esc(v.name)}</b><br><span class="dim">${esc(WIDGET_DESC[k] || '')}</span></p>`).join('')}</details>`;
       } else {
         const spec = WIDGETS[w.type] || { opts: [] };
         s.innerHTML = `<h3 style="margin:0">${esc(spec.name || w.type)}</h3>
+          <p class="dim" style="margin:4px 0 8px">${esc(WIDGET_DESC[w.type] || '')}</p>
           ${spec.opts
             .map(([k, t]) => {
               const v = w.opts[k];
-              if (t === 'bool') return `<label class="inline"><input type="checkbox" data-o="${k}" ${v ? 'checked' : ''}> ${k}</label>`;
-              if (Array.isArray(t)) return `<label>${k}<select data-o="${k}">${t.map((x) => `<option ${x === (v || '') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
-              return `<label>${k}<input data-o="${k}" ${t === 'number' ? 'type="number"' : ''} value="${esc(v ?? '')}"></label>`;
+              const hint = OPT_DESC[k] ? ` <span class="dim" style="font-weight:400">· ${esc(OPT_DESC[k])}</span>` : '';
+              if (t === 'bool') return `<label class="inline"><input type="checkbox" data-o="${k}" ${v ? 'checked' : ''}> ${k}${hint}</label>`;
+              if (Array.isArray(t)) return `<label>${k}${hint}<select data-o="${k}">${t.map((x) => `<option ${x === (v || '') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
+              return `<label>${k}${hint}<input data-o="${k}" ${t === 'number' ? 'type="number"' : ''} value="${esc(v ?? '')}"></label>`;
             })
             .join('')}
           <div class="dim">Position ${w.x},${w.y} · size ${w.w}×${w.h}</div>

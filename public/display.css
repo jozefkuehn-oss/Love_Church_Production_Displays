@@ -283,3 +283,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .exitask > div { display: flex; flex-direction: column; gap: 0.6vw; padding: 2.2vw 3vw; border-radius: 1.2vw; background: #1A1A1C; border: 0.25vw solid #E6007E; text-align: center; font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; color: #fff; }
 .exitask b { font-size: 3vw; font-weight: 800; }
 .exitask span { font-size: 1.5vw; color: #B4B4BA; }
+
+/* Message notes (FOH ProP): scrolls itself to the paragraph that's on screen. */
+.mn-box { flex: 1; min-height: 0; overflow: hidden; position: relative; line-height: 1.3; }
+.mn-box p { margin: 0 0 .55em; padding: .1em .4em; border-left: 6px solid transparent; border-radius: 6px; }
+.mn-box p.h { color: var(--pink-text); font-weight: 800; letter-spacing: .02em; margin-top: .4em; }
+.mn-box p.now { border-left-color: var(--pink); background: rgba(230, 0, 126, .18); }

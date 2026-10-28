@@ -690,6 +690,43 @@
 
   // Text block. source 'preshowPoints' shows the Pre-Show Teleprompter points
   // edited on the Live page instead of fixed text.
+  // Message notes for the FOH ProPresenter operator: the Message item's
+  // Details from Planning Center (or what was typed on the Live page). When
+  // the slide up in ProPresenter matches a paragraph (a scripture, a point),
+  // that paragraph is highlighted and kept in view.
+  // opts: label, size (px), source auditorium|broadcast, follow (default on).
+  let mnLast = 0;
+  const mnNorm = (t) => String(t || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  W.messageNotes = (o, s) => {
+    const mn = s.messageNotes || {};
+    const head = `<div class="label">${esc(o.label || 'MESSAGE NOTES')}${mn.title ? ` <span style="opacity:.6">· ${esc(mn.title)}</span>` : ''}${mn.source === 'manual' ? ' <span style="opacity:.6">· typed on the Live page</span>' : ''}</div>`;
+    if (!String(mn.text || '').trim()) return `<div class="panel" style="height:100%">${head}<div class="missing">No message notes yet. Add them to the Message item’s Details in Planning Center, or type them on the Live page.</div></div>`;
+    const paras = String(mn.text).split('\n').filter((l) => l.trim());
+    let now = -1;
+    if (o.follow !== false) {
+      const p = s.propresenter && s.propresenter[o.source || 'auditorium'];
+      const n = mnNorm(p && p.current && p.current.text);
+      if (n.length >= 12) {
+        const key = n.slice(0, 60);
+        const hits = [];
+        paras.forEach((t, i) => {
+          const np = mnNorm(t);
+          if (np.length >= 8 && (np.includes(key) || n.includes(np.slice(0, 60)))) hits.push(i);
+        });
+        // The same verse can appear twice (key verse at the top, then in the
+        // body): prefer the first match at or after the last one.
+        now = hits.find((i) => i >= mnLast);
+        if (now == null) now = hits.length ? hits[0] : -1;
+        if (now >= 0) mnLast = now;
+      }
+    }
+    const isHead = (t) => (t.length <= 48 && /:$/.test(t)) || (t.length <= 48 && t === t.toUpperCase() && /[A-Z]/.test(t));
+    const body = paras
+      .map((t, i) => `<p class="${isHead(t) ? 'h' : ''}${i === now ? ' now' : ''}">${esc(t)}</p>`)
+      .join('');
+    return `<div class="panel mn" style="height:100%;display:flex;flex-direction:column">${head}<div class="mn-box" data-follow-box style="font-size:${Number(o.size) || 30}px">${body}</div></div>`;
+  };
+
   W.text = (o, s) => {
     const t = o.source === 'preshowPoints' ? (s && s.preshowPoints) || '' : o.text || '';
     return `<div class="panel" style="height:100%"><div class="label">${esc(o.label || '')}</div><div style="font-size:${o.size || 24}px;font-weight:600;white-space:pre-line">${esc(t)}</div></div>`;
