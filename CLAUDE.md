@@ -129,8 +129,8 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Midweek dashboard: This week (Services plans for this campus, next 7 days; PCO Calendar
   too if the PCO login is allowed to read it), clock/date, announcements (Live page), messages.
 - **Event nights**: if a plan for REV 380989, All-In 1367267, VALOR 1718542 or AGAPE
-  1207771 (Settings list) is dated today, screens run that plan, unstreamed, Live until
-  PCO's end time, and "Encounter" labels become the event name.
+  1207771 (Settings list) is dated today, screens run that plan, unstreamed, **no preshow**
+  (Pre-Service → Live), Live until PCO's end time, and "Encounter" labels become the event name.
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 

@@ -604,8 +604,10 @@ function makeEngine({ config, db, clock, log }) {
     const sched0 = d().schedule;
     const psLead = (sched0.preshowLeadMinutes ?? 5) * 60e3;
     const tail = (sched0.liveTailMinutes ?? 5) * 60e3;
+    // Event nights (VALOR, REV…) have no online preshow: Pre-Service → Live.
+    const isEvent = !!(plan && plan.event && plan.date === dateKey);
     encs.forEach((e) => {
-      e.preshowFrom = e.startMs - psLead;
+      e.preshowFrom = isEvent ? e.startMs : e.startMs - psLead;
       e.liveFrom = e.startMs;
       e.liveUntil = (e.streamEndMs ?? (e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3)) + tail;
     });

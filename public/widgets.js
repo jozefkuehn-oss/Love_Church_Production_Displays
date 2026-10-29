@@ -137,7 +137,7 @@
   W.title = (o, s, ctx) => {
     let sub = '';
     // Which dashboard phase is up right now.
-    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : s.event ? 'Pre-' + s.event : 'Pre-Encounter';
+    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : s.event ? 'Pre-Service' : 'Pre-Encounter';
     if (o.sub === 'live' || o.sub === 'phase') {
       const src = s.indexSource === 'propresenter' ? 'following Auditorium ProPresenter' : s.indexSource === 'manual' ? 'manual position' : 'planned timing';
       sub = `<div class="sub"><span class="dot"></span><span>${phase}${s.isLive || s.isPreshow ? ' · ' + src : ''}</span></div>`;
