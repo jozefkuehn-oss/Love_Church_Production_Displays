@@ -538,6 +538,16 @@ app.post('/api/messages/:id/clear', auth.requirePerm('messages'), (req, res) => 
   ok(res);
 });
 
+// Admins: wipe the message history (and take anything still up off the screens).
+app.post('/api/messages/delete-all', auth.requireAdmin, (req, res) => {
+  const n = db.data.messages.length;
+  db.data.messages = [];
+  db.save();
+  log(`Message history cleared (${n}) by ${req.account.name}`);
+  pushNow();
+  ok(res, { deleted: n });
+});
+
 app.post('/api/messages/clear-all', auth.requirePerm('messages'), (req, res) => {
   db.data.messages.forEach((m) => {
     if (!m.cleared) {

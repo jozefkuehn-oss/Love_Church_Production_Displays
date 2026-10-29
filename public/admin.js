@@ -258,7 +258,7 @@
       </div>
       <div class="row sp"><h2>On the displays now</h2><button class="small ghost" id="ca">Clear all</button></div>
       <div class="list" id="active"></div>
-      <h2>Today’s log</h2><div class="list" id="log"></div>`;
+      <div class="row sp"><h2>Today’s log</h2>${(S.me.perms || []).includes('admin') ? '<button class="small danger" id="dm">Delete all messages</button>' : ''}</div><div class="list" id="log"></div>`;
 
     const mt = $('#mt');
     $$('#qk .chip').forEach(
@@ -299,6 +299,16 @@
       } catch (e) {
         fail(e);
       }
+    };
+    if ($('#dm')) $('#dm').onclick = async () => {
+      if (!confirm('Delete every message (the log too) and take any still showing off the screens?')) return;
+      try {
+        const r = await api('/api/messages/delete-all', { body: {} });
+        toast(`Deleted ${r.deleted} message${r.deleted === 1 ? '' : 's'}`);
+      } catch (e) {
+        fail(e);
+      }
+      refresh();
     };
     $('#ca').onclick = async () => {
       await api('/api/messages/clear-all', { body: {} }).catch(fail);
