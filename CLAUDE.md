@@ -97,7 +97,10 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Lighting, Lighting Compact), Stage (Stage Display), Pre-/Post-Show (Teleprompter),
   plus the shared **Midweek** dashboard (`location: '_Midweek'`, hidden from the room picker).
   Designed so far: Broadcast Control, Broadcast Audio, The Dock, The Greenroom,
-  Teleprompter, FOH Audio, Midweek.
+  Teleprompter, FOH Audio, Midweek. **FOH ProP** (`foh`) was designed by Jozef in the
+  control app, so its layout lives only in the Mac's `data/`. Never bump
+  `LAYOUT_REVISIONS` for `foh.*` (that would overwrite his layout); ask him for a copy
+  (Displays → export, or read it from his data) if the defaults should match.
 - **Face cards** follow PCO teams/positions; looks per block (portrait / badge / round / fill);
   names never cover faces.
 - **Speaking mics** HH-1, HH-2, TEACH, BP-1, BP-2: only assigned ones show; several handed
@@ -133,8 +136,8 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
 
 ## Still to do
 
-- Design dashboards: FOH Audio Compact, Service Producer, **FOH ProP** (put Message notes
-  on it), Lighting, Lighting Compact, Stage Display.
+- Design dashboards: FOH Audio Compact, Service Producer, Lighting, Lighting Compact,
+  Stage Display.
 - Set up the Green Room Samsung (new certificate profile with all three DUIDs).
 - Band call time (default 4 min before start): Jozef to confirm.
 - Watch the first real event night (VALOR) and the first real midweek day.
