@@ -90,8 +90,8 @@ function detailsText(html) {
 }
 
 // Today's plan if there is one, otherwise the next upcoming plan.
-async function fetchPlan(cfg, todayKey, tz) {
-  const st = cfg.serviceTypeId;
+async function fetchPlan(cfg, todayKey, tz, serviceTypeId) {
+  const st = serviceTypeId || cfg.serviceTypeId;
   let list;
   try {
     list = await get(cfg, `/service_types/${st}/plans?filter=after&after=${todayKey}&order=sort_date&per_page=1`);
@@ -133,9 +133,12 @@ async function fetchPlan(cfg, todayKey, tz) {
     title: [p.attributes.series_title, p.attributes.title].filter(Boolean).join(' · ') || p.attributes.dates,
     date,
     notes: noteText,
+    serviceTypeId: String(st),
     times: serviceTimes.map((t) => {
       const start = hhmm(t.attributes.starts_at, tz);
-      return { label: label(start), start };
+      // End time from PCO (events use it for how long Live lasts).
+      const end = t.attributes.ends_at && Date.parse(t.attributes.ends_at) > Date.parse(t.attributes.starts_at) ? hhmm(t.attributes.ends_at, tz) : '';
+      return { label: label(start), start, end };
     }),
     items: items.data
       .sort((a, b) => a.attributes.sequence - b.attributes.sequence)
@@ -239,7 +242,8 @@ async function fetchWeek(cfg) {
   const types = await getAll(cfg, '/service_types?per_page=100');
   for (const st of types.data) {
     const name = String(st.attributes.name || '').trim();
-    if (!name || st.attributes.archived_at || /^lcno\b/i.test(name)) continue; // other campus
+    // Skip the other campus and the kids' check-in types.
+    if (!name || st.attributes.archived_at || /^lcno\b|babies|littles|bigs|love kidz|^lcm$/i.test(name)) continue;
     let plans;
     try {
       plans = await get(cfg, `/service_types/${st.id}/plans?filter=future&order=sort_date&per_page=4`);
@@ -285,4 +289,23 @@ async function fetchWeek(cfg) {
     });
 }
 
-module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek, plainName, detailsText };
+// Is one of the event service types (REV, All-In, VALOR, AGAPE…) on today?
+// Returns { id, name } of the first with a plan dated today, else null.
+async function todaysEvent(cfg, todayKey, tz, ids) {
+  for (const id of ids || []) {
+    let list;
+    try {
+      list = await get(cfg, `/service_types/${id}/plans?filter=future&order=sort_date&per_page=1&include=service_type`);
+    } catch (e) {
+      continue;
+    }
+    const p = list.data && list.data[0];
+    if (!p || !p.attributes.sort_date) continue;
+    if (parts(Date.parse(p.attributes.sort_date), tz).dateKey !== todayKey) continue;
+    const st = (list.included || []).find((x) => x.type === 'ServiceType');
+    return { id: String(id), name: String((st && st.attributes.name) || p.attributes.series_title || 'Event').trim() };
+  }
+  return null;
+}
+
+module.exports = { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek, todaysEvent, plainName, detailsText };

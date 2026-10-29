@@ -2006,6 +2006,8 @@
         <div class="grid2"><label>Client ID (Application ID)<input id="c_pid" value="${esc(c.pco.appId)}" autocomplete="off"></label>
         <label>Secret<input id="c_psec" type="password" value="${esc(c.pco.secret)}" autocomplete="off"></label>
         <label>Service type ID<input id="c_pst" value="${esc(c.pco.serviceTypeId)}"></label>
+        <label>Event nights — service type IDs that run like a service (not streamed)<input id="c_pev" value="${esc((c.pco.eventServiceTypes || ['380989', '1367267', '1718542', '1207771']).join(', '))}"></label>
+        <div class="dim" style="margin-top:-4px">REV Rally 380989 · All-In Leadership Night 1367267 · VALOR 1718542 · AGAPE 1207771. On a day one of these has a plan, every screen runs that plan (its people, run of show and times) instead of Sunday’s.</div>
         <label>Refresh every (minutes)<input type="number" id="c_prf" value="${esc(c.pco.refreshMinutes)}"></label></div></div>
 
       <div class="card" style="margin-top:14px"><h2 style="margin:0">Slack photos</h2>
@@ -2044,7 +2046,7 @@
         campusLabel: $('#c_campus').value,
         timezone: $('#c_tz').value,
         messageDefaultSeconds: Number($('#c_msgsec').value) || 60,
-        pco: { appId: $('#c_pid').value.trim(), secret: $('#c_psec').value.trim(), serviceTypeId: $('#c_pst').value.trim(), refreshMinutes: Number($('#c_prf').value) || 5 },
+        pco: { appId: $('#c_pid').value.trim(), secret: $('#c_psec').value.trim(), serviceTypeId: $('#c_pst').value.trim(), refreshMinutes: Number($('#c_prf').value) || 5, eventServiceTypes: $('#c_pev').value.split(/[^0-9]+/).filter(Boolean) },
         slack: { ...c.slack, botToken: $('#c_slack').value.trim() },
         propresenter: {
           ...c.propresenter,

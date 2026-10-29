@@ -19,7 +19,13 @@ const configDefaults = {
   timezone: 'America/Chicago',
   campusLabel: 'LCES',
   port: 8080,
-  pco: { appId: '', secret: '', serviceTypeId: '427029', refreshMinutes: 5 },
+  pco: {
+    appId: '', secret: '', serviceTypeId: '427029', refreshMinutes: 5,
+    // Other service types that run like a service (not streamed): on a day one
+    // of these has a plan, the screens run that plan instead of Sunday's.
+    // REV Rally, All-In Leadership Night, VALOR, AGAPE.
+    eventServiceTypes: ['380989', '1367267', '1718542', '1207771'],
+  },
   slack: { botToken: '', refreshHours: 12 },
   propresenter: {
     auditorium: { host: '192.168.10.204', port: 51090, enabled: true }, // auditorium ProPresenter machine (playlist built by hand)
@@ -629,4 +635,5 @@ const LAYOUT_REVISIONS = {
   'broadcast.live': 4,
 };
 
-module.exports = { configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
+const DEFAULT_EVENT_TYPES = ['380989', '1367267', '1718542', '1207771'];
+module.exports = { DEFAULT_EVENT_TYPES, configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };

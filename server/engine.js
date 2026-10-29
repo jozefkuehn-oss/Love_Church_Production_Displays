@@ -4,7 +4,8 @@
 const path = require('path');
 const fs = require('fs');
 const { parts, zoned } = require('./time');
-const { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek } = require('./sources/pco');
+const { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek, todaysEvent } = require('./sources/pco');
+const { DEFAULT_EVENT_TYPES } = require('./defaults');
 const { cache: photoCache } = require('./sources/photocache');
 const ghPhotos = require('./sources/ghphotos');
 const { syncPhotos } = require('./sources/slack');
@@ -149,7 +150,12 @@ function makeEngine({ config, db, clock, log }) {
     }
     try {
       const today = parts(clock.now(), cfg().timezone).dateKey;
-      plan = await fetchPlan(p, today, cfg().timezone);
+      // An event night (REV, All-In, VALOR, AGAPE…) runs its own plan today.
+      const ev = await todaysEvent(p, today, cfg().timezone, p.eventServiceTypes || DEFAULT_EVENT_TYPES).catch(() => null);
+      const next = await fetchPlan(p, today, cfg().timezone, ev ? ev.id : undefined);
+      if (ev) next.event = { name: ev.name.replace(/\s*\|.*$/, '').trim() };
+      if (ev && (!plan || plan.serviceTypeId !== ev.id)) log(`Today is ${ev.name}: running its plan.`);
+      plan = next;
       planSource = 'planningcenter';
       planError = '';
       planFetchedAt = Date.now();
@@ -179,7 +185,7 @@ function makeEngine({ config, db, clock, log }) {
       log('Planning Center hosts list failed: ' + e.message);
     }
     try {
-      teamRosters = await fetchTeamRosters(p);
+      teamRosters = await fetchTeamRosters({ ...p, serviceTypeId: (plan && plan.serviceTypeId) || p.serviceTypeId });
       const { photos: got, changed } = await photoCache('pco', Object.entries(teamRosters.photos || {}).map(([name, url]) => ({ name, url })));
       pcoPhotos = got;
       if (changed) log(`Planning Center photos: ${changed} new or changed`);
@@ -254,6 +260,10 @@ function makeEngine({ config, db, clock, log }) {
     const s = d().schedule;
     if (s.overrides && s.overrides[dateKey] && s.overrides[dateKey].encounters) return s.overrides[dateKey].encounters;
     const base = s.encounters || [];
+    if (plan && plan.event && plan.date === dateKey && plan.times && plan.times.length) {
+      // Event nights aren't streamed: no stream times; Live runs to PCO's end time.
+      return plan.times.map((t) => ({ label: t.label, start: t.start, end: t.end || '' }));
+    }
     if (plan && plan.times && plan.times.length && plan.date === dateKey) {
       // Use the plan's service times; take stream windows from the schedule by
       // matching start time (or default to 5 min before / plan length after).
@@ -597,7 +607,7 @@ function makeEngine({ config, db, clock, log }) {
     encs.forEach((e) => {
       e.preshowFrom = e.startMs - psLead;
       e.liveFrom = e.startMs;
-      e.liveUntil = (e.streamEndMs ?? e.startMs + 75 * 60e3) + tail;
+      e.liveUntil = (e.streamEndMs ?? (e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3)) + tail;
     });
     const activeEnc = encs.find((e) => now >= e.preshowFrom && now <= e.liveUntil) || null;
     const liveEnc = activeEnc && now >= activeEnc.liveFrom ? activeEnc : null;
@@ -848,7 +858,8 @@ function makeEngine({ config, db, clock, log }) {
     const first = encs[0];
     const targets = {
       encounterStart: enc ? enc.startMs : null,
-      streamEnd: enc ? enc.streamEndMs : null,
+      // Event nights: "stream ends" counts to the event's end time instead.
+      streamEnd: enc ? enc.streamEndMs ?? (plan && plan.event && enc.end ? zoned(dateKey, enc.end, tz) : null) : null,
       streamStart: enc ? enc.streamStartMs : null,
       bandToStage: enc ? enc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
       positions: sched.positions ? zoned(dateKey, sched.positions, tz) : null,
@@ -857,7 +868,7 @@ function makeEngine({ config, db, clock, log }) {
       nextStart: nextEnc ? nextEnc.startMs : null,
       nextStreamStart: nextEnc ? nextEnc.streamStartMs : null,
       // Which stream countdowns are empty because that Encounter isn't streamed.
-      notStreamed: [...(enc && enc.noStream ? ['streamStart', 'streamEnd'] : []), ...(nextEnc && nextEnc.noStream ? ['nextStreamStart'] : [])],
+      notStreamed: [...(enc && enc.noStream ? (plan && plan.event && enc.end ? ['streamStart'] : ['streamStart', 'streamEnd']) : []), ...(nextEnc && nextEnc.noStream ? ['nextStreamStart'] : [])],
       nextBandToStage: nextEnc ? nextEnc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
     };
 
@@ -887,7 +898,8 @@ function makeEngine({ config, db, clock, log }) {
       campus: cfg().campusLabel,
       sampleMode: !!cfg().sampleMode,
       rehearsal: clock.rehearsal() ? { time: clock.rehearsal().time, date: clock.rehearsal().dateKey } : null,
-      plan: plan ? { title: plan.title, date: plan.date, source: planSource } : null,
+      plan: plan ? { title: plan.title, date: plan.date, source: planSource, event: plan.event ? plan.event.name : '' } : null,
+      event: plan && plan.event && plan.date === dateKey ? plan.event.name : '',
       encounters: encs.map((e) => ({ label: e.label, start: e.start, streamEnd: e.streamEnd, startMs: e.startMs, streamEndMs: e.streamEndMs })),
       encounter: enc ? { label: enc.label, index: enc.index, startMs: enc.startMs, streamEndMs: enc.streamEndMs, recorded: !!enc.recorded } : null,
       recording: rec ? { label: rec.label } : null,

@@ -22,8 +22,19 @@
   }
   const ampm = (ms, tz) => (/PM/i.test(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: true }).format(new Date(ms))) ? 'PM' : 'AM');
 
+  // On an event night (VALOR, REV…) "Encounter" in titles and labels becomes
+  // the event's name: "{encounter} Encounter" → "VALOR · 6:30".
+  const evName = (tpl, s) => {
+    if (!s.event) return String(tpl || '');
+    return String(tpl || '')
+      .replace(/STREAM ENDS IN/g, 'ENDS IN')
+      .replace(/\{encounter\}\s*Encounter/i, s.event + ' · {encounter}')
+      .replace(/\bENCOUNTER\b/g, s.event.toUpperCase())
+      .replace(/\bEncounter\b/g, s.event);
+  };
   const fill = (tpl, s) =>
-    String(tpl || '')
+    evName(tpl, s)
+      .replace('{event}', s.event || '')
       .replace('{encounter}', s.encounter ? s.encounter.label : '')
       .replace('{next}', s.nextEncounter ? s.nextEncounter.label : s.encounter ? s.encounter.label : '')
       .replace('{date}', s.date ? s.date.label : '')
@@ -126,7 +137,7 @@
   W.title = (o, s, ctx) => {
     let sub = '';
     // Which dashboard phase is up right now.
-    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : 'Pre-Encounter';
+    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : s.event ? 'Pre-' + s.event : 'Pre-Encounter';
     if (o.sub === 'live' || o.sub === 'phase') {
       const src = s.indexSource === 'propresenter' ? 'following Auditorium ProPresenter' : s.indexSource === 'manual' ? 'manual position' : 'planned timing';
       sub = `<div class="sub"><span class="dot"></span><span>${phase}${s.isLive || s.isPreshow ? ' · ' + src : ''}</span></div>`;
