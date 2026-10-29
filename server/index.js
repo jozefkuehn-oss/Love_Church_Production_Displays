@@ -1422,6 +1422,7 @@ makeTvs({
   auth,
   streams,
   port: PORT,
+  firstCallToday: () => engine.firstCallToday(),
   isOnline: (id) => [...wss.clients].some((c) => c.device === id && c.readyState === 1),
 });
 server.listen(PORT, '0.0.0.0', () => {

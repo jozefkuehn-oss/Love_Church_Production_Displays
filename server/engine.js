@@ -990,7 +990,16 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos };
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos,
+    // Earliest PCO time today (call time, rehearsal or service) from this
+    // week's plans: the TVs turn on 30 min before it on non-Sunday days.
+    firstCallToday: () => {
+      const tz = cfg().timezone;
+      const today = parts(Date.now(), tz).dateKey;
+      const t = weekEvents.filter((e) => e.kind !== 'allday' && parts(e.startMs, tz).dateKey === today).map((e) => ({ ms: e.startMs, name: e.name }));
+      t.sort((a, b) => a.ms - b.ms);
+      return t[0] || null;
+    } };
 }
 
 module.exports = { makeEngine, songKey, resolveTitle };

@@ -597,6 +597,8 @@
     box.innerHTML = `<div class="card"><div class="row sp"><strong>Schedule</strong><label class="inline"><input type="checkbox" id="tvs-en" ${s.enabled ? 'checked' : ''}> On</label></div>
         <div class="grid2"><label>Turn on at<input type="time" id="tvs-on" value="${esc(s.on)}"></label><label>Turn off at<input type="time" id="tvs-off" value="${esc(s.off)}"></label></div>
         <div class="chips">${DAYS.map((x) => `<button class="chip ${s.days.includes(x) ? 'on' : ''}" data-day="${x}">${x.slice(0, 3)}</button>`).join('')}</div>
+        <label class="inline"><input type="checkbox" id="tvs-mid" ${s.midweek !== false ? 'checked' : ''}> Other days: when Planning Center has a call time, rehearsal or service that day (VALOR, REV…), turn on 30 minutes before the first one</label>
+        <div class="grid2"><label>…and turn off at<input type="time" id="tvs-midoff" value="${esc(s.midweekOff || '23:00')}"></label></div>
         <div class="row"><button class="primary small" id="tvs-all-on">Launch all now</button><button class="small" id="tvs-all-off">Turn all off</button></div></div>
       ${d.found
         .map((f) => `<div class="card"><div class="row sp"><strong>New TV found</strong><span class="dim">${esc(f.model || f.platform)}</span></div>
@@ -633,6 +635,8 @@
     $('#tvs-en').onchange = (e) => putSched({ enabled: e.target.checked });
     $('#tvs-on').onchange = (e) => putSched({ on: e.target.value });
     $('#tvs-off').onchange = (e) => putSched({ off: e.target.value });
+    $('#tvs-mid').onchange = (e) => putSched({ midweek: e.target.checked });
+    $('#tvs-midoff').onchange = (e) => putSched({ midweekOff: e.target.value });
     $$('[data-day]', box).forEach(
       (b) =>
         (b.onclick = () => {

@@ -34,7 +34,7 @@ const SEED = [
   { id: 'PRESHOW-FIRETV', name: 'Preshow Teleprompter', platform: 'firetv', profile: 'preshow-confidence' },
 ];
 
-function makeTvs({ app, db, config, log, auth, isOnline, streams, port }) {
+function makeTvs({ app, db, config, log, auth, isOnline, streams, port, firstCallToday }) {
   const state = {}; // id -> { status, message, at, tries, power, reachable, model }
   const found = new Map(); // ip -> { ip, mac, model, platform, at }: TVs whose app said hello but aren't set up
 
@@ -185,22 +185,50 @@ function makeTvs({ app, db, config, log, auth, isOnline, streams, port }) {
   // ---------- schedule ----------
   // Real church time (not the demo clock). Catches up if the Mac restarts
   // inside the window.
+  // Other days: if Planning Center has anything today (a call time,
+  // rehearsal or service, e.g. VALOR's Creative Call Time), the TVs turn on
+  // 30 min before the first one and off at 11 PM (midweekLeadMinutes /
+  // midweekOff in the schedule).
+  function windowToday(s, p) {
+    const hm = (h, m) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    if ((s.days || []).includes(p.weekday)) return { on: s.on, off: s.off, why: '' };
+    if (s.midweek === false || !firstCallToday) return null;
+    const runs = (db.data.tvScheduleRuns = db.data.tvScheduleRuns || {});
+    // Remember today's first time once seen (PCO drops times that have passed).
+    let first = runs.callDate === p.dateKey ? runs.call : null;
+    const now = firstCallToday();
+    if (now) {
+      const q = parts(now.ms, config.data.timezone || 'America/Chicago');
+      const t = hm(q.h, q.mi);
+      if (!first || t < first.time) {
+        first = { time: t, name: now.name };
+        runs.callDate = p.dateKey;
+        runs.call = first;
+        db.save();
+      }
+    }
+    if (!first) return null;
+    const [h, m] = first.time.split(':').map(Number);
+    const onMin = Math.max(0, h * 60 + m - (s.midweekLeadMinutes ?? 30));
+    return { on: hm(Math.floor(onMin / 60), onMin % 60), off: s.midweekOff || '23:00', why: ` for ${first.name} at ${first.time}` };
+  }
   function tick() {
     const s = sched();
     if (!s.enabled) return;
     const p = parts(Date.now(), config.data.timezone || 'America/Chicago');
-    if (!(s.days || []).includes(p.weekday)) return;
+    const w = windowToday(s, p);
+    if (!w) return;
     const hhmm = `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`;
     const runs = (db.data.tvScheduleRuns = db.data.tvScheduleRuns || {});
-    if (hhmm >= s.on && hhmm < s.off && runs.on !== p.dateKey) {
+    if (hhmm >= w.on && hhmm < w.off && runs.on !== p.dateKey) {
       runs.on = p.dateKey;
       db.save();
-      log(`TV schedule: turning the dashboard TVs on (${s.on})`);
+      log(`TV schedule: turning the dashboard TVs on (${w.on}${w.why})`);
       launchAll('schedule');
-    } else if (hhmm >= s.off && runs.off !== p.dateKey && runs.on === p.dateKey) {
+    } else if (hhmm >= w.off && runs.off !== p.dateKey && runs.on === p.dateKey) {
       runs.off = p.dateKey;
       db.save();
-      log(`TV schedule: turning the dashboard TVs off (${s.off})`);
+      log(`TV schedule: turning the dashboard TVs off (${w.off})`);
       offAll(true, 'schedule');
     }
   }
@@ -332,6 +360,11 @@ function makeTvs({ app, db, config, log, auth, isOnline, streams, port }) {
     s.off = offAt;
     if (Array.isArray(b.days)) s.days = b.days.filter((d) => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(d));
     if (b.enabled !== undefined) s.enabled = !!b.enabled;
+    if (b.midweek !== undefined) s.midweek = !!b.midweek;
+    if (b.midweekOff !== undefined) {
+      if (!hm.test(b.midweekOff)) return bad(res, 'Use a time like 23:00.');
+      s.midweekOff = b.midweekOff;
+    }
     db.save();
     ok(res, s);
   });

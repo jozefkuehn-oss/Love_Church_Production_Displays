@@ -73,7 +73,8 @@ LCD_DATA_DIR=/tmp/x PORT=8099 node server/index.js   # throwaway test instance
   presentation + slide index), `shure.js`/`wireless.js` (mic/IEM RF + battery),
   `photocache.js`, `ghphotos.js`, `slack.js` (unused: no Slack app token).
 - `server/tvs.js`, `server/tv/*`, `tv/`, `server/stream.js`: the TV layer (power,
-  launch, Sunday 5:00–15:00 schedule) and TV apps. See docs/TV-SETUP.md.
+  launch, Sunday 5:00–15:00 schedule; other days on 30 min before the first PCO call
+  time / rehearsal / service that day and off at 23:00) and TV apps. See docs/TV-SETUP.md.
 
 ## Screens (all run independently over the network; nothing via the switcher)
 
