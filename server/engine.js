@@ -639,14 +639,14 @@ function makeEngine({ config, db, clock, log }) {
           e.psFired = ps.startedAt;
           e.startMs = ps.startedAt + evLen + evGap;
         } else if (sc && sc.startMs) {
+          // Countdown running: the preshow starts by itself at 3:30 to go.
           e.countdown = true;
-          e.psHold = now + evLen + evGap >= sc.startMs;
-          e.startMs = Math.max(sc.startMs, now + evLen + evGap);
+          e.startMs = sc.startMs;
         }
       });
     }
     encs.forEach((e) => {
-      e.preshowFrom = isEvent ? e.psFired || e.startMs : e.startMs - psLead;
+      e.preshowFrom = isEvent ? e.psFired || (e.countdown ? e.startMs - evLen - evGap : e.startMs) : e.startMs - psLead;
       e.liveFrom = e.startMs;
       e.liveUntil = (e.streamEndMs ?? (e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3)) + tail;
     });
@@ -878,11 +878,10 @@ function makeEngine({ config, db, clock, log }) {
         let startMs, endMs;
         if (isEvent && !ctl.startedAt) {
           // Not fired yet: only shown while a countdown is running.
-          if (!e.countdown || now >= e.liveUntil) continue;
+          if (!e.countdown) continue;
           startMs = e.startMs - evLen - evGap;
-          return { label: e.label, state: 'waiting', startMs, endMs: startMs + len, manual: false, hold: !!e.psHold, remainingMs: len };
-        }
-        if (ctl.startedAt) {
+          endMs = startMs + len;
+        } else if (ctl.startedAt) {
           startMs = ctl.startedAt;
           endMs = startMs + len;
         } else {
