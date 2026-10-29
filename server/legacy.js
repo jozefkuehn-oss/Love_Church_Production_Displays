@@ -62,10 +62,16 @@ function build(file) {
 }
 
 // Express handlers.
-function sendPage(file) {
+// Each start of the app (every update restarts it) gets a new tag on the
+// page's scripts and styles, so phones and TVs never keep an old copy.
+const BOOT = Date.now().toString(36);
+const versioned = (html) => html.replace(/((?:src|href)="\/static\/[^"?]+\.(?:js|css))"/g, `$1?v=${BOOT}"`);
+
+function sendPage(file, opts = {}) {
   return (req, res, next) => {
     try {
-      res.type('html').set('Cache-Control', 'no-cache').send(build(file));
+      const html = opts.raw ? fs.readFileSync(file, 'utf8') : build(file);
+      res.type('html').set('Cache-Control', 'no-cache').send(versioned(html));
     } catch (e) {
       next(e);
     }

@@ -360,7 +360,7 @@ app.use('/photos', express.static(PHOTO_DIR, { maxAge: '1d' }));
 app.use('/seed-photos', express.static(path.join(__dirname, 'seed', 'photos'), { maxAge: '1d' }));
 
 app.get('/', (req, res) => res.redirect('/admin'));
-app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC, 'admin.html')));
+app.get('/admin', legacy.sendPage(path.join(PUBLIC, 'admin.html'), { raw: true }));
 app.get('/display', legacy.sendPage(path.join(PUBLIC, 'chooser.html')));
 app.get('/display/:profile', legacy.sendPage(path.join(PUBLIC, 'display.html')));
 
