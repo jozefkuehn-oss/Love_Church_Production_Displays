@@ -137,7 +137,7 @@
   W.title = (o, s, ctx) => {
     let sub = '';
     // Which dashboard phase is up right now.
-    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : s.event ? 'Pre-Service' : 'Pre-Encounter';
+    const phase = s.isLive ? 'Live' : s.isPreshow ? 'Preshow' : s.event ? 'Pre-' + s.event : 'Pre-Encounter';
     if (o.sub === 'live' || o.sub === 'phase') {
       const src = s.indexSource === 'propresenter' ? 'following Auditorium ProPresenter' : s.indexSource === 'manual' ? 'manual position' : 'planned timing';
       sub = `<div class="sub"><span class="dot"></span><span>${phase}${s.isLive || s.isPreshow ? ' · ' + src : ''}</span></div>`;
@@ -145,6 +145,12 @@
     else if (o.sub === 'encounters') sub = `<div class="sub">Encounters ${esc((s.encounters || []).map((e) => e.label).join(' · '))}</div>`;
     // Kicker: the room name typed in, or the screen's location if left blank.
     let kicker = o.kicker ? fill(o.kicker, s) : ((ctx && ctx.location) || '').toUpperCase();
+    // Today's month and day ("OCT 29") on the kicker line, unless switched off
+    // or the sub line already shows the full date.
+    if (o.showDate !== false && o.sub !== 'date') {
+      const md = new Date(s.now).toLocaleDateString('en-US', { timeZone: s.tz, month: 'short', day: 'numeric' }).toUpperCase();
+      kicker = kicker ? kicker + ' · ' + md : md;
+    }
     // Skinny (one-row) title: no room for a sub line, so the phase joins the kicker.
     if (o.compact && sub) {
       if (o.sub === 'live' || o.sub === 'phase') kicker = (kicker ? kicker + ' · ' : '') + phase.toUpperCase();

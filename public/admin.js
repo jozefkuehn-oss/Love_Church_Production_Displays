@@ -499,7 +499,7 @@
   // ---------------- Displays + layout editor ----------------
   // What each widget actually shows, for the layout editor.
   const WIDGET_DESC = {
-    title: 'The screen’s heading: a small kicker line, the title (use {encounter} for the Encounter time, e.g. “10:00 Encounter”), and an optional sub-line — the phase (Pre-Encounter / Preshow / Live), today’s date, or the day’s Encounter times.',
+    title: 'The screen’s heading: a small kicker line (with today’s month and day), the title (use {encounter} for the Encounter time, e.g. “10:00 Encounter”), and an optional sub-line — the phase (Pre-Encounter / Preshow / Live), today’s date, or the day’s Encounter times.',
     clock: 'Time of day, always hh:mm:ss. Follows the rehearsal clock when rehearsal mode is on.',
     preshow: 'The online preshow countdown: counts down to the preshow, then runs the 4:30 preshow itself. When no preshow is coming up it can show something else instead (fallback): projected finish, the clock, item remaining, or a countdown. “Show before” sets how many minutes ahead it appears.',
     countdown: 'A countdown to one moment you pick (target): next Encounter start, next stream start, next band-to-stage call, stream end, this Encounter’s start, band to stage, stream start, positions call, first stream, or next Encounter. {next} in the label becomes that Encounter’s time.',
@@ -531,7 +531,7 @@
     image: 'A picture from a web address (src), filling the box or fitting inside it.',
   };
   const OPT_DESC = {
-    kicker: 'Small line above the title', title: 'Main text ({encounter} = Encounter time)', sub: 'Line under the title', compact: 'Smaller, single-line version',
+    kicker: 'Small line above the title', showDate: 'Today’s month and day on the small top line (on unless unticked)', title: 'Main text ({encounter} = Encounter time)', sub: 'Line under the title', compact: 'Smaller, single-line version',
     label: 'Heading shown on the block', huge: 'Very large numbers', fallback: 'What to show when nothing is coming up', showBeforeMin: 'Minutes before the preshow to start showing it',
     target: 'Which moment to count down to', accent: 'Pink highlight', showFeel: 'Show the feel line', showProgression: 'Show the progression',
     group: 'Which people', look: 'Card style', collage: 'Edge-to-edge photos, no gaps', columns: 'Cards across (blank = automatic)', roleColor: 'Color for the role line',
@@ -539,7 +539,7 @@
     which: 'Current or next slide', source: 'Where the content comes from', big: 'Large message block', size: 'Text size in pixels', text: 'The words to show', src: 'Picture address', fit: 'cover fills the box, contain shows it all',
   };
   const WIDGETS = {
-    title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'phase', 'date', 'encounters']], ['compact', 'bool']] },
+    title: { name: 'Title', opts: [['kicker', 'text'], ['title', 'text'], ['sub', ['', 'phase', 'date', 'encounters']], ['compact', 'bool'], ['showDate', 'bool']] },
     clock: { name: 'Time of day', opts: [['label', 'text'], ['compact', 'bool']] },
     preshow: { name: 'Preshow countdown', opts: [['label', 'text'], ['huge', 'bool'], ['compact', 'bool'], ['fallback', ['', 'projected', 'clock', 'itemRemaining', 'countdown']], ['showBeforeMin', 'number']] },
     countdown: { name: 'Countdown', opts: [['target', ['nextStart', 'nextStreamStart', 'nextBandToStage', 'streamEnd', 'encounterStart', 'bandToStage', 'streamStart', 'positions', 'firstStream', 'nextEncounter']], ['label', 'text'], ['accent', 'bool'], ['compact', 'bool'], ['huge', 'bool']] },
@@ -1111,7 +1111,9 @@
             .map(([k, t]) => {
               const v = w.opts[k];
               const hint = OPT_DESC[k] ? ` <span class="dim" style="font-weight:400">· ${esc(OPT_DESC[k])}</span>` : '';
-              if (t === 'bool') return `<label class="inline"><input type="checkbox" data-o="${k}" ${v ? 'checked' : ''}> ${k}${hint}</label>`;
+              // showDate / follow are on unless switched off.
+              const on = ['showDate', 'follow'].includes(k) ? v !== false : !!v;
+              if (t === 'bool') return `<label class="inline"><input type="checkbox" data-o="${k}" ${on ? 'checked' : ''}> ${k}${hint}</label>`;
               if (Array.isArray(t)) return `<label>${k}${hint}<select data-o="${k}">${t.map((x) => `<option ${x === (v || '') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
               return `<label>${k}${hint}<input data-o="${k}" ${t === 'number' ? 'type="number"' : ''} value="${esc(v ?? '')}"></label>`;
             })
