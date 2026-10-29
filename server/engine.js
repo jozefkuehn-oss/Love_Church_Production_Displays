@@ -8,6 +8,7 @@ const { fetchPlan, fetchHosts, fetchTeamRosters, fetchWeek, todaysEvent } = requ
 const { DEFAULT_EVENT_TYPES } = require('./defaults');
 const { cache: photoCache } = require('./sources/photocache');
 const ghPhotos = require('./sources/ghphotos');
+const ghSongs = require('./sources/ghsongs');
 const { syncPhotos } = require('./sources/slack');
 const { makeProPresenter } = require('./sources/propresenter');
 const { makeWireless } = require('./sources/wireless');
@@ -215,8 +216,22 @@ function makeEngine({ config, db, clock, log }) {
     }
   }
 
+  // Song bank from the song repository (GitHub), hourly.
+  let songsKept = [];
+  async function refreshGhSongs() {
+    if (cfg().sampleMode) return;
+    try {
+      const r = await ghSongs.sync(db);
+      songsKept = r.kept;
+      if (r.added.length || r.updated.length) log(`Song bank: added ${r.added.length} (${r.added.join(', ')}), updated ${r.updated.length} (${r.updated.join(', ')})`);
+    } catch (e) {
+      log('Song bank check failed: ' + e.message);
+    }
+  }
+
   async function refreshPhotos() {
     refreshGhPhotos();
+    refreshGhSongs();
     const token = cfg().slack.botToken;
     if (!token || !plan) return;
     try {

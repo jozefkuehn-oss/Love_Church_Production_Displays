@@ -126,7 +126,11 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Central) that uses the Slack connector and `scripts/slack_photos.py`, pushes to
   `server/seed/photos` + `server/seed/slack-photos.json`, and the Mac pulls changes from
   GitHub hourly (`ghphotos.js`). If the account changes, recreate that task.
-- **Song bank**: 42 songs imported from the Broadcast Notes song repository (Admin → Songs).
+- **Song bank**: from Jozef's song repository (Claude memory `/areas/song-repository.md`, kept
+  by his Broadcast Notes chat). `scripts/songbank_from_md.py` turns it into
+  `server/seed/songbank.json`; a scheduled Claude task (Thu + Sat) pushes it; the Mac checks
+  GitHub hourly (`ghsongs.js`): adds new songs, updates changed ones, never overwrites a song
+  edited in Admin → Songs.
 - **Message notes** widget (for FOH ProP): PCO Message item's Details, or typed on the
   Live page; highlights and scrolls to the paragraph matching the ProPresenter slide.
 - **Midweek** (Mon–Sat, no Encounter that day, no rehearsal): every TV shows the
