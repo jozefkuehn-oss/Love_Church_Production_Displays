@@ -597,7 +597,7 @@
     box.innerHTML = `<div class="card"><div class="row sp"><strong>Schedule</strong><label class="inline"><input type="checkbox" id="tvs-en" ${s.enabled ? 'checked' : ''}> On</label></div>
         <div class="grid2"><label>Turn on at<input type="time" id="tvs-on" value="${esc(s.on)}"></label><label>Turn off at<input type="time" id="tvs-off" value="${esc(s.off)}"></label></div>
         <div class="chips">${DAYS.map((x) => `<button class="chip ${s.days.includes(x) ? 'on' : ''}" data-day="${x}">${x.slice(0, 3)}</button>`).join('')}</div>
-        <label class="inline"><input type="checkbox" id="tvs-mid" ${s.midweek !== false ? 'checked' : ''}> Other days: when Planning Center has a call time, rehearsal or service that day (VALOR, REV…), turn on 30 minutes before the first one</label>
+        <label class="inline"><input type="checkbox" id="tvs-mid" ${s.midweek !== false ? 'checked' : ''}> Other days: when an Encounter-like plan is on that day (worship, production, service management or broadcast people scheduled in Planning Center: VALOR, REV…), turn on 30 minutes before its first call time</label>
         <div class="grid2"><label>…and turn off at<input type="time" id="tvs-midoff" value="${esc(s.midweekOff || '23:00')}"></label></div>
         <div class="row"><button class="primary small" id="tvs-all-on">Launch all now</button><button class="small" id="tvs-all-off">Turn all off</button></div></div>
       ${d.found

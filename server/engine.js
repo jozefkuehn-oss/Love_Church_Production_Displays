@@ -992,11 +992,12 @@ function makeEngine({ config, db, clock, log }) {
 
   return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos,
     // Earliest PCO time today (call time, rehearsal or service) from this
-    // week's plans: the TVs turn on 30 min before it on non-Sunday days.
+    // week's Encounter-like plans (worship / production / service management /
+    // broadcast people scheduled): TVs turn on 30 min before it on non-Sundays.
     firstCallToday: () => {
       const tz = cfg().timezone;
       const today = parts(Date.now(), tz).dateKey;
-      const t = weekEvents.filter((e) => e.kind !== 'allday' && parts(e.startMs, tz).dateKey === today).map((e) => ({ ms: e.startMs, name: e.name }));
+      const t = weekEvents.filter((e) => e.crew && e.kind !== 'allday' && parts(e.startMs, tz).dateKey === today).map((e) => ({ ms: e.startMs, name: e.name }));
       t.sort((a, b) => a.ms - b.ms);
       return t[0] || null;
     } };

@@ -235,6 +235,7 @@ async function fetchTeamRosters(cfg) {
 // VALOR, Prayer, Young Adult Night…), with service and rehearsal times. Plus
 // the PCO Calendar's approved events when the account is allowed to read it.
 //   [{ name, kind: 'service'|'rehearsal'|'other'|'event', startMs, endMs, where }]
+const CREW_TEAMS = /worship|production|service management|broadcast/i;
 async function fetchWeek(cfg) {
   const now = Date.now();
   const until = now + 7 * 86400e3;
@@ -254,6 +255,12 @@ async function fetchWeek(cfg) {
       const sd = Date.parse(p.attributes.sort_date || '');
       if (!sd || sd > until) continue;
       const times = await get(cfg, `/service_types/${st.id}/plans/${p.id}/plan_times?per_page=50`).catch(() => ({ data: [] }));
+      // Encounter-like? (worship, production, service management or broadcast
+      // people scheduled). Only those turn the TVs on midweek.
+      const tm = await getAll(cfg, `/service_types/${st.id}/plans/${p.id}/team_members?include=team&per_page=100`).catch(() => ({ data: [], included: [] }));
+      const teamName = {};
+      (tm.included || []).filter((x) => x.type === 'Team').forEach((t) => (teamName[t.id] = t.attributes.name));
+      const crew = (tm.data || []).some((m) => m.attributes.status !== 'D' && CREW_TEAMS.test(teamName[m.relationships && m.relationships.team && m.relationships.team.data && m.relationships.team.data.id] || ''));
       const label = name.replace(/^ES\s*\|\s*/i, '').trim();
       const title = p.attributes.title ? `${label} · ${p.attributes.title}` : label;
       for (const t of times.data || []) {
@@ -261,7 +268,7 @@ async function fetchWeek(cfg) {
         const startMs = Date.parse(a.starts_at || '');
         if (!startMs || startMs > until || Date.parse(a.ends_at || a.starts_at) < now) continue;
         const kind = a.time_type === 'rehearsal' ? 'rehearsal' : a.time_type === 'service' ? 'service' : 'other';
-        out.push({ name: kind === 'other' && a.name ? `${title} · ${a.name}` : title, kind, startMs, endMs: Date.parse(a.ends_at || '') || null, where: '' });
+        out.push({ name: kind === 'other' && a.name ? `${title} · ${a.name}` : title, kind, startMs, endMs: Date.parse(a.ends_at || '') || null, where: '', crew });
       }
     }
   }
