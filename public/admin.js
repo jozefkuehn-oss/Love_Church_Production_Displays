@@ -383,12 +383,19 @@
       const p = d.preshow;
       const len = d.preshowSeconds;
       const lenTxt = `${Math.floor(len / 60)}:${String(len % 60).padStart(2, '0')}`;
-      const st = !p ? 'No preshow scheduled right now'
+      const ev = d.event;
+      const st = !p ? (ev ? `${ev}: no preshow yet` : 'No preshow scheduled right now')
+        : p.hold ? `${p.label} preshow · STANDBY, fire when ready`
         : p.state === 'waiting' ? `${p.label} preshow · starts ${new Date(p.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`
         : p.state === 'running' ? `${p.label} preshow · ${dur(p.remainingMs)} left`
         : `${p.label} preshow · OVER by ${dur(-p.remainingMs).replace('+', '')}`;
       $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
-        <div class="row"><button class="primary" data-ps="start">Start preshow now (${lenTxt})</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+        ${ev ? `<div class="row sp" style="margin-bottom:8px"><span class="dim">${d.eventCountdown && d.startMs ? `${esc(ev)} starts ${new Date(d.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : `${esc(ev)} start: Planning Center time`}</span><span class="row"><button class="small" data-es="countdown">Start 10:00 countdown</button>${d.eventCountdown ? '<button class="small ghost" data-es="reset">Back to PCO time</button>' : ''}</span></div>` : ''}
+        <div class="row"><button class="primary" data-ps="start">${ev ? `Fire preshow now (${lenTxt}, ${esc(ev)} starts 0:30 after)` : `Start preshow now (${lenTxt})`}</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+      $$('[data-es]').forEach((b) => (b.onclick = () => {
+        if (b.dataset.es === 'countdown' && d.eventCountdown && !confirm('Restart the countdown at 10:00?')) return;
+        api('/api/event-start/' + b.dataset.es, { body: { minutes: 10 } }).then(() => { toast(b.dataset.es === 'countdown' ? 'Countdown started' : 'Back to the Planning Center time'); load(); }).catch(fail);
+      }));
       $$('[data-ps]').forEach((b) => (b.onclick = () => api('/api/preshow/' + b.dataset.ps, { body: {} }).then(() => { toast(b.dataset.ps === 'start' ? 'Preshow started' : b.dataset.ps === 'end' ? 'Preshow ended' : 'Back to the schedule'); load(); }).catch(fail)));
       // ProPresenter presentation -> plan item link (the playlist is built by hand).
       const pl = $('#pl');

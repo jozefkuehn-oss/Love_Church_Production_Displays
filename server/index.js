@@ -597,7 +597,10 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     unmatched: s.unmatchedPresentation || '',
     links: db.data.presentationLinks || {},
     preshow: s.preshow,
-    preshowSeconds: db.data.schedule.preshowSeconds ?? 270,
+    preshowSeconds: s.preshowLenSec ?? db.data.schedule.preshowSeconds ?? 270,
+    event: s.event,
+    eventCountdown: s.eventCountdown,
+    startMs: s.encounter ? s.encounter.startMs : null,
   });
 });
 
@@ -860,6 +863,17 @@ app.post('/api/preshow/:action', auth.requirePerm('live'), (req, res) => {
   const label = engine.preshowAction(a, (req.body || {}).label);
   if (!label) return bad(res, 'No Encounter to run a preshow for.');
   log(`Preshow ${a} (${label}) by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
+// Event nights: countdown to the start, started by hand (or back to PCO's time).
+app.post('/api/event-start/:action', auth.requirePerm('live'), (req, res) => {
+  const a = req.params.action;
+  if (!['countdown', 'reset'].includes(a)) return bad(res, 'Unknown action.');
+  const label = engine.startAction(a, (req.body || {}).minutes);
+  if (!label) return bad(res, 'Only on an event night.');
+  log(`Event start ${a} (${label}) by ${req.account.name}`);
   pushNow();
   ok(res);
 });

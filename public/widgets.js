@@ -250,6 +250,7 @@
   function preshowCue(s) {
     const p = s.preshow;
     if (!p || p.state !== 'waiting') return null;
+    if (p.hold) return { final: false, text: 'STANDBY FOR PRESHOW', label: p.label };
     const left = (p.startMs - s.now) / 1000;
     if (left <= 0) return null;
     if (left <= 10) return { final: true, secs: Math.ceil(left), label: p.label };
@@ -275,6 +276,7 @@
     const label = `${esc(o.label || 'PRESHOW')}${p.label ? ' · ' + esc(p.label) : ''}`;
     const big = o.huge ? 'huge' : o.compact ? 'compact' : '';
     const hv = (t) => (o.huge ? hugeV(ctx, t) : '');
+    if (p.state === 'waiting' && p.hold) return `<div class="stat ${big} flashwarn"><div class="k">${label}</div><div class="v" style="${hv('STANDBY')}">STANDBY</div></div>`;
     if (p.state === 'waiting') {
       const left = p.startMs - s.now;
       if (left <= 10000) return `<div class="stat ${big} flashwarn"><div class="k">${label} STARTS IN</div><div class="v" style="${hv('0:00')}">${Math.max(1, Math.ceil(left / 1000))}</div></div>`;

@@ -139,6 +139,10 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
 - **Event nights**: if a plan for REV 380989, All-In 1367267, VALOR 1718542 or AGAPE
   1207771 (Settings list) is dated today, screens run that plan, unstreamed, **no preshow**
   (Pre-VALOR → Live), Live until PCO's end time, and "Encounter" labels become the event name.
+  An event preshow is optional and fired by hand on the Live tab: "Start 10:00 countdown"
+  (e.g. on the all-team call) sets the start; the countdown holds at 3:30 (STANDBY) until
+  "Fire preshow now", which runs a 3:00 preshow and starts the event 0:30 after it ends
+  (`schedule.eventPreshowSeconds` 180, `eventPreshowGapSeconds` 30; `db.startCtl`).
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 
