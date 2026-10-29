@@ -56,7 +56,7 @@ LCD_DATA_DIR=/tmp/x PORT=8099 node server/index.js   # throwaway test instance
 ## Layout of the code
 
 - `server/index.js`: Express routes, WebSocket, **migrations** (gated by
-  `db.data.profilesVersion` (now 14), `rolesVersion` (5) and config flags; newer migrations must run
+  `db.data.profilesVersion` (now 15), `rolesVersion` (5) and config flags; newer migrations must run
   after older ones), `sendTo()` (picks each screen's layout; midweek swap).
 - `server/engine.js`: the snapshot: Encounters, phases (pre → preshow → live),
   live item (follows FOH ProPresenter by presentation name, or manual), item
@@ -99,7 +99,9 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Lighting, Lighting Compact), Stage (Stage Display), Pre-/Post-Show (Teleprompter),
   plus the shared **Midweek** dashboard (`location: '_Midweek'`, hidden from the room picker).
   Designed so far: Broadcast Control, Broadcast Audio, The Dock, The Greenroom,
-  Teleprompter, FOH Audio, Midweek. **FOH ProP** (`foh`) was designed by Jozef in the
+  Teleprompter, FOH Audio, Midweek. **FOH Audio Compact** (`foh-audio-compact`) and
+  **Lighting Compact** (`lighting-compact`) exist as starting layouts on the compact
+  1920×720 grid (`style.compact`, 8 rows) for Jozef to design. **FOH ProP** (`foh`) was designed by Jozef in the
   control app, so its layout lives only in the Mac's `data/`. Never bump
   `LAYOUT_REVISIONS` for `foh.*` (that would overwrite his layout); ask him for a copy
   (Displays → export, or read it from his data) if the defaults should match.
@@ -138,8 +140,8 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
 
 ## Still to do
 
-- Design dashboards: FOH Audio Compact, Service Producer, Lighting, Lighting Compact,
-  Stage Display.
+- Design dashboards: FOH Audio Compact, Lighting Compact (starting layouts exist),
+  Service Producer, Lighting, Stage Display.
 - Set up the Green Room Samsung (new certificate profile with all three DUIDs).
 - Band call time (default 4 min before start): Jozef to confirm.
 - Watch the first real event night (VALOR) and the first real midweek day.

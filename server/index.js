@@ -287,6 +287,14 @@ const REPLACED_PROFILES = { 'greenroom-2': 'greenroom' };
   db.save();
 })();
 
+// v15: the FOH compact bar screens (FOH Audio Compact, Lighting Compact).
+(function addCompacts() {
+  if ((db.data.profilesVersion || 1) >= 15) return;
+  for (const id of ['foh-audio-compact', 'lighting-compact']) if (!db.data.profiles[id]) db.data.profiles[id] = structuredClone(dbDefaults.profiles[id]);
+  db.data.profilesVersion = 15;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});

@@ -112,16 +112,18 @@
   // Scale the 1920x1080 canvas to the window. Older TV browsers (Samsung
   // Tizen) don't always send a resize event when the TV app shows the page,
   // so check the size every second as well.
+  // Compact bar screens (1920x720) use a shorter canvas.
+  let canvasH = 1080;
   let fitKey = '';
   function fit() {
     const de = document.documentElement;
     const W = window.innerWidth || de.clientWidth;
     const H = window.innerHeight || de.clientHeight;
     if (!W || !H) return;
-    const k = W + 'x' + H;
+    const k = W + 'x' + H + 'x' + canvasH;
     if (k === fitKey) return;
     fitKey = k;
-    const s = Math.min(W / 1920, H / 1080);
+    const s = Math.min(W / 1920, H / canvasH);
     screen.style.transform = `scale(${s})`;
   }
   window.addEventListener('resize', fit);
@@ -135,7 +137,8 @@
     const padY = collage ? 0 : 28;
     const gap = collage ? 4 : 16;
     const cw = (1920 - 2 * padX - 23 * gap) / 24;
-    const ch = (1080 - 2 * padY - 11 * gap) / 12;
+    const rows = style.compact ? 8 : 12;
+    const ch = ((style.compact ? 720 : 1080) - 2 * padY - (rows - 1) * gap) / rows;
     return { gap, cw, ch };
   }
 
@@ -150,7 +153,9 @@
       // Layout changed (or first load): rebuild the grid.
       layoutSig = sig;
       cache.clear();
-      screen.className = (style.collage ? 'collage ' : '') + (style.black ? 'black' : '');
+      screen.className = (style.collage ? 'collage ' : '') + (style.black ? 'black ' : '') + (style.compact ? 'compact' : '');
+      canvasH = style.compact ? 720 : 1080;
+      fit();
       screen.innerHTML = widgets
         .map((w) => `<div class="w" data-id="${w.id}" style="grid-column:${w.x + 1} / span ${w.w};grid-row:${w.y + 1} / span ${w.h}"></div>`)
         .join('');

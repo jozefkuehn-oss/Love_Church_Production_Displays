@@ -300,3 +300,6 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor
 .wk-n { font-size: 32px; font-weight: 600; }
 .wk-w { color: var(--muted, #9a9aa2); font-weight: 500; }
 .wk-tag { margin-left: 12px; font-size: 16px; font-weight: 800; letter-spacing: .12em; color: var(--yellow); vertical-align: middle; }
+
+/* Compact bar screens (1920x720): 8 rows instead of 12. */
+#screen.compact { height: 720px; grid-template-rows: repeat(8, minmax(0, 1fr)); }

@@ -328,6 +328,74 @@ const profiles = {
   // Confidence monitor for the online preshow hosts (replaces the timer on
   // the Broadcast ProPresenter stage display). Big preshow countdown, what's
   // on the stream, and producer messages.
+  // FOH compact bar screens (1920x720, 8 rows): starting layouts to design
+  // further in the control app.
+  'foh-audio-compact': {
+    name: 'FOH Audio Compact',
+    location: 'FOH',
+    modeSetting: 'auto',
+    style: { compact: true },
+    layouts: {
+      pre: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ns', 'countdown', 16, 0, 8, 1, { target: 'nextStart', label: '{next} STARTS IN', accent: true, compact: true }),
+        w('hh', 'handhelds', 0, 1, 10, 5, {}),
+        w('nd', 'needs', 10, 1, 14, 5, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+      preshow: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ps', 'preshow', 16, 0, 8, 1, { compact: true }),
+        w('hh', 'handhelds', 0, 1, 10, 5, {}),
+        w('nd', 'needs', 10, 1, 14, 5, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+      live: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'FOH AUDIO', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ir', 'itemRemaining', 16, 0, 8, 1, { accent: true, compact: true }),
+        w('nn', 'nowNext', 0, 1, 24, 1, { compact: true }),
+        w('hh', 'handhelds', 0, 2, 10, 4, {}),
+        w('nd', 'needs', 10, 2, 14, 4, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+    },
+  },
+  'lighting-compact': {
+    name: 'Lighting Compact',
+    location: 'FOH',
+    modeSetting: 'auto',
+    style: { compact: true },
+    layouts: {
+      pre: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ns', 'countdown', 16, 0, 8, 1, { target: 'nextStart', label: '{next} STARTS IN', accent: true, compact: true }),
+        w('fu', 'firstUp', 0, 1, 12, 5, {}),
+        w('ky', 'keys', 12, 1, 12, 5, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+      preshow: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ps', 'preshow', 16, 0, 8, 1, { compact: true }),
+        w('fu', 'firstUp', 0, 1, 12, 5, {}),
+        w('ky', 'keys', 12, 1, 12, 5, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+      live: { widgets: [
+        w('t', 'title', 0, 0, 8, 1, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase', compact: true }),
+        w('c', 'clock', 8, 0, 8, 1, { compact: true }),
+        w('ir', 'itemRemaining', 16, 0, 8, 1, { accent: true, compact: true }),
+        w('nn', 'nowNext', 0, 1, 24, 1, { compact: true }),
+        w('sn', 'songNow', 0, 2, 14, 4, { showFeel: true, showProgression: true }),
+        w('nd', 'needs', 14, 2, 10, 4, {}),
+        w('mb', 'messageBar', 0, 6, 24, 2, {}),
+      ] },
+    },
+  },
   // Shared Midweek dashboard: every screen shows it Monday–Saturday when no
   // Encounter is planned that day (Settings → Midweek screen turns it off).
   midweek: {

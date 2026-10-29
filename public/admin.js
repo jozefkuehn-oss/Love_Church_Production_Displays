@@ -1083,15 +1083,23 @@
         <label class="grow">Display name<input id="en" value="${esc(prof.name)}"></label>
         <label class="inline"><input type="checkbox" id="ec" ${prof.style.collage ? 'checked' : ''}> Edge-to-edge collage</label>
         <label class="inline"><input type="checkbox" id="ek" ${prof.style.black ? 'checked' : ''}> Pure black</label>
+        <label class="inline"><input type="checkbox" id="ecp" ${prof.style.compact ? 'checked' : ''}> Compact screen (1920×720, 8 rows)</label>
       </div>
       <div class="editor"><div><div class="canvas" id="cv"><div class="gridline" id="gl"></div></div>
-        <h3>Preview</h3><iframe class="preview" id="pv" src="/display/${id}?preview=1"></iframe></div>
+        <h3>Preview</h3><iframe class="preview" id="pv" src="/display/${id}?preview=1" style="${prof.style.compact ? 'aspect-ratio:1920/720' : ''}"></iframe></div>
         <div class="card" id="side"></div></div>`;
     const cv = $('#cv');
     const gl = $('#gl');
+    // Compact bar screens (1920x720) have 8 rows instead of 12.
+    let ROWS = prof.style.compact ? 8 : 12;
+    const setShape = () => {
+      ROWS = prof.style.compact ? 8 : 12;
+      cv.style.aspectRatio = prof.style.compact ? '1920 / 720' : '';
+    };
+    setShape();
     function cell() {
       const r = cv.getBoundingClientRect();
-      return { w: r.width / 24, h: r.height / 12, r };
+      return { w: r.width / 24, h: r.height / ROWS, r };
     }
     function draw() {
       const c = cell();
@@ -1155,7 +1163,7 @@
           const c = structuredClone(w);
           c.id = 'w' + Math.random().toString(36).slice(2, 7);
           c.x = Math.min(24 - c.w, c.x + 1);
-          c.y = Math.min(12 - c.h, c.y + 1);
+          c.y = Math.min(ROWS - c.h, c.y + 1);
           layout.widgets.push(c);
           sel = c.id;
           draw();
@@ -1191,22 +1199,33 @@
       const w = drag.w;
       if (drag.mode === 'move') {
         w.x = Math.max(0, Math.min(24 - w.w, drag.o.x + dx));
-        w.y = Math.max(0, Math.min(12 - w.h, drag.o.y + dy));
+        w.y = Math.max(0, Math.min(ROWS - w.h, drag.o.y + dy));
       } else {
         w.w = Math.max(1, Math.min(24 - w.x, drag.o.w + dx));
-        w.h = Math.max(1, Math.min(12 - w.y, drag.o.h + dy));
+        w.h = Math.max(1, Math.min(ROWS - w.y, drag.o.h + dy));
       }
       draw();
     };
     cv.onpointerup = () => (drag = null);
     window.onresize = draw;
+    $('#ecp').onchange = () => {
+      prof.style = { ...prof.style, compact: $('#ecp').checked };
+      setShape();
+      // Keep every block inside the shorter grid.
+      layout.widgets.forEach((w) => {
+        w.h = Math.min(w.h, ROWS);
+        w.y = Math.min(w.y, ROWS - w.h);
+      });
+      $('#pv').style.aspectRatio = prof.style.compact ? '1920/720' : '';
+      draw();
+    };
     $('#eb').onclick = () => {
       window.onresize = null;
       viewDisplays();
     };
     $('#es').onclick = async () => {
       prof.name = $('#en').value || prof.name;
-      prof.style = { ...prof.style, collage: $('#ec').checked, black: $('#ek').checked };
+      prof.style = { ...prof.style, collage: $('#ec').checked, black: $('#ek').checked, compact: $('#ecp').checked };
       try {
         await api('/api/profiles/' + id, { method: 'PUT', body: { name: prof.name, style: prof.style, layouts: prof.layouts } });
         profiles[id] = structuredClone(prof);
