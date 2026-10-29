@@ -295,6 +295,14 @@ const REPLACED_PROFILES = { 'greenroom-2': 'greenroom' };
   db.save();
 })();
 
+// v16: the standard Lighting dashboard.
+(function addLighting() {
+  if ((db.data.profilesVersion || 1) >= 16) return;
+  if (!db.data.profiles.lighting) db.data.profiles.lighting = structuredClone(dbDefaults.profiles.lighting);
+  db.data.profilesVersion = 16;
+  db.save();
+})();
+
 // Push dashboards designed in the builder (see LAYOUT_REVISIONS in defaults.js).
 (function applyLayoutRevisions() {
   const done = (db.data.layoutRevisions = db.data.layoutRevisions || {});
@@ -378,6 +386,8 @@ const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 // ---------- public ----------
 // Every dashboard, grouped by location, in room-picker order. Public so
 // screens (and the TVs' own launcher) can list them without signing in.
+// Order within a location (dashboards added later go after these).
+const DASH_ORDER = ['broadcast', 'broadcast-audio', 'dock', 'greenroom', 'foh-wireless', 'foh-audio-compact', 'foh-timers', 'foh', 'lighting', 'lighting-compact', 'stage', 'preshow-confidence'];
 function displayList() {
   const rank = (l) => {
     const i = LOCATIONS.indexOf(l);
@@ -385,7 +395,7 @@ function displayList() {
   };
   return Object.entries(db.data.profiles)
     .filter(([, p]) => !String(p.location || '').startsWith('_')) // _Mock etc. stay out of the room picker
-    .map(([id, p], i) => ({ id, name: p.name, location: p.location || 'Other', i }))
+    .map(([id, p], i) => ({ id, name: p.name, location: p.location || 'Other', i: DASH_ORDER.includes(id) ? DASH_ORDER.indexOf(id) : 100 + i }))
     .sort((a, b) => rank(a.location) - rank(b.location) || a.location.localeCompare(b.location) || a.i - b.i)
     .map(({ i, ...d }) => ({ ...d, url: '/display/' + d.id }));
 }

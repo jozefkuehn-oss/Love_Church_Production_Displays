@@ -328,6 +328,43 @@ const profiles = {
   // Confidence monitor for the online preshow hosts (replaces the timer on
   // the Broadcast ProPresenter stage display). Big preshow countdown, what's
   // on the stream, and producer messages.
+  // FOH Lighting (standard 1920x1080): starting layouts to design further.
+  lighting: {
+    name: 'Lighting',
+    location: 'FOH',
+    modeSetting: 'auto',
+    style: {},
+    layouts: {
+      pre: { widgets: [
+        w('t', 'title', 0, 0, 6, 2, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase' }),
+        w('c', 'clock', 6, 0, 6, 2, {}),
+        w('ns', 'countdown', 12, 0, 6, 2, { target: 'nextStart', label: '{next} STARTS IN', accent: true }),
+        w('ps', 'preshow', 18, 0, 6, 2, {}),
+        w('fu', 'firstUp', 0, 2, 10, 8, {}),
+        w('wd', 'worshipDirection', 10, 2, 14, 8, {}),
+        w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+      ] },
+      preshow: { widgets: [
+        w('t', 'title', 0, 0, 6, 2, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase' }),
+        w('c', 'clock', 6, 0, 6, 2, {}),
+        w('ps', 'preshow', 12, 0, 6, 2, { accent: true }),
+        w('es', 'countdown', 18, 0, 6, 2, { target: 'encounterStart', label: 'ENCOUNTER STARTS IN' }),
+        w('fu', 'firstUp', 0, 2, 10, 8, {}),
+        w('wd', 'worshipDirection', 10, 2, 14, 8, {}),
+        w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+      ] },
+      live: { widgets: [
+        w('t', 'title', 0, 0, 6, 2, { kicker: 'LIGHTING', title: '{encounter} Encounter', sub: 'phase' }),
+        w('c', 'clock', 6, 0, 6, 2, {}),
+        w('ir', 'itemRemaining', 12, 0, 6, 2, { accent: true }),
+        w('se', 'countdown', 18, 0, 6, 2, { target: 'streamEnd', label: 'STREAM ENDS IN' }),
+        w('nn', 'nowNext', 0, 2, 24, 1, { compact: true }),
+        w('sn', 'songNow', 0, 3, 15, 7, { showFeel: true, showProgression: true }),
+        w('ro', 'runOfShow', 15, 3, 9, 7, {}),
+        w('mb', 'messageBar', 0, 10, 24, 2, { big: true }),
+      ] },
+    },
+  },
   // FOH compact bar screens (1920x720, 8 rows): starting layouts to design
   // further in the control app.
   'foh-audio-compact': {
