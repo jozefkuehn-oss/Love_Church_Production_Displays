@@ -27,7 +27,7 @@
   const evName = (tpl, s) => {
     if (!s.event) return String(tpl || '');
     return String(tpl || '')
-      .replace(/STREAM ENDS IN/g, 'ENDS IN')
+      .replace(/STREAM ENDS IN/g, s.eventStreamed ? 'STREAM ENDS IN' : 'ENDS IN')
       .replace(/\{encounter\}\s*Encounter/i, s.event + ' · {encounter}')
       .replace(/\bENCOUNTER\b/g, s.event.toUpperCase())
       .replace(/\bEncounter\b/g, s.event);

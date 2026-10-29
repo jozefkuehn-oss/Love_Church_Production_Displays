@@ -144,6 +144,8 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   3:30 to go and ends 0:30 before the start. "Fire preshow now" starts it early/late by hand
   and moves the start to 0:30 after it ends
   (`schedule.eventPreshowSeconds` 180, `eventPreshowGapSeconds` 30; `db.startCtl`).
+  "Streamed tonight" checkbox (Live tab, event nights; `db.streamedEvents`): stream starts with
+  the preshow (3:30 before the start) and ends at PCO's end time; stream timers show again.
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 
