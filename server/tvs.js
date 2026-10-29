@@ -62,13 +62,18 @@ function makeTvs({ app, db, config, log, auth, isOnline, streams, port, firstCal
   // The address the TVs use to reach this Mac.
   function serverBase() {
     if (config.data.publicBase) return String(config.data.publicBase).replace(/\/$/, '');
+    // Prefer the church network (192.168.10.x), then any other real address;
+    // skip self-assigned 169.254 ones (Wi-Fi + cable can list several).
+    const all = [];
     for (const list of Object.values(os.networkInterfaces()))
-      for (const a of list || []) if (a.family === 'IPv4' && !a.internal) return `http://${a.address}:${port}`;
-    return `http://localhost:${port}`;
+      for (const a of list || []) if (a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.')) all.push(a.address);
+    const best = all.find((a) => a.startsWith('192.168.10.')) || all.find((a) => a.startsWith('192.168.')) || all[0];
+    return best ? `http://${best}:${port}` : `http://localhost:${port}`;
   }
-  const displayUrl = (id, platform) => {
+  // base: the address the TV itself used to reach us (best), else our own.
+  const displayUrl = (id, platform, base) => {
     const q = new URLSearchParams({ device: id, name: nameOf(id), tv: platform });
-    return `${serverBase()}/display?${q}`;
+    return `${base || serverBase()}/display?${q}`;
   };
   const saveToken = (tv) => (t) => {
     tv.token = t;
@@ -384,7 +389,7 @@ function makeTvs({ app, db, config, log, auth, isOnline, streams, port, firstCal
       if (mac && !t.mac) (t.mac = b.mac), (changed = true);
       if (!t.ip || t.ip !== ip) (t.ip = ip), (changed = true);
       if (changed) db.save();
-      return ok(res, { device: id, name: nameOf(id), profile: profileOf(id), url: displayUrl(id, t.platform) });
+      return ok(res, { device: id, name: nameOf(id), profile: profileOf(id), url: displayUrl(id, t.platform, req.headers.host ? `http://${req.headers.host}` : '') });
     }
     found.set(ip, { ip, mac: b.mac || '', model: String(b.model || '').slice(0, 40), platform: b.platform || 'samsung', at: Date.now() });
     ok(res, { unknown: true, ip, mac: b.mac || '' });
