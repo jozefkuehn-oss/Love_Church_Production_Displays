@@ -11,7 +11,8 @@ so a new session (for example, on the church's Claude account) starts with the c
   demotion, PIN changes or removal of the owner by anyone (see `server/auth.js`). Keep it that way.
 - **What it is:** a self-hosted, auto-updating dashboard app for the church's
   production TVs, like MxU. A Node/Express + WebSocket server on a **Mac mini**
-  (`192.168.10.193:8080`, reserve this address) pushes a snapshot every second to
+  (`192.168.10.193:8080`, reserve this address; since Oct 29 on **Wi-Fi** with .193 set by hand,
+  because its Ethernet port had no internet; Ethernet is set to automatic) pushes a snapshot every second to
   every screen. TVs open `/display` and the control app is `/admin`.
 - **Weekly gatherings** are called **Encounters** (Sunday 8:30 / 10:00 / 11:45; the
   11:45 isn't streamed but is sometimes recorded). **Event nights** (REV Rally,
