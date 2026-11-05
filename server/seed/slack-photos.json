@@ -97,9 +97,9 @@
  },
  "Anicca Adams": {
   "id": "U01P9Q1PBPA",
-  "url": "https://avatars.slack-edge.com/2025-01-06/8255142030755_c57e4a1cfaa4c0d21cff_original.png",
-  "v": "2bba982194a4",
-  "updated": "2026-10-28"
+  "url": "https://avatars.slack-edge.com/2026-10-29/12453048627892_d359ff65efecd23d87eb_original.png",
+  "v": "5e694ba619da",
+  "updated": "2026-11-05"
  },
  "Annie Magana": {
   "id": "U094RGREKBM",
@@ -125,11 +125,19 @@
   "v": "b38b91ef30ae",
   "updated": "2026-10-25"
  },
+ "Ariana Munoz": {
+  "id": "U0BULNNQ0SG",
+  "pending_url": "https://avatars.slack-edge.com/2026-09-02/11971032714193_bcde3adad96316e78837_original.png"
+ },
  "Ashley Berlowitz": {
   "id": "U06SZPZ9HKQ",
   "url": "https://avatars.slack-edge.com/2026-03-25/10771587832243_79ec9fc97542b1f74326_original.png",
   "v": "ab2a3928449f",
   "updated": "2026-10-25"
+ },
+ "Ashley Taillon": {
+  "id": "U0C411TPX40",
+  "pending_url": "https://avatars.slack-edge.com/2026-09-20/12112361276020_c26aa70b8143cc237098_original.png"
  },
  "Ashlyn Vandergriend": {
   "id": "U06E2SM9VV2",
@@ -220,6 +228,12 @@
   "url": "https://avatars.slack-edge.com/2024-08-21/7594845389159_e295d0c09de7b03a6c78_original.jpg",
   "v": "ae6f8acafd8d",
   "updated": "2026-10-25"
+ },
+ "Caleb Furlong": {
+  "id": "U0368H8GUGY",
+  "url": "https://avatars.slack-edge.com/2026-04-23/10974529467475_5d7f3b9b0c148b5eb5b3_original.png",
+  "v": "ca141e8bea10",
+  "updated": "2026-11-05"
  },
  "Caleb Grenz": {
   "id": "U037PJ63TAM",
@@ -473,6 +487,10 @@
   "v": "118e5165566d",
   "updated": "2026-10-25"
  },
+ "Elie Kramo": {
+  "id": "U0BF2DX1TC3",
+  "pending_url": "https://avatars.slack-edge.com/2026-07-05/11516717512598_900f507c022ca35be5ad_original.jpg"
+ },
  "Ellie Diaz": {
   "id": "U042J22VADS",
   "url": "https://avatars.slack-edge.com/2024-01-03/6443965699952_b3354bccf9e869377064_original.png",
@@ -711,6 +729,10 @@
   "v": "407069c98b21",
   "updated": "2026-10-28"
  },
+ "Josh Simms": {
+  "id": "U0BN0SJUCTZ",
+  "pending_url": "https://avatars.slack-edge.com/2026-08-06/11766206452049_1eb41e5a1ff9cb94fd8a_original.png"
+ },
  "Joshua Davis": {
   "id": "U07M29V8N1K",
   "url": "https://avatars.slack-edge.com/2026-04-13/10902166644357_6cf4e15205b8e82d1558_original.png",
@@ -749,10 +771,9 @@
  },
  "Judah Waymire": {
   "id": "U08KYUY8CUE",
-  "url": "",
-  "v": "e56e31653dbf",
-  "updated": "2026-10-25",
-  "pending_url": "https://avatars.slack-edge.com/2026-10-28/12469295097760_38f2e49a55990f421c80_original.png"
+  "url": "https://avatars.slack-edge.com/2026-10-28/12469295097760_38f2e49a55990f421c80_original.png",
+  "v": "e92db32be46f",
+  "updated": "2026-11-05"
  },
  "Julie Odermatt": {
   "id": "U01FYAK39ME",
@@ -760,11 +781,19 @@
   "v": "72fa84ac34d6",
   "updated": "2026-10-25"
  },
+ "Justin Perez": {
+  "id": "U01NS9MQ4CW",
+  "pending_url": "https://avatars.slack-edge.com/2021-02-23/1810120774336_e4a68028c4caa44bfb8a_original.png"
+ },
  "Justin Verbeck": {
   "id": "U03JM7VD5UZ",
   "url": "https://avatars.slack-edge.com/2024-09-14/7753125934336_86b61c3be5cb4fb6283c_original.png",
   "v": "ff46dd96eeac",
   "updated": "2026-10-25"
+ },
+ "Kaleb Owen": {
+  "id": "U04KU0C1EMN",
+  "pending_url": "https://avatars.slack-edge.com/2023-02-28/4872952276613_1c375898b4094f129c0a_original.jpg"
  },
  "Kalyn Harrington": {
   "id": "U07K3H3QJHH",
@@ -844,6 +873,10 @@
   "v": "dd4facb0874c",
   "updated": "2026-10-25"
  },
+ "Kyle Sutton": {
+  "id": "U06UFEFC7S6",
+  "pending_url": "https://avatars.slack-edge.com/2024-04-16/6973240373154_c80c57d10a25fb082fa2_original.png"
+ },
  "Kyra Jaramillo": {
   "id": "U0B0GSN9VGA",
   "url": "https://avatars.slack-edge.com/2026-04-28/11001516886359_61afc0b6cdbf64fafce8_original.png",
@@ -874,11 +907,17 @@
   "v": "c9b88d964126",
   "updated": "2026-10-25"
  },
+ "Lily Mwaura": {
+  "id": "U0CF2NHR491",
+  "url": "https://avatars.slack-edge.com/2026-11-05/12513787902789_31761089411b98205907_original.png",
+  "v": "91cbf886481b",
+  "updated": "2026-11-05"
+ },
  "Linda Carr": {
   "id": "U08C75GHJLA",
-  "url": "https://avatars.slack-edge.com/2026-10-19/12353136969158_2608d3c8cd61fe4cee93_original.png",
-  "v": "538b6fc60d3f",
-  "updated": "2026-10-25"
+  "url": "https://avatars.slack-edge.com/2026-11-03/12491874782949_d8a15375cd919550f1c1_original.png",
+  "v": "e5dfada909d9",
+  "updated": "2026-11-05"
  },
  "Logan Ericson": {
   "id": "U07ABCTHP2R",
@@ -940,9 +979,9 @@
  },
  "Marissa Sutton": {
   "id": "U0538P1HKD4",
-  "url": "https://avatars.slack-edge.com/2023-12-06/6319277094641_0b6220b838552ce0d23d_original.jpg",
-  "v": "406474bd4e40",
-  "updated": "2026-10-25"
+  "url": "https://avatars.slack-edge.com/2026-11-04/12504886475539_283d99c412ffeac93960_original.jpg",
+  "v": "62176ca070e8",
+  "updated": "2026-11-05"
  },
  "Mark Sole": {
   "id": "U04L0EXM5TN",
@@ -958,9 +997,9 @@
  },
  "Masego Brown": {
   "id": "U011BMAF7N3",
-  "url": "https://avatars.slack-edge.com/2024-10-20/7893001079975_00b36b1c8d4c48c2c0db_original.png",
-  "v": "4e6204c7eedc",
-  "updated": "2026-10-25"
+  "url": "https://avatars.slack-edge.com/2026-11-01/12457997845655_b3f902fb098de4714e60_original.png",
+  "v": "7462dd49ab4f",
+  "updated": "2026-11-05"
  },
  "Matt Benardis": {
   "id": "U01BHCLPWMS",
@@ -1002,6 +1041,12 @@
   "url": "https://avatars.slack-edge.com/2023-05-22/5315043085185_ed33f0023547079d1322_original.png",
   "v": "c055b83c31b6",
   "updated": "2026-10-25"
+ },
+ "Melissa Godoy": {
+  "id": "U06P6HWUKLH",
+  "url": "https://avatars.slack-edge.com/2024-08-01/7527330237297_f5ce04571e596fa871c1_original.png",
+  "v": "1c21832b63e6",
+  "updated": "2026-11-05"
  },
  "Michael Ceja": {
   "id": "U09TKB6HVT6",
@@ -1074,6 +1119,12 @@
   "url": "https://avatars.slack-edge.com/2026-07-31/11717385554181_50f5ec2d20d65b94caa1_original.png",
   "v": "10f70782c837",
   "updated": "2026-10-25"
+ },
+ "Noah Bauer": {
+  "id": "U08FP9PCY95",
+  "url": "https://avatars.slack-edge.com/2025-03-04/8549178309475_ba0f68620c97fbb44be0_original.png",
+  "v": "c9ff7553158c",
+  "updated": "2026-11-05"
  },
  "Noah Farrington": {
   "id": "U05GU981U4X",
@@ -1165,6 +1216,10 @@
   "v": "2c1850a6a246",
   "updated": "2026-10-28"
  },
+ "Ryan Vandergriend": {
+  "id": "U08FRJ1PC8G",
+  "pending_url": "https://avatars.slack-edge.com/2026-08-10/11792081125938_96f64bc62d054adca4b5_original.png"
+ },
  "Sabrina Ahern": {
   "id": "U011JSUTN75",
   "url": "https://avatars.slack-edge.com/2025-08-07/9336570680785_ed4ae669b40349c1922d_original.png",
@@ -1243,6 +1298,10 @@
   "v": "da764a5d95dd",
   "updated": "2026-10-25"
  },
+ "Spencer Stogner": {
+  "id": "U02KRLS06F6",
+  "pending_url": "https://avatars.slack-edge.com/2026-01-29/10405449268660_8c4eeb8a1a2c46110fa1_original.png"
+ },
  "Stacy Scholten": {
   "id": "U01QMDEP0HJ",
   "url": "https://avatars.slack-edge.com/2023-01-23/4707936144880_4bf05948361e9476c6d9_original.png",
@@ -1290,6 +1349,14 @@
   "url": "https://avatars.slack-edge.com/2023-08-11/5723008201334_50dae4a19fbb8ca38ae3_original.png",
   "v": "960697e5a5a8",
   "updated": "2026-10-25"
+ },
+ "Terry Kelly": {
+  "id": "U0C2WS7TA0Y",
+  "pending_url": "https://avatars.slack-edge.com/2026-09-15/12065800244901_709debe0972b112769b8_original.png"
+ },
+ "Tiffany Marshall": {
+  "id": "U012GNYGD4Z",
+  "pending_url": "https://avatars.slack-edge.com/2025-07-26/9254420178403_ed8851b9dcdfdc4e904a_original.jpg"
  },
  "Tinashe Mahupete": {
   "id": "U06TJQP4YAY",
@@ -1347,13 +1414,24 @@
   "id": "UTTNKGUHW",
   "url": "https://avatars.slack-edge.com/2022-06-05/3617008129014_7a9905b1a9f2ca86872b_original.png",
   "v": "509d1c88d75d",
-  "updated": "2026-10-25"
+  "updated": "2026-10-25",
+  "pending_url": "https://avatars.slack-edge.com/2026-11-01/12468831226517_defa787c171ec779bc87_original.png"
  },
  "Wazer Tau": {
   "id": "U02TMEN5UQH",
   "url": "https://avatars.slack-edge.com/2025-09-12/9506173952421_9e342577f819cc445056_original.jpg",
   "v": "5d6345bf2f94",
   "updated": "2026-10-25"
+ },
+ "Wesley Parsons": {
+  "id": "U0AM1Q374F9",
+  "pending_url": "https://avatars.slack-edge.com/2026-03-18/10744183799425_4c75690663580dada044_original.png"
+ },
+ "Whitney Peterson": {
+  "id": "U086NTL8NPR",
+  "url": "https://avatars.slack-edge.com/2025-01-02/8241377590707_da1cd1fec0dc1f816a35_original.jpg",
+  "v": "4eef6cb94b99",
+  "updated": "2026-11-05"
  },
  "Willa Scholten": {
   "pending_url": "https://avatars.slack-edge.com/2024-08-28/7649060861060_9063666c63f3cbf408d1_original.png",
