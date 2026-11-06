@@ -42,7 +42,7 @@ invisibly. If a Homebrew ffmpeg is installed, the app uses that instead.
 
 ## Samsung TVs (Green Room, The Dock, Broadcast Audio)
 
-Done: The Dock (192.168.10.232) and Broadcast Audio (192.168.10.250). Tizen Studio and
+Done: The Dock (192.168.10.205; it moved there from .232 on its own, so reserve it) and Broadcast Audio (192.168.10.250). Tizen Studio and
 the **LoveChurch** certificate are already set up on the Mac mini.
 
 ### 1. On the TV (remote)

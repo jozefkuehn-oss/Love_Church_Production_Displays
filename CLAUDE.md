@@ -84,7 +84,7 @@ LCD_DATA_DIR=/tmp/x PORT=8099 node server/index.js   # throwaway test instance
 |---|---|---|---|
 | Broadcast Top | TCL 48FS3750 Roku TV `.249` | Roku app plays an HLS stream the Mac renders (headless Chrome + bundled ffmpeg) | Broadcast Control |
 | Broadcast Audio | Samsung UN43TU8000 `.250` | Tizen app (LC Displays) | Broadcast Audio |
-| The Dock (Wi-Fi) | Samsung UN65TU850D `.232` | Tizen app | The Dock |
+| The Dock (Wi-Fi) | Samsung UN65TU850D `.205` (was .232; address is automatic, ask David to reserve it), MAC 4C:C9:5E:80:1E:CF | Tizen app | The Dock |
 | Green Room | Samsung UN55TU8000 | Tizen app (**not set up yet**) | The Greenroom |
 | Pre-/Post-Show | 2016 Fire TV Stick + Dell monitor | Fully Kiosk 1.59.2 (last for Android 5) | Pre-/Post-Show Teleprompter |
 
