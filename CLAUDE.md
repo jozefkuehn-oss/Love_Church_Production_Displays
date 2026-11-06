@@ -78,6 +78,31 @@ LCD_DATA_DIR=/tmp/x PORT=8099 node server/index.js   # throwaway test instance
   production / service management / broadcast people scheduled), on 30 min before the first
   PCO call time that day and off at 23:00) and TV apps. See docs/TV-SETUP.md.
 
+## Network (Mac mini)
+
+- Since Oct 29 the Mac runs on **Wi-Fi, 192.168.10.193 set by hand** (Wi-Fi: Manual,
+  mask 255.255.255.0, router 192.168.10.1, DNS 192.168.10.1 + 1.1.1.1). Ethernet is set to
+  automatic (DHCP) so a plugged-in cable can't clash with .193. On this Mac en1 = Wi-Fi,
+  en0 = Ethernet. Display and system sleep are off (`pmset sleep 0`).
+- Still to do: have the network admin **reserve .193 for the Mac's Wi-Fi MAC**
+  (`networksetup -getmacaddress Wi-Fi`), and fix the Ethernet port (cable preferred). To move
+  back to the cable:
+  `sudo networksetup -setdhcp Wi-Fi; sudo networksetup -setmanual Ethernet 192.168.10.193 255.255.255.0 192.168.10.1; sudo networksetup -setdnsservers Ethernet 192.168.10.1 1.1.1.1`
+- Lessons: `setmanualwithdhcprouter` left the subnet mask blank, so traffic to the TVs went out
+  the wrong interface. The church Wi-Fi rejected a hand-set address until router and DNS were
+  set explicitly.
+- TV apps load the dashboard from the address the TV used to reach the Mac, and the Mac
+  prefers its 192.168.10.x address (`server/tvs.js` `serverBase`/`displayUrl`). This fixed the
+  Dock showing black after the move to Wi-Fi.
+- The Samsung app's hello is matched by IP, then by MAC (and the saved IP is updated). If a TV
+  has no MAC saved and its address changes, it shows as unknown (the Dock, Nov 4: .232 → .205).
+- Check commands (Mac):
+  `echo "Mac: $(ipconfig getifaddr en1)"; ping -c 3 -t 4 192.168.10.205 | tail -1; curl -s -o /dev/null -m 4 -w "Dock: %{http_code}\n" http://192.168.10.205:8001/api/v2/`
+  `curl -s -o /dev/null -m 3 -w "Roku: %{http_code}\n" http://192.168.10.249:8060/query/device-info`
+  App log: `~/Documents/Love_Church_Production_Displays/data/logs/server.log`.
+- Update: `cd ~/Documents/Love_Church_Production_Displays && bash scripts/update.sh`, then
+  "Launch all now" in Admin → Displays (the Roku stream takes ~1 min).
+
 ## Screens (all run independently over the network; nothing via the switcher)
 
 | TV | Device | How | Dashboard |
@@ -156,7 +181,12 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Service Producer, Stage Display.
 - Set up the Green Room Samsung (new certificate profile with all three DUIDs).
 - Band call time (default 4 min before start): Jozef to confirm.
-- Watch the first real event night (VALOR) and the first real midweek day.
+- Watch the first real event night (VALOR) and the first real midweek day. VALOR Oct 29 was
+  the first real run of the 10:00 countdown, auto-preshow and stream timers: ask Jozef how they behaved.
+- Offered, not decided: "Add a communicator for today" on Live → Subs (subs only replace
+  people today); a manual IEM battery check-off (Lectrosonics Duet is one-way, no data); a
+  per-dashboard "Ignore midweek" switch for browser-driven screens.
+- Reserve IPs: Mac .193 (Wi-Fi MAC), Dock .205, and Green Room / Preshow once set up.
 - Moving to the church's Claude account: connect PCO + Slack there, give it GitHub
   access (or transfer this repo to a church org and update the repo address in
   `scripts/update.sh`, `server/index.js` (version check) and `server/sources/ghphotos.js`),
