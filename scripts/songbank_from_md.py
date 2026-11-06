@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Turn Jozef's song repository (Claude memory file /areas/song-repository.md,
-saved locally as Markdown) into the app's song bank: server/seed/songbank.json.
+"""Turn Jozef's song repository (server/seed/song-repository.md, the one and only
+copy since Nov 6, 2026; it used to live in Claude memory) into the app's song
+bank: server/seed/songbank.json.
 
 The Mac checks that file on GitHub every hour (server/sources/ghsongs.js) and
 adds new songs / updates changed ones, leaving songs someone edited by hand in
 Admin → Songs alone. So after running this, commit and push
 server/seed/songbank.json — no app update needed.
 
-    python3 scripts/songbank_from_md.py song-repository.md
+    python3 scripts/songbank_from_md.py server/seed/song-repository.md
 
 Repository format (one block per song):
     ## Title
-    - [stated] Progression (Chart, Key X, 72 tempo, 4/4): Intro → Verse 1 → …
-    - [stated] Feel: 72 tempo; …
+    - Progression (Chart, Key X, 72 tempo, 4/4): Intro → Verse 1 → …
+    - Feel: 72 tempo; …
+(an optional tag like "- [stated] Feel:" is fine too)
 """
 import json
 import os
@@ -43,7 +45,7 @@ def parse(md):
         prog = feel = ''
         notes = []
         for l in lines[1:]:
-            l = re.sub(r'^-\s*\[[a-z]+\]\s*', '', l.strip())
+            l = re.sub(r'^-\s*(?:\[[a-z]+\]\s*)?', '', l.strip())
             m = re.match(r'Progression(?:\s*\(([^)]*)\))?:\s*(.*)', l, re.S)
             if m:
                 if m.group(1):

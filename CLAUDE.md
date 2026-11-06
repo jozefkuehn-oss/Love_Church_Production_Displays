@@ -152,11 +152,14 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Central) that uses the Slack connector and `scripts/slack_photos.py`, pushes to
   `server/seed/photos` + `server/seed/slack-photos.json`, and the Mac pulls changes from
   GitHub hourly (`ghphotos.js`). If the account changes, recreate that task.
-- **Song bank**: from Jozef's song repository (Claude memory `/areas/song-repository.md`, kept
-  by his Broadcast Notes chat). `scripts/songbank_from_md.py` turns it into
-  `server/seed/songbank.json`; a scheduled Claude task (Thu + Sat) pushes it; the Mac checks
-  GitHub hourly (`ghsongs.js`): adds new songs, updates changed ones, never overwrites a song
-  edited in Admin → Songs.
+- **Song bank**: the song repository is **`server/seed/song-repository.md`** in this repo (moved
+  out of Claude memory on Nov 6, 2026; that is now the only copy, so edit songs there, from a
+  church-account Claude session with this repo, and push). Format: `## Title`, `- Progression
+  (chart, key, tempo): …`, `- Feel: <tempo>; …`. `scripts/songbank_from_md.py` turns it into
+  `server/seed/songbank.json`; a scheduled Claude task on the church account (Thu + Sat 14:37:00
+  Central) regenerates and pushes it if it changed; the Mac checks GitHub hourly (`ghsongs.js`):
+  adds new songs, updates changed ones, never overwrites a song edited in Admin → Songs. The
+  weekly Encounter package task reads the same file.
 - **Message notes** widget (for FOH ProP): PCO Message item's Details, or typed on the
   Live page; highlights and scrolls to the paragraph matching the ProPresenter slide.
 - **Midweek** (Mon–Sat, no Encounter that day, no rehearsal): every TV shows the
@@ -187,10 +190,10 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   people today); a manual IEM battery check-off (Lectrosonics Duet is one-way, no data); a
   per-dashboard "Ignore midweek" switch for browser-driven screens.
 - Reserve IPs: Mac .193 (Wi-Fi MAC), Dock .205, and Green Room / Preshow once set up.
-- Moving to the church's Claude account: connect PCO + Slack there, give it GitHub
-  access (or transfer this repo to a church org and update the repo address in
-  `scripts/update.sh`, `server/index.js` (version check) and `server/sources/ghphotos.js`),
-  recreate the weekly photo task, delete the old one.
+- Moved to the church's Claude account (Nov 6): photo task and song sync run there; delete the
+  old tasks on Jozef's personal account. If the repo is ever transferred to a church org, update
+  the repo address in `scripts/update.sh`, `server/index.js` (version check),
+  `server/sources/ghphotos.js` and `ghsongs.js`.
 
 ## Tools outside the repo (from the earlier sessions)
 
