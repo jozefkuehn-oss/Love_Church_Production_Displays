@@ -999,6 +999,7 @@ app.put('/api/schedule', auth.requireAdmin, (req, res) => {
   if (s.preshowSeconds != null) s.preshowSeconds = Math.max(30, Math.min(1800, Number(s.preshowSeconds) || 270));
   if (s.eventPreshowSeconds != null) s.eventPreshowSeconds = Math.max(30, Math.min(1800, Number(s.eventPreshowSeconds) || 180));
   if (s.eventPreshowGapSeconds != null) s.eventPreshowGapSeconds = Math.max(0, Math.min(600, Math.round(Number(s.eventPreshowGapSeconds)) || 0));
+  if (s.countdownWindowHours != null) s.countdownWindowHours = Math.max(0.5, Math.min(24, Number(s.countdownWindowHours) || 3.5));
   if (s.eventCountdownMinutes != null) s.eventCountdownMinutes = Math.max(1, Math.min(120, Math.round(Number(s.eventCountdownMinutes)) || 10));
   db.data.schedule = { ...db.data.schedule, ...s };
   db.save();

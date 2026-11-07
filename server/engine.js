@@ -917,12 +917,17 @@ function makeEngine({ config, db, clock, log }) {
     // it runs on the Schedule's "Preshow ends" time; a producer can also start
     // it by hand (Live tab → Start preshow). If it runs past zero it counts
     // negative and flashes red until the Encounter starts.
+    // Countdowns stay off the screens until this long before the start they
+    // belong to (Schedule → "Show countdowns from", default 3.5 hours).
+    const cdWindowMs = (d().schedule.countdownWindowHours ?? 3.5) * 3600e3;
+    const tooFar = (startMs) => startMs != null && startMs - now > cdWindowMs;
     const preshow = (() => {
       const len = isEvent ? evLen : sunLen;
       const ctlAll = d().preshowCtl || {};
       for (const e of encs) {
         const ctl = ctlAll[`${dateKey}|${e.label}`] || {};
         if (ctl.endedAt) continue;
+        if (!ctl.startedAt && tooFar(e.startMs)) continue;
         let startMs, endMs;
         if (isEvent && !ctl.startedAt) {
           // Not fired yet: only shown while a countdown is running.
@@ -965,6 +970,19 @@ function makeEngine({ config, db, clock, log }) {
       notStreamed: [...(enc && enc.noStream ? (plan && plan.event && enc.end ? ['streamStart'] : ['streamStart', 'streamEnd']) : []), ...(nextEnc && nextEnc.noStream ? ['nextStreamStart'] : [])],
       nextBandToStage: nextEnc ? nextEnc.startMs - (sched.bandToStageMinutes || 4) * 60e3 : null,
     };
+    // Hide countdowns more than countdownWindowHours before their start.
+    targets.tooEarly = [];
+    const hideIf = (keys, startMs) => {
+      if (!tooFar(startMs)) return;
+      for (const k of keys) {
+        targets[k] = null;
+        targets.tooEarly.push(k);
+      }
+    };
+    hideIf(['encounterStart', 'streamEnd', 'streamStart', 'bandToStage'], enc && enc.startMs);
+    hideIf(['nextStart', 'nextStreamStart', 'nextBandToStage'], nextEnc && nextEnc.startMs);
+    hideIf(['positions', 'firstStream'], first && first.startMs);
+    hideIf(['nextEncounter'], targets.nextEncounter);
 
     // Display modes: Automatic follows the phases; Pre / Preshow / Live are fixed.
     const modes = {};

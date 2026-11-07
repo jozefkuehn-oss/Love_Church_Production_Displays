@@ -1681,8 +1681,9 @@
           <label>Preshow dashboards start (minutes before each Encounter)<input type="number" min="0" max="60" id="s_lead" value="${esc(s.preshowLeadMinutes ?? 5)}"></label>
           <label>Back to Pre-Encounter (minutes after stream ends)<input type="number" min="0" max="60" id="s_tail" value="${esc(s.liveTailMinutes ?? 5)}"></label>
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
+          <label>Show countdowns from (hours before the start)<input type="number" min="0.5" max="24" step="0.5" id="s_cdw" value="${esc(s.countdownWindowHours ?? 3.5)}"></label>
           <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
-          <p class="dim" style="margin:0">The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. Before it starts, the screens flash “15 / 10 / 5 / 3 / 2 / 1 minutes, 30 / 15 seconds to preshow”, then count down the last 10 seconds. If it runs over, they count negative and flash red until the Encounter starts.</p></div>
+          <p class="dim" style="margin:0">Countdowns (start, stream, band to stage, positions, preshow) stay blank on the screens until this many hours before the Encounter or event they count to, every day of the week. The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. Before it starts, the screens flash “15 / 10 / 5 / 3 / 2 / 1 minutes, 30 / 15 seconds to preshow”, then count down the last 10 seconds. If it runs over, they count negative and flash red until the Encounter starts.</p></div>
         <div class="card" style="margin-top:12px"><h2 style="margin:0">Event nights</h2>
           <p class="dim" style="margin:4px 0">REV, All-In, VALOR, AGAPE and the other event plans in Settings. Their start and end come from Planning Center; these are the preshow timings used on the Live tab. Producers can also change them for one night under Live → Today’s times.</p>
           <div class="grid2"><label>Event preshow length (m:ss)<input id="s_epl" value="${Math.floor((s.eventPreshowSeconds ?? 180) / 60)}:${String((s.eventPreshowSeconds ?? 180) % 60).padStart(2, '0')}"></label>
@@ -1711,6 +1712,7 @@
         s.preshowLeadMinutes = Math.max(0, Math.min(60, Number($('#s_lead').value) || 0));
         s.liveTailMinutes = Math.max(0, Math.min(60, Number($('#s_tail').value) || 0));
         s.bandToStageMinutes = Number($('#s_bs').value) || 4;
+        s.countdownWindowHours = Math.max(0.5, Math.min(24, Number($('#s_cdw').value) || 3.5));
         const pl = /^(\d{1,2}):(\d{2})$/.exec($('#s_pl').value.trim());
         if (pl) s.preshowSeconds = Number(pl[1]) * 60 + Number(pl[2]);
         const epl = /^(\d{1,2}):(\d{2})$/.exec($('#s_epl').value.trim());
