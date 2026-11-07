@@ -601,8 +601,43 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     event: s.event,
     eventCountdown: s.eventCountdown,
     eventStreamed: s.eventStreamed,
+    eventStartTyped: s.eventStartTyped,
     startMs: s.encounter ? s.encounter.startMs : null,
+    preshowGapSeconds: s.preshowGapSec,
+    countdownMinutes: db.data.schedule.eventCountdownMinutes ?? 10,
+    todayTimes: s.todayTimes,
   });
+});
+
+// Live tab → Today's times: start, stream start/end, not streamed and preshow
+// for each Encounter / event today, plus today's preshow length. Kept for
+// today only; an empty body goes back to Planning Center / the Schedule.
+app.put('/api/today-times', auth.requirePerm('live'), (req, res) => {
+  const b = req.body || {};
+  const HMS = /^\d{2}:\d{2}(:\d{2})?$/;
+  const date = engine.snapshot().date.key;
+  const out = { date, encounters: {} };
+  const secs = (v, lo, hi) => (v === '' || v == null ? undefined : Math.max(lo, Math.min(hi, Math.round(Number(v)) || 0)));
+  out.preshowSeconds = secs(b.preshowSeconds, 30, 1800);
+  out.gapSeconds = secs(b.gapSeconds, 0, 600);
+  for (const [label, o] of Object.entries(b.encounters || {})) {
+    const e = {};
+    for (const f of ['start', 'streamStart', 'streamEnd']) {
+      const v = String((o || {})[f] || '').trim();
+      if (!v) continue;
+      if (!HMS.test(v)) return bad(res, `${label}: times must look like 19:00 or 19:00:30.`);
+      e[f] = v;
+    }
+    if (o && o.noStream) e.noStream = true;
+    if (o && o.preshow) e.preshow = true;
+    if (Object.keys(e).length) out.encounters[String(label).slice(0, 60)] = e;
+  }
+  const empty = !Object.keys(out.encounters).length && out.preshowSeconds == null && out.gapSeconds == null;
+  db.data.dayTimes = empty ? null : out;
+  db.save();
+  log(`Today's times ${empty ? 'reset' : 'set'} by ${req.account.name}${empty ? '' : ': ' + JSON.stringify(out)}`);
+  pushNow();
+  ok(res);
 });
 
 // Preshow: start now / end / back to the schedule.
@@ -962,6 +997,9 @@ app.put('/api/schedule', auth.requireAdmin, (req, res) => {
     if (e.preshowEnd && !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) return bad(res, 'Preshow end must be a time like 08:44:30.');
   }
   if (s.preshowSeconds != null) s.preshowSeconds = Math.max(30, Math.min(1800, Number(s.preshowSeconds) || 270));
+  if (s.eventPreshowSeconds != null) s.eventPreshowSeconds = Math.max(30, Math.min(1800, Number(s.eventPreshowSeconds) || 180));
+  if (s.eventPreshowGapSeconds != null) s.eventPreshowGapSeconds = Math.max(0, Math.min(600, Math.round(Number(s.eventPreshowGapSeconds)) || 0));
+  if (s.eventCountdownMinutes != null) s.eventCountdownMinutes = Math.max(1, Math.min(120, Math.round(Number(s.eventCountdownMinutes)) || 10));
   db.data.schedule = { ...db.data.schedule, ...s };
   db.save();
   pushNow();

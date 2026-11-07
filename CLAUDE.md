@@ -175,6 +175,14 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   (`schedule.eventPreshowSeconds` 180, `eventPreshowGapSeconds` 30; `db.startCtl`).
   "Streamed tonight" checkbox (Live tab, event nights; `db.streamedEvents`): stream starts with
   the preshow (3:30 before the start) and ends at PCO's end time; stream timers show again.
+- **Today's times** (Live tab, `live` permission; `db.dayTimes`, today only, clears itself the next
+  day): per Encounter/event a typed start (hh:mm:ss), stream start/end, Not streamed, and (event
+  nights) "Preshow runs by itself"; plus today's preshow length and event gap. Blank = PCO / Schedule.
+  Order of who wins for an event start: Fire preshow > countdown button > typed start > PCO.
+  Typed stream times beat "Streamed tonight". On Sundays a moved start moves that preshow with it.
+  Event-night defaults (preshow length, gap, countdown-button minutes) are on Schedule → Event nights
+  (`schedule.eventPreshowSeconds`, `eventPreshowGapSeconds`, `eventCountdownMinutes`).
+  "Special Sundays" became **Special days** (any date; a weekday with one isn't Midweek).
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 

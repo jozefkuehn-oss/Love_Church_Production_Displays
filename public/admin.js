@@ -350,6 +350,7 @@
       <button class="ghost" id="la">Follow ProPresenter / planned timing again</button>
       <p class="dim">Tap an item if the screens are on the wrong part of the plan. A position set here holds until ProPresenter moves to a different presentation.</p></div>
       <div class="card" id="ps" style="margin-top:12px" ${has('live') ? '' : 'hidden'}></div>
+      <div class="card" id="tt" style="margin-top:12px" ${has('live') ? '' : 'hidden'}></div>
       <div class="card" id="pp" style="margin-top:12px" ${has('live') ? '' : 'hidden'}><div class="row sp"><strong>Pre-/Post-Show Teleprompter points</strong><span class="dim">Shows on the Pre-/Post-Show Teleprompter</span></div>
         <textarea id="ppt" rows="5" placeholder="• Welcome"></textarea>
         <div class="row"><button class="primary" id="pps">Save points</button></div></div>
@@ -366,6 +367,75 @@
       <div class="card" id="pl" hidden style="margin-top:12px"></div>
       <div class="list" id="li" style="margin-top:12px"></div>`;
     const act = (a, body = {}) => api('/api/live/' + a, { body }).then(load).catch(fail);
+    let cdMin = null;
+    // Today's times: change start, stream start/end, not streamed and the
+    // preshow for today only (Sundays, event nights, special days). Blank =
+    // Planning Center / the Schedule. Redrawn only when something changes and
+    // nobody is typing in it.
+    const hms = (ms) => (ms == null ? '' : new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }));
+    const mss = (sec) => (sec == null ? '' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`);
+    const parseMss = (v) => {
+      v = String(v || '').trim();
+      if (!v) return '';
+      const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(v);
+      return m ? Number(m[1]) * 60 + Number(m[2] || 0) : null;
+    };
+    function drawToday(d) {
+      const box = $('#tt');
+      const t = d.todayTimes;
+      if (!box || !t) return;
+      const sv = (t.saved && t.saved.encounters) || {};
+      const sig = JSON.stringify([t.date, t.isEvent, t.saved, t.encounters.map((e) => [e.label, e.startMs, e.streamStartMs, e.streamEndMs, e.noStream, e.preshowEndMs]), d.preshowSeconds, d.preshowGapSeconds]);
+      // Don't wipe what someone is typing; Save or Back redraws it.
+      if (box.dataset.sig === sig || box.dataset.dirty === 'y') return;
+      box.dataset.sig = sig;
+      const changed = !!(t.saved && (Object.keys(sv).length || t.saved.preshowSeconds != null || t.saved.gapSeconds != null));
+      const ev = d.event;
+      if (!t.encounters.length) {
+        box.innerHTML = `<div class="row sp"><strong>Today’s times</strong><span class="dim">${esc(t.date)}</span></div>
+          <p class="dim" style="margin:4px 0">Nothing is planned today${d.midweek ? ', so the screens show the Midweek dashboard' : ''}. An event night (VALOR, REV, All-In, AGAPE) shows up here once its Planning Center plan is dated today. To run countdowns on a day with no plan, an admin can add it under Schedule → Special days.</p>`;
+        return;
+      }
+      const cell = (e, f, cur) => `<td><input type="time" step="1" data-tt="${esc(e.label)}" data-f="${f}" value="${esc((sv[e.label] || {})[f] || '')}"><div class="dim" style="font-size:12px">${cur}</div></td>`;
+      box.innerHTML = `<div class="row sp"><strong>Today’s times</strong><span class="status"><span class="dot ${changed ? 'warn' : 'ok'}"></span>${changed ? 'Changed by hand for today' : ev ? 'Planning Center times' : 'Planning Center / Schedule times'}</span></div>
+        <p class="dim" style="margin:4px 0">Change the countdowns for today only. Leave a box blank to use ${ev ? 'Planning Center' : 'Planning Center and the Schedule'}; the line under each box is what the screens are counting to now. Tomorrow everything goes back to normal by itself.</p>
+        <div style="overflow-x:auto"><table><tr><th>${ev ? esc(ev) : 'Encounter'}</th><th>Starts</th><th>Stream starts</th><th>Stream ends</th><th>Not streamed</th>${t.isEvent ? '<th>Preshow before it</th>' : '<th>Preshow</th>'}</tr>
+        ${t.encounters
+          .map((e) => {
+            const o = sv[e.label] || {};
+            const ps = t.isEvent
+              ? `<td><label class="row" style="gap:6px"><input type="checkbox" data-tt="${esc(e.label)}" data-f="preshow" ${o.preshow ? 'checked' : ''}> runs by itself</label><div class="dim" style="font-size:12px">${o.start ? '' : 'Needs a start time typed in'}</div></td>`
+              : `<td class="dim">${e.preshowEndMs ? 'ends ' + hms(e.preshowEndMs) : 'none'}</td>`;
+            return `<tr><td><strong>${esc(e.label)}</strong>${e.recorded ? '<div class="dim" style="font-size:12px">recorded</div>' : ''}</td>
+              ${cell(e, 'start', 'now ' + hms(e.startMs))}${cell(e, 'streamStart', e.noStream ? 'not streamed' : 'now ' + hms(e.streamStartMs))}${cell(e, 'streamEnd', e.noStream ? 'not streamed' : 'now ' + hms(e.streamEndMs))}
+              <td><input type="checkbox" data-tt="${esc(e.label)}" data-f="noStream" ${o.noStream ? 'checked' : ''}></td>${ps}</tr>`;
+          })
+          .join('')}</table></div>
+        <div class="grid2"><label>Preshow length today (m:ss, blank = normal)<input id="tt_pl" value="${esc(mss(t.saved && t.saved.preshowSeconds))}" placeholder="${esc(mss(d.preshowSeconds))}"></label>
+        ${t.isEvent ? `<label>Gap from preshow end to start (m:ss)<input id="tt_gap" value="${esc(mss(t.saved && t.saved.gapSeconds))}" placeholder="${esc(mss(d.preshowGapSeconds))}"></label>` : ''}</div>
+        ${t.isEvent ? '<p class="dim" style="margin:0">On an event night, typing a start time and ticking “runs by itself” makes the preshow start on its own before it (like the countdown button). “Fire preshow now” and the countdown button still win over the typed start time. Typing stream times streams the event even if “Streamed tonight” is off.</p>' : '<p class="dim" style="margin:0">Moving a start time moves that Encounter’s preshow with it.</p>'}
+        <div class="row" style="margin-top:8px"><button class="primary" id="tt_save">Save today’s times</button>${changed ? `<button class="ghost" id="tt_reset">Back to ${ev ? 'Planning Center' : 'Planning Center / Schedule'}</button>` : ''}</div>`;
+      box.dataset.dirty = '';
+      $$('#tt input').forEach((i) => (i.oninput = i.onchange = () => (box.dataset.dirty = 'y')));
+      $('#tt_save').onclick = () => {
+        const body = { encounters: {} };
+        for (const e of t.encounters) body.encounters[e.label] = {};
+        $$('#tt [data-tt]').forEach((i) => (body.encounters[i.dataset.tt][i.dataset.f] = i.type === 'checkbox' ? i.checked : i.value));
+        const pl = parseMss($('#tt_pl').value);
+        const gp = $('#tt_gap') ? parseMss($('#tt_gap').value) : '';
+        if (pl === null || gp === null) return toast('Preshow length and gap look like 3:00.', true);
+        body.preshowSeconds = pl;
+        body.gapSeconds = gp;
+        api('/api/today-times', { method: 'PUT', body })
+          .then(() => { toast('Today’s times saved'); box.dataset.dirty = ''; box.dataset.sig = ''; load(); })
+          .catch(fail);
+      };
+      if ($('#tt_reset'))
+        $('#tt_reset').onclick = () => {
+          if (!confirm('Go back to the normal times for today?')) return;
+          api('/api/today-times', { method: 'PUT', body: {} }).then(() => { toast('Back to the normal times'); box.dataset.dirty = ''; box.dataset.sig = ''; load(); }).catch(fail);
+        };
+    }
     $('#lp').onclick = () => act('prev');
     $('#ln').onclick = () => act('next');
     $('#la').onclick = () => act('auto');
@@ -384,20 +454,27 @@
       const len = d.preshowSeconds;
       const lenTxt = `${Math.floor(len / 60)}:${String(len % 60).padStart(2, '0')}`;
       const ev = d.event;
+      const gap = d.preshowGapSeconds ?? 30;
+      const gapTxt = `${Math.floor(gap / 60)}:${String(gap % 60).padStart(2, '0')}`;
+      const leadTxt = dur((len + gap) * 1000);
+      if (cdMin == null) cdMin = d.countdownMinutes || 10;
       const st = !p ? (ev ? `${ev}: no preshow yet` : 'No preshow scheduled right now')
         : p.hold ? `${p.label} preshow · STANDBY, fire when ready`
         : p.state === 'waiting' ? `${p.label} preshow · starts ${new Date(p.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`
         : p.state === 'running' ? `${p.label} preshow · ${dur(p.remainingMs)} left`
         : `${p.label} preshow · OVER by ${dur(-p.remainingMs).replace('+', '')}`;
-      $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
-        ${ev ? `<div class="row sp" style="margin-bottom:8px"><span class="dim">${d.eventCountdown && d.startMs ? `${esc(ev)} starts ${new Date(d.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : `${esc(ev)} start: Planning Center time`}</span><span class="row"><label class="row" style="gap:6px"><input type="checkbox" id="evstream" ${d.eventStreamed ? 'checked' : ''}> Streamed tonight</label><button class="small" data-es="countdown">Start 10:00 countdown</button>${d.eventCountdown ? '<button class="small ghost" data-es="reset">Back to PCO time</button>' : ''}</span></div>` : ''}
-        <div class="row"><button class="primary" data-ps="start">${ev ? `Fire preshow now (${lenTxt}, ${esc(ev)} starts 0:30 after; starts by itself at 3:30 on the countdown)` : `Start preshow now (${lenTxt})`}</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+      const typing = (el) => el && document.activeElement && el.contains(document.activeElement) && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+      if (!typing($('#ps'))) $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
+        ${ev ? `<div class="row sp" style="margin-bottom:8px"><span class="dim">${d.startMs ? `${esc(ev)} starts ${hms(d.startMs)} (${d.eventCountdown ? 'countdown / fired by hand' : d.eventStartTyped ? 'Today’s times' : 'Planning Center'})` : `${esc(ev)} start: Planning Center time`}</span><span class="row"><label class="row" style="gap:6px"><input type="checkbox" id="evstream" ${d.eventStreamed ? 'checked' : ''}> Streamed tonight</label><input type="number" id="cdmin" min="1" max="120" value="${cdMin}" style="width:70px" title="Minutes"> min <button class="small" data-es="countdown">Start ${cdMin}:00 countdown</button>${d.eventCountdown ? '<button class="small ghost" data-es="reset">Back to PCO time</button>' : ''}</span></div>` : ''}
+        <div class="row"><button class="primary" data-ps="start">${ev ? `Fire preshow now (${lenTxt}, ${esc(ev)} starts ${gapTxt} after; starts by itself at ${leadTxt} to go on the countdown)` : `Start preshow now (${lenTxt})`}</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
+      if ($('#cdmin')) $('#cdmin').oninput = (e) => (cdMin = Math.max(1, Math.min(120, Math.round(Number(e.target.value)) || 10)));
       if ($('#evstream')) $('#evstream').onchange = (e) => api('/api/event-streamed', { method: 'PUT', body: { on: e.target.checked } }).then(() => { toast(e.target.checked ? 'Streamed tonight' : 'Not streamed'); load(); }).catch(fail);
       $$('[data-es]').forEach((b) => (b.onclick = () => {
-        if (b.dataset.es === 'countdown' && d.eventCountdown && !confirm('Restart the countdown at 10:00?')) return;
-        api('/api/event-start/' + b.dataset.es, { body: { minutes: 10 } }).then(() => { toast(b.dataset.es === 'countdown' ? 'Countdown started' : 'Back to the Planning Center time'); load(); }).catch(fail);
+        if (b.dataset.es === 'countdown' && d.eventCountdown && !confirm(`Restart the countdown at ${cdMin}:00?`)) return;
+        api('/api/event-start/' + b.dataset.es, { body: { minutes: cdMin } }).then(() => { toast(b.dataset.es === 'countdown' ? 'Countdown started' : 'Back to the Planning Center time'); load(); }).catch(fail);
       }));
       $$('[data-ps]').forEach((b) => (b.onclick = () => api('/api/preshow/' + b.dataset.ps, { body: {} }).then(() => { toast(b.dataset.ps === 'start' ? 'Preshow started' : b.dataset.ps === 'end' ? 'Preshow ended' : 'Back to the schedule'); load(); }).catch(fail)));
+      drawToday(d);
       // ProPresenter presentation -> plan item link (the playlist is built by hand).
       const pl = $('#pl');
       const pres = d.propresenter.presentation;
@@ -1606,11 +1683,16 @@
           <label>Band to stage (minutes before start)<input type="number" id="s_bs" value="${esc(s.bandToStageMinutes)}"></label>
           <label>Preshow length (m:ss)<input id="s_pl" value="${Math.floor((s.preshowSeconds ?? 270) / 60)}:${String((s.preshowSeconds ?? 270) % 60).padStart(2, '0')}"></label></div>
           <p class="dim" style="margin:0">The preshow timer is built in (no ProPresenter needed). It counts down to each Encounter’s <em>Preshow ends</em> time (leave blank for no preshow), or producers start it by hand from the Live tab. Before it starts, the screens flash “15 / 10 / 5 / 3 / 2 / 1 minutes, 30 / 15 seconds to preshow”, then count down the last 10 seconds. If it runs over, they count negative and flash red until the Encounter starts.</p></div>
-        <h2>Special Sundays</h2><p class="dim">Different times for one date (holidays, baptism Sunday). Replaces the normal schedule that day.</p>
+        <div class="card" style="margin-top:12px"><h2 style="margin:0">Event nights</h2>
+          <p class="dim" style="margin:4px 0">REV, All-In, VALOR, AGAPE and the other event plans in Settings. Their start and end come from Planning Center; these are the preshow timings used on the Live tab. Producers can also change them for one night under Live → Today’s times.</p>
+          <div class="grid2"><label>Event preshow length (m:ss)<input id="s_epl" value="${Math.floor((s.eventPreshowSeconds ?? 180) / 60)}:${String((s.eventPreshowSeconds ?? 180) % 60).padStart(2, '0')}"></label>
+          <label>Gap from preshow end to start (m:ss)<input id="s_egap" value="${Math.floor((s.eventPreshowGapSeconds ?? 30) / 60)}:${String((s.eventPreshowGapSeconds ?? 30) % 60).padStart(2, '0')}"></label>
+          <label>Countdown button (minutes)<input type="number" min="1" max="120" id="s_ecd" value="${esc(s.eventCountdownMinutes ?? 10)}"></label></div></div>
+        <h2>Special days</h2><p class="dim">Different times for one date: holidays, baptism Sunday, or a weekday that needs Encounter countdowns without a Planning Center plan. Replaces the normal schedule that day (and a weekday with one isn’t a Midweek day).</p>
         ${Object.entries(s.overrides || {})
           .map(([d, o]) => `<div class="card" style="margin-bottom:12px"><div class="row sp"><strong>${esc(d)}</strong><button class="small danger" data-rmo="${esc(d)}">Remove</button></div>${table(o.encounters, 'o:' + d)}</div>`)
           .join('')}
-        <div class="row"><input type="date" id="s_od" style="max-width:220px"><button id="s_oa">Add special Sunday</button></div>
+        <div class="row"><input type="date" id="s_od" style="max-width:220px"><button id="s_oa">Add special day</button></div>
         <div style="margin-top:18px"><button class="primary" id="s_save">Save schedule</button></div>`;
       const listFor = (key) => (key === 'default' ? s.encounters : s.overrides[key.slice(2)].encounters);
       $$('[data-f]').forEach((i) => (i.oninput = () => (listFor(i.dataset.k)[i.dataset.i][i.dataset.f] = i.value)));
@@ -1631,6 +1713,11 @@
         s.bandToStageMinutes = Number($('#s_bs').value) || 4;
         const pl = /^(\d{1,2}):(\d{2})$/.exec($('#s_pl').value.trim());
         if (pl) s.preshowSeconds = Number(pl[1]) * 60 + Number(pl[2]);
+        const epl = /^(\d{1,2}):(\d{2})$/.exec($('#s_epl').value.trim());
+        if (epl) s.eventPreshowSeconds = Number(epl[1]) * 60 + Number(epl[2]);
+        const eg = /^(\d{1,2}):(\d{2})$/.exec($('#s_egap').value.trim());
+        if (eg) s.eventPreshowGapSeconds = Number(eg[1]) * 60 + Number(eg[2]);
+        s.eventCountdownMinutes = Math.max(1, Math.min(120, Math.round(Number($('#s_ecd').value)) || 10));
         await api('/api/schedule', { method: 'PUT', body: s }).then(() => toast('Schedule saved')).catch(fail);
       };
     }

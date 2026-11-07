@@ -611,6 +611,23 @@ function makeEngine({ config, db, clock, log }) {
       if (endIt && endIt.plannedStart != null) e.streamEndMs = endIt.plannedStart + (endIt.length || 0) * 1000;
     }
 
+    // Today's times (Live tab → Today's times, kept for today only): a start
+    // time typed by hand wins over Planning Center / the Schedule. On a
+    // Sunday-style day the "Preshow ends" time moves with the start.
+    const dayT = d().dayTimes && d().dayTimes.date === dateKey ? d().dayTimes : {};
+    const dayEnc = dayT.encounters || {};
+    const hmsMs = (hms) => zoned(dateKey, hms.slice(0, 5), tz) + (Number(hms.slice(6, 8)) || 0) * 1000;
+    const HMS = /^\d{2}:\d{2}(:\d{2})?$/;
+    for (const e of encs) {
+      if (e.preshowEnd && HMS.test(e.preshowEnd)) e.preshowEndMs = hmsMs(e.preshowEnd);
+      const o = dayEnc[e.label];
+      if (!o || !o.start || !HMS.test(o.start)) continue;
+      const ms = hmsMs(o.start);
+      if (e.preshowEndMs != null) e.preshowEndMs += ms - e.startMs;
+      e.startMs = ms;
+      e.typedStart = true;
+    }
+
     // Three phases per Encounter:
     //   Pre-Encounter  until preshow (5 min before the Encounter start)
     //   Preshow        5 min before start → start
@@ -626,8 +643,9 @@ function makeEngine({ config, db, clock, log }) {
     // (0:30) after it ends, so firing it sets the start time. Before that, a
     // countdown started by hand (Live tab → "Start 10:00 countdown") sets the
     // start; it holds at 3:30 until the preshow is fired.
-    const evLen = (sched0.eventPreshowSeconds ?? 180) * 1000;
-    const evGap = (sched0.eventPreshowGapSeconds ?? 30) * 1000;
+    const evLen = (dayT.preshowSeconds ?? sched0.eventPreshowSeconds ?? 180) * 1000;
+    const evGap = (dayT.gapSeconds ?? sched0.eventPreshowGapSeconds ?? 30) * 1000;
+    const sunLen = (dayT.preshowSeconds ?? sched0.preshowSeconds ?? 270) * 1000;
     if (isEvent) {
       const psAll = d().preshowCtl || {};
       const scAll = d().startCtl || {};
@@ -642,6 +660,11 @@ function makeEngine({ config, db, clock, log }) {
           // Countdown running: the preshow starts by itself at 3:30 to go.
           e.countdown = true;
           e.startMs = sc.startMs;
+        } else if (e.typedStart && (dayEnc[e.label] || {}).preshow) {
+          // Start time typed on the Live tab with "Preshow" ticked: the
+          // preshow starts by itself before it, like the countdown.
+          e.countdown = true;
+          e.typedAuto = true;
         }
         // Streamed tonight (Live tab checkbox): the stream starts with the
         // preshow (3:30 before the start) and ends at Planning Center's end time.
@@ -651,6 +674,25 @@ function makeEngine({ config, db, clock, log }) {
           e.streamEndMs = e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3;
         }
       });
+    }
+    for (const e of encs) {
+      const o = dayEnc[e.label];
+      if (!o) continue;
+      if (o.noStream) {
+        e.noStream = true;
+        e.streamStartMs = e.streamEndMs = null;
+        continue;
+      }
+      if (o.streamStart && HMS.test(o.streamStart)) {
+        e.streamStartMs = hmsMs(o.streamStart);
+        e.noStream = false;
+        if (e.streamEndMs == null) e.streamEndMs = e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3;
+      }
+      if (o.streamEnd && HMS.test(o.streamEnd)) {
+        e.streamEndMs = hmsMs(o.streamEnd);
+        e.noStream = false;
+        if (e.streamStartMs == null) e.streamStartMs = e.startMs;
+      }
     }
     encs.forEach((e) => {
       e.preshowFrom = isEvent ? e.psFired || (e.countdown ? e.startMs - evLen - evGap : e.startMs) : e.startMs - psLead;
@@ -876,8 +918,7 @@ function makeEngine({ config, db, clock, log }) {
     // it by hand (Live tab → Start preshow). If it runs past zero it counts
     // negative and flashes red until the Encounter starts.
     const preshow = (() => {
-      const sch = d().schedule;
-      const len = isEvent ? evLen : (sch.preshowSeconds ?? 270) * 1000;
+      const len = isEvent ? evLen : sunLen;
       const ctlAll = d().preshowCtl || {};
       for (const e of encs) {
         const ctl = ctlAll[`${dateKey}|${e.label}`] || {};
@@ -892,8 +933,8 @@ function makeEngine({ config, db, clock, log }) {
           startMs = ctl.startedAt;
           endMs = startMs + len;
         } else {
-          if (!e.preshowEnd || !/^\d{2}:\d{2}(:\d{2})?$/.test(e.preshowEnd)) continue;
-          endMs = zoned(dateKey, e.preshowEnd.slice(0, 5), tz) + (Number(e.preshowEnd.slice(6, 8)) || 0) * 1000;
+          if (e.preshowEndMs == null) continue;
+          endMs = e.preshowEndMs;
           startMs = endMs - len;
         }
         // Running over counts negative until the Encounter starts, then the
@@ -960,9 +1001,18 @@ function makeEngine({ config, db, clock, log }) {
       isPreshow: !!preshowEnc,
       nextEncounter: nextEnc ? { label: nextEnc.label, startMs: nextEnc.startMs, streamStartMs: nextEnc.streamStartMs, recorded: !!nextEnc.recorded } : null,
       preshow,
-      preshowLenSec: Math.round((isEvent ? evLen : (d().schedule.preshowSeconds ?? 270) * 1000) / 1000),
+      preshowLenSec: Math.round((isEvent ? evLen : sunLen) / 1000),
+      preshowGapSec: Math.round(evGap / 1000),
+      // Live tab → Today's times: what each Encounter / event is running on now.
+      todayTimes: {
+        date: dateKey,
+        isEvent,
+        saved: dayT,
+        encounters: encs.map((e) => ({ label: e.label, startMs: e.startMs, streamStartMs: e.streamStartMs, streamEndMs: e.streamEndMs, noStream: !!e.noStream, preshowEndMs: e.preshowEndMs ?? null, preshowFrom: e.preshowFrom, typedStart: !!e.typedStart, recorded: !!e.recorded })),
+      },
       eventStreamed: isEvent && !!(d().streamedEvents || {})[dateKey],
-      eventCountdown: isEvent && enc ? !!enc.countdown || !!enc.psFired : false,
+      eventCountdown: isEvent && enc ? (!!enc.countdown && !enc.typedAuto) || !!enc.psFired : false,
+      eventStartTyped: isEvent && enc ? !!enc.typedStart : false,
       // Pre-Show Teleprompter talking points (edited on the Live page).
       preshowPoints: d().preshowPoints != null ? d().preshowPoints : DEFAULT_PRESHOW_POINTS,
       messageNotes: messageNotes(items),
