@@ -185,7 +185,7 @@
     if (left != null && left <= 0) text = { streamEnd: 'Ended', encounterStart: 'Started', nextStart: 'Starting', bandToStage: 'On stage', nextBandToStage: 'On stage', streamStart: 'Live', nextStreamStart: 'Live', firstStream: 'Live' }[o.target] || 'Now';
     if (left == null && /^next/.test(o.target)) text = 'Done for today';
     if (left == null && ((s.targets && s.targets.notStreamed) || []).includes(o.target)) text = 'Not streamed';
-    // More than 3.5 hours (Schedule setting) before the start: no countdown yet.
+    // Weekdays, more than 3.5 hours (Schedule setting) before the start: no countdown yet.
     if (left == null && ((s.targets && s.targets.tooEarly) || []).includes(o.target)) text = '—';
     // Recording the 11:45: its "stream" countdowns are recording countdowns.
     const recT = ((o.target === 'streamStart' || o.target === 'streamEnd') && s.encounter && s.encounter.recorded) || (o.target === 'nextStreamStart' && s.nextEncounter && s.nextEncounter.recorded);

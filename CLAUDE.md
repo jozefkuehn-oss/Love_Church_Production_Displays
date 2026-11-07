@@ -183,9 +183,11 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   Event-night defaults (preshow length, gap, countdown-button minutes) are on Schedule → Event nights
   (`schedule.eventPreshowSeconds`, `eventPreshowGapSeconds`, `eventCountdownMinutes`).
   "Special Sundays" became **Special days** (any date; a weekday with one isn't Midweek).
-- **Countdowns hide until 3.5 h before their start** (every day; Schedule → "Show countdowns
-  from", `schedule.countdownWindowHours`, default 3.5). Countdown widgets show "—" (`targets.tooEarly`)
-  and the preshow timer stays off; a preshow fired by hand always shows.
+- **Weekdays stay Midweek until 3.5 h before the first start** (event nights, special days;
+  Schedule → "Weekdays: Midweek until", `schedule.countdownWindowHours`, default 3.5). Then the
+  screens switch to their dashboards; a later start that day keeps its countdowns blank ("—",
+  `targets.tooEarly`, preshow off) until 3.5 h before it. A preshow fired by hand always shows.
+  **Sundays are never held back**: countdowns run as soon as the TVs power on (5:00).
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 

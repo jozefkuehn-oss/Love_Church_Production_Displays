@@ -917,10 +917,12 @@ function makeEngine({ config, db, clock, log }) {
     // it runs on the Schedule's "Preshow ends" time; a producer can also start
     // it by hand (Live tab → Start preshow). If it runs past zero it counts
     // negative and flashes red until the Encounter starts.
-    // Countdowns stay off the screens until this long before the start they
-    // belong to (Schedule → "Show countdowns from", default 3.5 hours).
+    // Weekdays (event nights, special days): the screens stay on Midweek until
+    // this long before the first start, and a later start's countdowns stay
+    // blank until this long before it (Schedule setting, default 3.5 hours).
+    // Sundays: countdowns run as soon as the TVs are on.
     const cdWindowMs = (d().schedule.countdownWindowHours ?? 3.5) * 3600e3;
-    const tooFar = (startMs) => startMs != null && startMs - now > cdWindowMs;
+    const tooFar = (startMs) => p.weekday !== 'Sunday' && startMs != null && startMs - now > cdWindowMs;
     const preshow = (() => {
       const len = isEvent ? evLen : sunLen;
       const ctlAll = d().preshowCtl || {};
@@ -998,7 +1000,9 @@ function makeEngine({ config, db, clock, log }) {
     // dated today, no schedule override) and no rehearsal running. Every
     // screen then shows the shared Midweek dashboard.
     const sOver = (d().schedule.overrides || {})[dateKey];
-    const midweek = cfg().midweek !== false && !clock.rehearsal() && p.weekday !== 'Sunday' && !(plan && plan.date === dateKey) && !(sOver && sOver.encounters && sOver.encounters.length);
+    const hasDay = !!(plan && plan.date === dateKey) || !!(sOver && sOver.encounters && sOver.encounters.length);
+    const firstStart = encs.length ? Math.min(...encs.map((e) => e.startMs)) : null;
+    const midweek = cfg().midweek !== false && !clock.rehearsal() && p.weekday !== 'Sunday' && (!hasDay || tooFar(firstStart));
 
     return {
       now,
