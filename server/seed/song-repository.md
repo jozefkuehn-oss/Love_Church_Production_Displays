@@ -178,12 +178,76 @@ aliases: [song bank, worship song repository, song bank for broadcast notes]
 
 ## Praise You Now
 - Progression (VOUS Worship, 124 tempo, 4/4): Refrain 1 x2 → Verse 1 → Verse 2 → Chorus → Vamp → Refrain 1 → Verse 3 → Chorus → Refrain 2 → Bridge 1 → Bridge 2 → Refrain 3 → Refrain 2 → Chorus x2 → Refrain 1 → Tag → Ending
+- Feel: Needs feel
 
 ## [Shortened] Welcome Home
 - Progression (Elevation Rhythm, 134 tempo, 4/4; full-length order, cut points not given): Intro → Verse 1 → Verse 2 → Pre-Chorus → Chorus x2 → Verse 3 → Pre-Chorus → Chorus x2 → Interlude → Bridge 1 → Bridge 2 → Bridge 1 → Bridge 2 → Refrain → Chorus x2 → Interlude x2 → Bridge 2 x4 → Refrain x2 → Ending
+- Feel: Needs feel
 
 ## Midst (Live)
 - Progression (The Belonging Co, 89 tempo, 6/8; full-length order): Intro → Verse 1 → Verse 2 → Chorus 1 → Chorus 2 → Breakdown → Verse 3 → Verse 4 → Chorus 1 → Chorus 2 → Chorus 1 → Chorus 2 → Breakdown → Tag → Breakdown → Tag → Bridge 1 → Bridge 2 → Bridge 1 → Bridge 2 → Instrumental x2 → Chorus 1 → Chorus 2 → Bridge 1 → Bridge 2 → Breakdown → Tag → Breakdown → Tag → Breakdown → Tag → Ending
+- Feel: Needs feel
 
 ## [Tag] Jesus We Love You
 - Progression (The Recording Collective, 58 tempo, 6/8; full chart order): Intro x2 → Verse 1 → Verse 2 → Pre-Chorus → Chorus → Verse 3 → Verse 4 → Pre-Chorus → Chorus x2 → Tag x2 → Interlude → Bridge x4 → Chorus x2 → Refrain → Chorus x3 → Ending
+- Feel: Needs feel
+
+## Sing Of Your Love
+- Progression (PCO: ELEVATION RHYTHM, Key B, 120 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Jehovah
+- Progression (PCO: Elevation Worship, Key A, 100 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## How Great Is Our God
+- Progression (PCO: Chris Tomlin, Key C, 77 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## New Thing Coming (feat. Tiffany Hudson & Steven Furtick)
+- Progression (PCO: Elevation Worship, Key D, 91 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## [Tag] Living Proof (Live)
+- Progression (PCO: VOUS Worship, Key B, 76 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Lace Up Your Boots (Spontaneous) [Live]
+- Progression (PCO: Circuit Rider Music, Key G#m, 73 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## GOODBYE YESTERDAY
+- Progression (PCO: ELEVATION RHYTHM, Key Ab, 150 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Always On Time (feat. Bella Cordero)
+- Progression (PCO: Elevation Worship, Key Eb, 68 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Room
+- Progression (PCO: Tiffany Hudson, Key Ab, 65 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Worthy Of It All (Worthy) [feat. Elevation Worship]
+- Progression (PCO: CeCe Winans, Key D, 71 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## No One Like The Lord (Live)
+- Progression (PCO: Gateway Worship, Key D, 72 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## [Tag] God Of Revival
+- Progression (PCO: Default Arrangement, Key B, 72 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Let The Light In
+- Progression (PCO: Kari Jobe, Key E, 75 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Way Maker
+- Progression (PCO: Leeland, Key E, 68 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## But God
+- Progression (PCO: Brandon Lake, Key Am, 85 tempo, 4/4): Needs progression
+- Feel: Needs feel
