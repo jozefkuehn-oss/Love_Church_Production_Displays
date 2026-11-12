@@ -76,9 +76,11 @@ function makeStreams({ config, log, port }) {
       ...(enc === 'libx264' ? ['-preset', 'veryfast', '-tune', 'stillimage'] : ['-realtime', '1']),
       '-b:v', '4M', '-maxrate', '5M', '-bufsize', '8M',
       '-pix_fmt', 'yuv420p', '-r', String(FPS),
-      '-force_key_frames', 'expr:gte(t,n_forced*2)',
+      '-force_key_frames', 'expr:gte(t,n_forced*1)',
       '-c:a', 'aac', '-b:a', '64k',
-      '-f', 'hls', '-hls_time', '2', '-hls_list_size', '6',
+      // 1-second pieces: the Roku waits for a few pieces before it plays, so
+      // shorter pieces mean the Roku runs closer behind the other screens.
+      '-f', 'hls', '-hls_time', '1', '-hls_list_size', '8',
       '-hls_flags', 'delete_segments+independent_segments+omit_endlist',
       '-hls_segment_filename', path.join(dir, 'seg%05d.ts'),
       path.join(dir, 'index.m3u8'),

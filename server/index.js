@@ -1436,18 +1436,31 @@ function sendTo(ws, snap) {
   );
 }
 
-function pushNow() {
+// Screens show what the Mac sends them, once a second. The send is lined up
+// with the clock's own second and goes out PUSH_LEAD_MS early, carrying the
+// time of the second that is about to start, so a screen's clock and timers
+// change on the second instead of up to a second late.
+const PUSH_LEAD_MS = 40;
+function pushNow(at) {
   let snap;
   try {
-    snap = engine.snapshot();
+    snap = engine.snapshot(at);
   } catch (e) {
     log('Snapshot failed: ' + e.stack);
     return;
   }
   for (const ws of wss.clients) if (ws.readyState === 1) sendTo(ws, snap);
 }
-
-setInterval(pushNow, 1000);
+function schedulePush() {
+  const now = clock.now();
+  let next = Math.floor(now / 1000) * 1000 + 1000;
+  if (next - now < PUSH_LEAD_MS + 5) next += 1000; // too close: aim for the one after
+  setTimeout(() => {
+    pushNow(next);
+    schedulePush();
+  }, next - now - PUSH_LEAD_MS);
+}
+schedulePush();
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) {

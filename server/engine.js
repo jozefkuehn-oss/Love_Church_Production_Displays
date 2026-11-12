@@ -540,8 +540,10 @@ function makeEngine({ config, db, clock, log }) {
   }
 
   // ---- the snapshot ----
-  function snapshot() {
-    const now = clock.now();
+  // `at` lets the once-a-second push build the snapshot for the second that
+  // is about to start, so screens change right on the second (see pushNow).
+  function snapshot(at) {
+    const now = at != null ? at : clock.now();
     const tz = cfg().timezone;
     const p = parts(now, tz);
     const dateKey = p.dateKey;
