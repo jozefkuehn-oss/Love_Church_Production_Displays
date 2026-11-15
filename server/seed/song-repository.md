@@ -251,3 +251,15 @@ aliases: [song bank, worship song repository, song bank for broadcast notes]
 ## But God
 - Progression (PCO: Brandon Lake, Key Am, 85 tempo, 4/4): Needs progression
 - Feel: Needs feel
+
+## (Shortened) TAKEOVER
+- Progression (PCO: ELEVATION RHYTHM, Key F, 66 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## (Shortened) TAKEOVER PT. 2
+- Progression (PCO: ELEVATION RHYTHM, Key F, 66 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Marvelous
+- Progression (PCO: Bethel Music, Key Em, 68 tempo, 4/4): Needs progression
+- Feel: Needs feel
