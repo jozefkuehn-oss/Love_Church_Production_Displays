@@ -206,7 +206,7 @@
   }
   function connect() {
     const nm = store.get('lcd_name');
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}${nm ? '&name=' + encodeURIComponent(nm) : ''}`);
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}${nm ? '&name=' + encodeURIComponent(nm) : ''}${params.get('stream') === '1' ? '&stream=1' : ''}`);
     ws.onmessage = (ev) => {
       lastMsg = Date.now();
       offline.hidden = true;

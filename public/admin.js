@@ -2042,7 +2042,8 @@
         <div class="grid2"><label>Demo clock starts at (sample mode)<input type="time" id="c_demo" value="${esc(c.demoStart)}"></label>
         <label>Campus label<input id="c_campus" value="${esc(c.campusLabel)}"></label>
         <label>Time zone<input id="c_tz" value="${esc(c.timezone)}"></label>
-        <label>Messages clear after (seconds, default)<input type="number" id="c_msgsec" value="${esc(c.messageDefaultSeconds)}"></label></div></div>
+        <label>Messages clear after (seconds, default)<input type="number" id="c_msgsec" value="${esc(c.messageDefaultSeconds)}"></label>
+        <label>Roku picture runs ahead by (seconds) — the Roku TV (Broadcast Top) plays a video that arrives a few seconds late, so its clocks and countdowns are drawn this far ahead. If it still runs behind your watch, raise this; if ahead, lower it.<input type="number" min="0" max="30" step="0.5" id="c_lead" value="${esc(c.streamLeadSeconds ?? 5)}"></label></div></div>
 
       <div class="card" style="margin-top:14px"><h2 style="margin:0">Planning Center</h2>
         <p class="dim">A Planning Center admin creates a Personal Access Token at api.planningcenteronline.com (Developers → Personal Access Tokens) and enters the Client ID (Application ID) and Secret here. The Secret starts with pco_pat_. Read-only.</p>
@@ -2089,6 +2090,7 @@
         campusLabel: $('#c_campus').value,
         timezone: $('#c_tz').value,
         messageDefaultSeconds: Number($('#c_msgsec').value) || 60,
+        streamLeadSeconds: Math.max(0, Math.min(30, Number($('#c_lead').value) || 0)),
         pco: { appId: $('#c_pid').value.trim(), secret: $('#c_psec').value.trim(), serviceTypeId: $('#c_pst').value.trim(), refreshMinutes: Number($('#c_prf').value) || 5, eventServiceTypes: $('#c_pev').value.split(/[^0-9]+/).filter(Boolean) },
         slack: { ...c.slack, botToken: $('#c_slack').value.trim() },
         propresenter: {

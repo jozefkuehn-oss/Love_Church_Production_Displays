@@ -175,6 +175,11 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
   (`schedule.eventPreshowSeconds` 180, `eventPreshowGapSeconds` 30; `db.startCtl`).
   "Streamed tonight" checkbox (Live tab, event nights; `db.streamedEvents`): stream starts with
   the preshow (3:30 before the start) and ends at PCO's end time; stream timers show again.
+- **Timing (Nov 15, 2026):** screens get the Mac's time (Mac clock checked: correct, network
+  time on). Pushes are lined up to the second (`schedulePush`), screens skip stale snapshots, and
+  Admin → Displays shows each screen's delay. Broadcast Top's Roku video ran ~8 s behind (HLS), so
+  its stream page gets snapshots `streamLeadSeconds` ahead (Settings, default 5; Jozef tunes it
+  against a watch). ProPresenter timers and slide changes can't be sent ahead.
 - Sunday Encounters service type: **427029** (`ES | Sunday Encounters`). LCNO = the
   North Omaha campus (excluded).
 

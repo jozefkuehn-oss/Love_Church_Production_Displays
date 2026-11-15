@@ -200,7 +200,7 @@ function makeStreams({ config, log, port }) {
     st.ffmpeg.stdin.on('error', () => {});
     st.ffmpeg.on('exit', () => st.wanted && st.running && restart(st, 'ffmpeg stopped' + (ffErr ? ': ' + ffErr.trim() : '')));
     st.running = true;
-    const q = new URLSearchParams({ device: st.id, name: st.name || st.id, lock: '1' });
+    const q = new URLSearchParams({ device: st.id, name: st.name || st.id, lock: '1', stream: '1' });
     await openPage(st, `http://127.0.0.1:${port}/display/${encodeURIComponent(st.profile)}?${q}`);
     // Feed ffmpeg a steady frame rate from whatever Chrome last painted.
     st.feed = setInterval(() => {

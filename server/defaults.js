@@ -45,6 +45,7 @@ const configDefaults = {
   // When true, a leader account can send messages only on days that person is
   // scheduled in one of the leaderRoles in Planning Center. Admins can always send.
   onlyScheduledLeaders: true,
+  streamLeadSeconds: 5, // Roku video runs this far behind; its picture is drawn this far ahead
   messageDefaultSeconds: 60, // messages clear after a minute unless the sender picks otherwise
 };
 

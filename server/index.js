@@ -934,7 +934,7 @@ app.put('/api/config', auth.requireAdmin, (req, res) => {
   const body = req.body || {};
   for (const [a, b] of SECRET_FIELDS) if (body[a] && body[a][b] === MASK) body[a][b] = config.data[a][b];
   const wasSample = config.data.sampleMode;
-  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems', 'midweek'];
+  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems', 'midweek', 'streamLeadSeconds'];
   for (const k of allowed) if (k in body) config.data[k] = body[k];
   config.saveNow();
   engine.restartProPresenter();
@@ -1401,6 +1401,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws, req) => {
   const u = new URL(req.url, 'http://x');
   ws.profile = u.searchParams.get('profile') || 'broadcast';
+  ws.isStream = u.searchParams.get('stream') === '1'; // the Mac's own page for a Roku video stream
   const device = (u.searchParams.get('device') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
@@ -1437,7 +1438,7 @@ wss.on('connection', (ws, req) => {
     };
     db.save();
   }
-  sendTo(ws, engine.snapshot());
+  sendTo(ws, ws.isStream ? engine.snapshot(undefined, streamLeadMs()) : engine.snapshot());
 });
 
 function sendTo(ws, snap) {
@@ -1463,15 +1464,21 @@ function sendTo(ws, snap) {
 // time of the second that is about to start, so a screen's clock and timers
 // change on the second instead of up to a second late.
 const PUSH_LEAD_MS = 40;
+// The Roku's picture is a video of the dashboard and reaches the TV a few
+// seconds late, so its page gets snapshots that far ahead
+// (Settings → "Roku picture runs ahead by").
+const streamLeadMs = () => Math.max(0, Math.min(30, Number(config.data.streamLeadSeconds ?? 5) || 0)) * 1000;
 function pushNow(at) {
   let snap;
+  let lead = null;
   try {
     snap = engine.snapshot(at);
+    for (const ws of wss.clients) if (ws.readyState === 1 && ws.isStream && !lead) lead = streamLeadMs() ? engine.snapshot(at, streamLeadMs()) : snap;
   } catch (e) {
     log('Snapshot failed: ' + e.stack);
     return;
   }
-  for (const ws of wss.clients) if (ws.readyState === 1) sendTo(ws, snap);
+  for (const ws of wss.clients) if (ws.readyState === 1) sendTo(ws, ws.isStream ? lead : snap);
 }
 function schedulePush() {
   const now = clock.now();
