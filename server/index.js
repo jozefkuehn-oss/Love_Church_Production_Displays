@@ -1353,11 +1353,17 @@ app.delete('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
 // Screens: every TV or output that has opened /display registers itself here
 // so an admin can see it and move it to a different room.
 app.get('/api/devices', auth.requireAdmin, (req, res) => {
-  const live = new Set([...wss.clients].map((c) => c.device).filter(Boolean));
+  const live = new Map();
+  for (const c of wss.clients) if (c.device) live.set(c.device, c);
+  // Delay: average and worst of the last 10 round trips (Mac → screen drawn → Mac).
+  const delay = (c) => {
+    const a = (c && c.delays) || [];
+    return a.length ? { delayMs: Math.round(a.reduce((x, y) => x + y, 0) / a.length), delayMaxMs: Math.max(...a) } : {};
+  };
   ok(
     res,
     Object.entries(db.data.devices)
-      .map(([id, d]) => ({ id, ...d, online: live.has(id) }))
+      .map(([id, d]) => ({ id, ...d, online: live.has(id), ...delay(live.get(id)) }))
       .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))
   );
 });
@@ -1398,6 +1404,21 @@ wss.on('connection', (ws, req) => {
   const device = (u.searchParams.get('device') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
+  // Each screen echoes a snapshot's sentAt back once it has drawn it, so the
+  // Mac can see how far behind each screen runs (network + drawing time),
+  // without trusting the TV's own clock. Shown in Admin → Displays.
+  ws.on('message', (raw) => {
+    let m;
+    try {
+      m = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (m && m.type === 'drawn' && typeof m.sentAt === 'number') {
+      const ms = Math.max(0, Date.now() - m.sentAt);
+      ws.delays = (ws.delays || []).concat(ms).slice(-10);
+    }
+  });
   if (device) {
     ws.device = device;
     const known = db.data.devices[device] || {};
@@ -1430,6 +1451,7 @@ function sendTo(ws, snap) {
   ws.send(
     JSON.stringify({
       type: 'snapshot',
+      sentAt: Date.now(), // the screen echoes this back once drawn (see ws 'message')
       profile: { id: ws.profile, name: src.name, location: p.location || '', mode, style: src.style || {}, layout: src.layouts[mode] || src.layouts.live },
       snap,
     })

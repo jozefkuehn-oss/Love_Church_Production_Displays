@@ -789,7 +789,7 @@
           ? devices
               .map(
                 (d) => `<div class="card"><div class="row sp"><input class="dn" data-dn="${esc(d.id)}" value="${esc(d.name)}" aria-label="Screen name" style="max-width:240px">
-              <span class="status"><span class="dot ${d.online ? 'ok' : ''}"></span>${d.online ? 'Online' : 'Offline · seen ' + ago(d.lastSeen)}</span></div>
+              <span class="status"><span class="dot ${d.online ? 'ok' : ''}"></span>${d.online ? 'Online' + (d.delayMs != null ? ` · <span title="Time from the Mac sending an update to this screen showing it (average of the last 10; worst ${(d.delayMaxMs / 1000).toFixed(2)} s)" style="${d.delayMs > 1500 ? 'color:#e5484d;font-weight:700' : ''}">delay ${(d.delayMs / 1000).toFixed(2)} s</span>` : '') : 'Offline · seen ' + ago(d.lastSeen)}</span></div>
               <div class="grid2"><label>Dashboard<select data-dev="${esc(d.id)}">${Object.entries(profiles)
                 .filter(([, p]) => !String(p.location || '').startsWith('_'))
                 .map(([id, p]) => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${esc((p.location || 'Other') + ' — ' + p.name)}</option>`)
