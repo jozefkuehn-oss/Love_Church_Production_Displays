@@ -191,14 +191,34 @@
 
   let ws;
   let lastMsg = 0;
+  let pending = null;
+  function drawPending() {
+    const msg = pending;
+    pending = null;
+    if (!msg) return;
+    render(msg);
+    // Tell the Mac this one is on screen, so it can show this screen's delay.
+    if (msg.sentAt && ws && ws.readyState === 1) {
+      try {
+        ws.send(JSON.stringify({ type: 'drawn', sentAt: msg.sentAt }));
+      } catch (e) {}
+    }
+  }
   function connect() {
     const nm = store.get('lcd_name');
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}${nm ? '&name=' + encodeURIComponent(nm) : ''}`);
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?profile=${encodeURIComponent(profileId)}&device=${encodeURIComponent(device)}${nm ? '&name=' + encodeURIComponent(nm) : ''}${params.get('stream') === '1' ? '&stream=1' : ''}`);
     ws.onmessage = (ev) => {
       lastMsg = Date.now();
       offline.hidden = true;
       const msg = JSON.parse(ev.data);
-      if (msg.type === 'snapshot') render(msg);
+      if (msg.type === 'snapshot') {
+        // If this screen falls behind (a slow TV, or a burst after a network
+        // hiccup), skip straight to the newest snapshot instead of drawing
+        // every old one in turn, which would leave it seconds late.
+        const fresh = !pending;
+        pending = msg;
+        if (fresh) setTimeout(drawPending, 0);
+      }
       else if (msg.type === 'assign' && msg.profile && msg.profile !== profileId && !preview) {
         // An admin moved this screen to another room.
         store.set('lcd_room', msg.profile);

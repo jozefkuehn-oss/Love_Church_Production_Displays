@@ -71,15 +71,6 @@ function makeProPresenter(name) {
         status.current = { text: (cur && cur.text) || '', notes: (cur && cur.notes) || '' };
         status.next = { text: (nxt && nxt.text) || '', notes: (nxt && nxt.notes) || '' };
       }
-      // Timers every poll so they count in real time.
-      const timers = await Promise.allSettled([call(host, port, '/v1/timers/current')]).then((r) => r[0]);
-      if (timers.status === 'fulfilled' && Array.isArray(timers.value)) {
-        status.timers = timers.value.map((t) => ({
-          name: (t.id && t.id.name) || t.name || 'Timer',
-          time: t.time || '',
-          state: t.state || '',
-        }));
-      }
       // The rest changes less often; ask every other poll.
       if (tick++ % 2 === 0) {
         const [active, idx, msg] = await Promise.allSettled([
@@ -108,8 +99,36 @@ function makeProPresenter(name) {
     }
   }
 
+  // Timers have their own loop, timed to land just before the server's
+  // once-a-second send (see pushNow in index.js), so the screens show
+  // ProPresenter's timers as fresh as possible and never wait behind the
+  // slower slide requests.
+  let timersTimer = null;
+  const TIMERS_BEFORE_SEND_MS = 250;
+  async function pollTimers() {
+    const cfg = lastCfg;
+    if (cfg && cfg.enabled && cfg.host) {
+      try {
+        const v = await call(cfg.host, cfg.port, '/v1/timers/current');
+        if (Array.isArray(v)) {
+          status.timers = v.map((t) => ({
+            name: (t.id && t.id.name) || t.name || 'Timer',
+            time: t.time || '',
+            state: t.state || '',
+          }));
+        }
+      } catch (e) {}
+    }
+    const now = Date.now();
+    let wait = 1000 - (now % 1000) - TIMERS_BEFORE_SEND_MS;
+    if (wait < 100) wait += 1000;
+    timersTimer = setTimeout(pollTimers, wait);
+  }
+
   function start(getCfg, pollMs) {
     stop();
+    lastCfg = getCfg();
+    pollTimers();
     const loop = async () => {
       const cfg = getCfg();
       lastCfg = cfg;
@@ -122,6 +141,7 @@ function makeProPresenter(name) {
   }
   function stop() {
     clearTimeout(timer);
+    clearTimeout(timersTimer);
   }
 
   // A slide's thumbnail image from ProPresenter (JPEG), for the slide

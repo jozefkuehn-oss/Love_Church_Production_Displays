@@ -934,7 +934,7 @@ app.put('/api/config', auth.requireAdmin, (req, res) => {
   const body = req.body || {};
   for (const [a, b] of SECRET_FIELDS) if (body[a] && body[a][b] === MASK) body[a][b] = config.data[a][b];
   const wasSample = config.data.sampleMode;
-  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems', 'midweek'];
+  const allowed = ['sampleMode', 'demoStart', 'timezone', 'campusLabel', 'pco', 'slack', 'propresenter', 'leaderRoles', 'onlyScheduledLeaders', 'messageDefaultSeconds', 'hideItems', 'midweek', 'streamLeadSeconds'];
   for (const k of allowed) if (k in body) config.data[k] = body[k];
   config.saveNow();
   engine.restartProPresenter();
@@ -1353,11 +1353,17 @@ app.delete('/api/accounts/:id', auth.requirePerm('roles'), (req, res) => {
 // Screens: every TV or output that has opened /display registers itself here
 // so an admin can see it and move it to a different room.
 app.get('/api/devices', auth.requireAdmin, (req, res) => {
-  const live = new Set([...wss.clients].map((c) => c.device).filter(Boolean));
+  const live = new Map();
+  for (const c of wss.clients) if (c.device) live.set(c.device, c);
+  // Delay: average and worst of the last 10 round trips (Mac → screen drawn → Mac).
+  const delay = (c) => {
+    const a = (c && c.delays) || [];
+    return a.length ? { delayMs: Math.round(a.reduce((x, y) => x + y, 0) / a.length), delayMaxMs: Math.max(...a) } : {};
+  };
   ok(
     res,
     Object.entries(db.data.devices)
-      .map(([id, d]) => ({ id, ...d, online: live.has(id) }))
+      .map(([id, d]) => ({ id, ...d, online: live.has(id), ...delay(live.get(id)) }))
       .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))
   );
 });
@@ -1395,9 +1401,25 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws, req) => {
   const u = new URL(req.url, 'http://x');
   ws.profile = u.searchParams.get('profile') || 'broadcast';
+  ws.isStream = u.searchParams.get('stream') === '1'; // the Mac's own page for a Roku video stream
   const device = (u.searchParams.get('device') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
+  // Each screen echoes a snapshot's sentAt back once it has drawn it, so the
+  // Mac can see how far behind each screen runs (network + drawing time),
+  // without trusting the TV's own clock. Shown in Admin → Displays.
+  ws.on('message', (raw) => {
+    let m;
+    try {
+      m = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (m && m.type === 'drawn' && typeof m.sentAt === 'number') {
+      const ms = Math.max(0, Date.now() - m.sentAt);
+      ws.delays = (ws.delays || []).concat(ms).slice(-10);
+    }
+  });
   if (device) {
     ws.device = device;
     const known = db.data.devices[device] || {};
@@ -1416,7 +1438,7 @@ wss.on('connection', (ws, req) => {
     };
     db.save();
   }
-  sendTo(ws, engine.snapshot());
+  sendTo(ws, ws.isStream ? engine.snapshot(undefined, streamLeadMs()) : engine.snapshot());
 });
 
 function sendTo(ws, snap) {
@@ -1430,24 +1452,44 @@ function sendTo(ws, snap) {
   ws.send(
     JSON.stringify({
       type: 'snapshot',
+      sentAt: Date.now(), // the screen echoes this back once drawn (see ws 'message')
       profile: { id: ws.profile, name: src.name, location: p.location || '', mode, style: src.style || {}, layout: src.layouts[mode] || src.layouts.live },
       snap,
     })
   );
 }
 
-function pushNow() {
+// Screens show what the Mac sends them, once a second. The send is lined up
+// with the clock's own second and goes out PUSH_LEAD_MS early, carrying the
+// time of the second that is about to start, so a screen's clock and timers
+// change on the second instead of up to a second late.
+const PUSH_LEAD_MS = 40;
+// The Roku's picture is a video of the dashboard and reaches the TV a few
+// seconds late, so its page gets snapshots that far ahead
+// (Settings → "Roku picture runs ahead by").
+const streamLeadMs = () => Math.max(0, Math.min(30, Number(config.data.streamLeadSeconds ?? 5) || 0)) * 1000;
+function pushNow(at) {
   let snap;
+  let lead = null;
   try {
-    snap = engine.snapshot();
+    snap = engine.snapshot(at);
+    for (const ws of wss.clients) if (ws.readyState === 1 && ws.isStream && !lead) lead = streamLeadMs() ? engine.snapshot(at, streamLeadMs()) : snap;
   } catch (e) {
     log('Snapshot failed: ' + e.stack);
     return;
   }
-  for (const ws of wss.clients) if (ws.readyState === 1) sendTo(ws, snap);
+  for (const ws of wss.clients) if (ws.readyState === 1) sendTo(ws, ws.isStream ? lead : snap);
 }
-
-setInterval(pushNow, 1000);
+function schedulePush() {
+  const now = clock.now();
+  let next = Math.floor(now / 1000) * 1000 + 1000;
+  if (next - now < PUSH_LEAD_MS + 5) next += 1000; // too close: aim for the one after
+  setTimeout(() => {
+    pushNow(next);
+    schedulePush();
+  }, next - now - PUSH_LEAD_MS);
+}
+schedulePush();
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) {

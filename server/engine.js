@@ -540,8 +540,14 @@ function makeEngine({ config, db, clock, log }) {
   }
 
   // ---- the snapshot ----
-  function snapshot() {
-    const now = clock.now();
+  // `at` lets the once-a-second push build the snapshot for the second that
+  // is about to start, so screens change right on the second (see pushNow).
+  // `leadMs` builds it that far ahead, for the Roku's video stream, which
+  // reaches the TV a few seconds late. Moments the app remembers (when
+  // ProPresenter changed, when an item started) always use the real time.
+  function snapshot(at, leadMs) {
+    const stampNow = at != null ? at : clock.now();
+    const now = stampNow + (leadMs || 0);
     const tz = cfg().timezone;
     const p = parts(now, tz);
     const dateKey = p.dateKey;
@@ -682,7 +688,7 @@ function makeEngine({ config, db, clock, log }) {
     let unmatched = '';
     if (ap.connected && ap.presentation !== propChange.name) {
       propChange.name = ap.presentation;
-      propChange.at = now;
+      propChange.at = stampNow;
     }
     if (ap.connected && ap.presentation) {
       const links = d().presentationLinks || {};
@@ -718,7 +724,7 @@ function makeEngine({ config, db, clock, log }) {
       if (hit >= 0) {
         index = hit;
         indexSource = 'propresenter';
-        if (!anchor || anchor.enc !== (enc && enc.label) || anchor.index !== hit) anchor = { enc: enc && enc.label, index: hit, at: now };
+        if (!anchor || anchor.enc !== (enc && enc.label) || anchor.index !== hit) anchor = { enc: enc && enc.label, index: hit, at: stampNow };
       } else {
         unmatched = ap.presentation;
         if (anchor && anchor.enc === (enc && enc.label) && anchor.index < items.length) {
@@ -750,7 +756,7 @@ function makeEngine({ config, db, clock, log }) {
     // When did the live item start? Track changes; fall back to planned time.
     if (enc && (tracking.encLabel !== enc.label || tracking.index !== index)) {
       const planned = items[index] && items[index].plannedStart;
-      tracking.startedAt = indexSource === 'planned' ? planned : now;
+      tracking.startedAt = indexSource === 'planned' ? planned : stampNow;
       if (indexSource === 'manual' && live.manualSetAt) tracking.startedAt = live.manualSetAt;
       tracking.encLabel = enc.label;
       tracking.index = index;
