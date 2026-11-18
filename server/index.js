@@ -380,7 +380,8 @@ const PUBLIC = path.join(__dirname, '..', 'public');
 // TV pages and their scripts go out rewritten for older TV browsers (legacy.js).
 const legacy = require('./legacy');
 app.use('/static', legacy.scripts(PUBLIC, ['display.js', 'widgets.js']));
-app.use('/static', express.static(PUBLIC, { maxAge: '1h' }));
+// Revalidated on every load (cheap on the LAN), so browsers pick up an update right away.
+app.use('/static', express.static(PUBLIC, { maxAge: 0 }));
 app.use('/photos', express.static(PHOTO_DIR, { maxAge: '1d' }));
 app.use('/seed-photos', express.static(path.join(__dirname, 'seed', 'photos'), { maxAge: '1d' }));
 
