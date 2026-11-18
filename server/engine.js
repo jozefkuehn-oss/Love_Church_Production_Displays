@@ -632,9 +632,16 @@ function makeEngine({ config, db, clock, log }) {
     // (0:30) after it ends, so firing it sets the start time. Before that, a
     // countdown started by hand (Live tab → "Start 10:00 countdown") sets the
     // start; it holds at 3:30 until the preshow is fired.
-    const evLen = (sched0.eventPreshowSeconds ?? 180) * 1000;
+    // A preshow set for tonight on the Live tab ("Preshow at" + length) starts
+    // by itself at that time and sets the preshow length for the night.
+    const evPs = isEvent ? (d().eventPreshow || {})[dateKey] || null : null;
+    const evLen = (evPs && evPs.seconds ? evPs.seconds : sched0.eventPreshowSeconds ?? 180) * 1000;
     const evGap = (sched0.eventPreshowGapSeconds ?? 30) * 1000;
+    const hmsMs = (v) => (/^\d{2}:\d{2}(:\d{2})?$/.test(String(v || '')) ? zoned(dateKey, v.slice(0, 5), tz) + (Number(v.slice(6, 8)) || 0) * 1000 : null);
     if (isEvent) {
+      // The set preshow belongs to the first start at or after it.
+      const psAtMs = evPs ? hmsMs(evPs.at) : null;
+      const psFor = psAtMs != null ? encs.find((x) => x.startMs >= psAtMs) : null;
       const psAll = d().preshowCtl || {};
       const scAll = d().startCtl || {};
       encs.forEach((e) => {
@@ -648,6 +655,10 @@ function makeEngine({ config, db, clock, log }) {
           // Countdown running: the preshow starts by itself at 3:30 to go.
           e.countdown = true;
           e.startMs = sc.startMs;
+        } else if (psFor === e) {
+          // Preshow set for a time tonight: it starts then; the start stays
+          // Planning Center's time.
+          e.psAt = psAtMs;
         }
         // Streamed tonight (Live tab checkbox): the stream starts with the
         // preshow (3:30 before the start) and ends at Planning Center's end time,
@@ -661,7 +672,7 @@ function makeEngine({ config, db, clock, log }) {
       });
     }
     encs.forEach((e) => {
-      e.preshowFrom = isEvent ? e.psFired || (e.countdown ? e.startMs - evLen - evGap : e.startMs) : e.startMs - psLead;
+      e.preshowFrom = isEvent ? e.psFired || (e.countdown ? e.startMs - evLen - evGap : e.psAt != null ? Math.min(e.psAt, e.startMs) : e.startMs) : e.startMs - psLead;
       e.liveFrom = e.startMs;
       e.liveUntil = (e.streamEndMs ?? (e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3)) + tail;
     });
@@ -892,9 +903,11 @@ function makeEngine({ config, db, clock, log }) {
         if (ctl.endedAt) continue;
         let startMs, endMs;
         if (isEvent && !ctl.startedAt) {
-          // Not fired yet: only shown while a countdown is running.
-          if (!e.countdown) continue;
-          startMs = e.startMs - evLen - evGap;
+          // Not fired yet: shown while a countdown is running, or when a
+          // preshow time is set for tonight.
+          if (e.psAt != null) startMs = e.psAt;
+          else if (e.countdown) startMs = e.startMs - evLen - evGap;
+          else continue;
           endMs = startMs + len;
         } else if (ctl.startedAt) {
           startMs = ctl.startedAt;
@@ -970,6 +983,7 @@ function makeEngine({ config, db, clock, log }) {
       preshow,
       preshowLenSec: Math.round((isEvent ? evLen : (d().schedule.preshowSeconds ?? 270) * 1000) / 1000),
       eventStreamed: isEvent && !!(d().streamedEvents || {})[dateKey],
+      eventPreshow: evPs,
       eventStreamTimes: (isEvent && (d().streamedEvents || {})[dateKey]) || null,
       eventStreamStartMs: isEvent && enc ? enc.streamStartMs : null,
       eventStreamEndMs: isEvent && enc ? enc.streamEndMs : null,
@@ -1064,6 +1078,15 @@ function makeEngine({ config, db, clock, log }) {
     return lab;
   }
 
+  // Event nights: preshow at a set time tonight, with its length (Live tab).
+  function setEventPreshow(at, seconds) {
+    const dateKey = parts(clock.now(), cfg().timezone).dateKey;
+    const ok = /^\d{2}:\d{2}(:\d{2})?$/.test(String(at || ''));
+    const sec = Math.round(Number(seconds) || 0);
+    d().eventPreshow = ok || sec > 0 ? { [dateKey]: { at: ok ? String(at) : '', seconds: sec > 0 && sec <= 3600 ? sec : 0 } } : {};
+    db.save();
+  }
+
   function setEventStreamed(on, from, to) {
     const dateKey = parts(clock.now(), cfg().timezone).dateKey;
     const hm = (v) => (/^\d{2}:\d{2}$/.test(String(v || '')) ? String(v) : '');
@@ -1081,7 +1104,7 @@ function makeEngine({ config, db, clock, log }) {
     };
   }
 
-  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, startAction, setEventStreamed, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos,
+  return { rosterToday, subKey, recordCrew, RECORD_CREW, preshowAction, startAction, setEventStreamed, setEventPreshow, propThumbnail, startLoops, refreshPlan, refreshPhotos, restartProPresenter, restartWireless, wirelessChannels: () => shure.channels(), wirelessRows: () => lastWirelessRows, getHosts: () => hosts, getTeamRosters: () => teamRosters, refreshHosts, snapshot, health, songKey, getPlan: () => plan, getSlackPhotos: () => slackPhotos, getPcoPhotos: () => pcoPhotos, getGhPhotos: () => ghSlackPhotos,
     // Earliest PCO time today (call time, rehearsal or service) from this
     // week's Encounter-like plans (worship / production / service management /
     // broadcast people scheduled): TVs turn on 30 min before it on non-Sundays.

@@ -612,6 +612,7 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     eventCountdown: s.eventCountdown,
     eventStreamed: s.eventStreamed,
     eventStreamTimes: s.eventStreamTimes,
+    eventPreshow: s.eventPreshow,
     eventStreamStartMs: s.eventStreamStartMs,
     eventStreamEndMs: s.eventStreamEndMs,
     startMs: s.encounter ? s.encounter.startMs : null,
@@ -888,6 +889,14 @@ app.post('/api/event-start/:action', auth.requirePerm('live'), (req, res) => {
   const label = engine.startAction(a, (req.body || {}).minutes);
   if (!label) return bad(res, 'Only on an event night.');
   log(`Event start ${a} (${label}) by ${req.account.name}`);
+  pushNow();
+  ok(res);
+});
+
+app.put('/api/event-preshow', auth.requirePerm('live'), (req, res) => {
+  const b = req.body || {};
+  engine.setEventPreshow(b.at, b.seconds);
+  log(`Event preshow: ${b.at || 'by hand'}, ${Number(b.seconds) || 'default'} s (${req.account.name})`);
   pushNow();
   ok(res);
 });

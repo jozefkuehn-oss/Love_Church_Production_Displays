@@ -391,12 +391,20 @@
         : `${p.label} preshow · OVER by ${dur(-p.remainingMs).replace('+', '')}`;
       const tod = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
       // Don't redraw while a stream time is being typed.
-      const typing = document.activeElement && (document.activeElement.id === 'evsfrom' || document.activeElement.id === 'evsto');
+      const typing = document.activeElement && ['evsfrom', 'evsto', 'evpsat', 'evpslen'].includes(document.activeElement.id);
+      const evp = d.eventPreshow || {};
+      const mss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
       if (!typing) $('#ps').innerHTML = `<div class="row sp"><strong>Preshow timer</strong><span class="status"><span class="dot ${p && p.state === 'over' ? 'bad' : p && p.state === 'running' ? 'ok' : ''}"></span>${esc(st)}${p && p.manual ? ' · started by hand' : ''}</span></div>
         ${ev ? `<div class="row sp" style="margin-bottom:8px"><span class="dim">${d.eventCountdown && d.startMs ? `${esc(ev)} starts ${new Date(d.startMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : `${esc(ev)} start: Planning Center time`}</span><span class="row"><label class="row" style="gap:6px"><input type="checkbox" id="evstream" ${d.eventStreamed ? 'checked' : ''}> Streamed tonight</label>${ev ? `<label class="row" style="gap:6px">stream from <input type="time" id="evsfrom" value="${esc((d.eventStreamTimes || {}).from || '')}"></label><label class="row" style="gap:6px">to <input type="time" id="evsto" value="${esc((d.eventStreamTimes || {}).to || '')}"></label><span class="dim">${d.eventStreamed && d.eventStreamStartMs ? `${tod(d.eventStreamStartMs)}–${d.eventStreamEndMs ? tod(d.eventStreamEndMs) : '?'}` : ''}</span>` : ''}<button class="small" data-es="countdown">Start 10:00 countdown</button>${d.eventCountdown ? '<button class="small ghost" data-es="reset">Back to PCO time</button>' : ''}</span></div>` : ''}
+        ${ev ? `<div class="row" style="margin-bottom:8px"><label class="row" style="gap:6px">Preshow at <input type="time" step="1" id="evpsat" value="${esc(evp.at || '')}"></label><label class="row" style="gap:6px">length <input id="evpslen" style="width:70px" placeholder="3:00" value="${evp.seconds ? mss(evp.seconds) : ''}"></label><span class="dim">${evp.at ? `starts by itself at ${esc(evp.at.length === 5 ? evp.at + ':00' : evp.at)}, ${mss(len)} long` : 'blank = by hand'}</span></div>` : ''}
         <div class="row"><button class="primary" data-ps="start">${ev ? `Fire preshow now (${lenTxt}, ${esc(ev)} starts 0:30 after; starts by itself at 3:30 on the countdown)` : `Start preshow now (${lenTxt})`}</button><button class="ghost" data-ps="end" ${p && p.state !== 'waiting' ? '' : 'disabled'}>End early</button>${p && p.manual ? '<button class="ghost small" data-ps="reset">Back to scheduled time</button>' : ''}</div>`;
       const sendStream = (on) => api('/api/event-streamed', { method: 'PUT', body: { on, from: $('#evsfrom') ? $('#evsfrom').value : '', to: $('#evsto') ? $('#evsto').value : '' } });
       if ($('#evstream')) $('#evstream').onchange = (e) => sendStream(e.target.checked).then(() => { toast(e.target.checked ? 'Streamed tonight' : 'Not streamed'); load(); }).catch(fail);
+      const sendPs = () => {
+        const m = String($('#evpslen').value || '').trim().match(/^(\d+)(?::(\d{1,2}))?$/);
+        return api('/api/event-preshow', { method: 'PUT', body: { at: $('#evpsat').value, seconds: m ? Number(m[1]) * 60 + Number(m[2] || 0) : 0 } });
+      };
+      ['#evpsat', '#evpslen'].forEach((s) => $(s) && ($(s).onchange = () => sendPs().then(() => { toast('Preshow saved'); load(); }).catch(fail)));
       ['#evsfrom', '#evsto'].forEach((s) => $(s) && ($(s).onchange = () => sendStream(true).then(() => { toast('Streamed tonight · times saved'); load(); }).catch(fail)));
       $$('[data-es]').forEach((b) => (b.onclick = () => {
         if (b.dataset.es === 'countdown' && d.eventCountdown && !confirm('Restart the countdown at 10:00?')) return;
