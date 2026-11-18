@@ -34,6 +34,15 @@ if (!config.data.msgDefault60) {
   config.data.msgDefault60 = true;
   config.save();
 }
+// Special Events (1492353, e.g. Heart & Soul Worship Night) run like an event
+// night too. Added once to installs with their own list.
+if (!config.data.specialEventsAdded) {
+  const pco = config.data.pco || (config.data.pco = {});
+  const list = pco.eventServiceTypes || ['380989', '1367267', '1718542', '1207771'];
+  pco.eventServiceTypes = list.map(String).includes('1492353') ? list : [...list, '1492353'];
+  config.data.specialEventsAdded = true;
+  config.save();
+}
 const db = new Doc('db.json', dbDefaults);
 // Song bank from the Broadcast Notes song repository (progression + feel).
 // Added once; songs already in the bank (or edited in Admin → Songs) are kept.

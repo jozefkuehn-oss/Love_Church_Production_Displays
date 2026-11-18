@@ -310,7 +310,11 @@ async function todaysEvent(cfg, todayKey, tz, ids) {
     if (!p || !p.attributes.sort_date) continue;
     if (parts(Date.parse(p.attributes.sort_date), tz).dateKey !== todayKey) continue;
     const st = (list.included || []).find((x) => x.type === 'ServiceType');
-    return { id: String(id), name: String((st && st.attributes.name) || p.attributes.series_title || 'Event').trim() };
+    const stName = String((st && st.attributes.name) || '').trim();
+    // A catch-all type (Special Events) names the night by the plan's title.
+    const title = String(p.attributes.title || '').trim();
+    const name = /special event/i.test(stName) && title ? title : stName || p.attributes.series_title || 'Event';
+    return { id: String(id), name: String(name).trim() };
   }
   return null;
 }

@@ -165,8 +165,9 @@ can't be edited: make a new profile (LoveChurch2, 3…) reusing
 - **Midweek** (Mon–Sat, no Encounter that day, no rehearsal): every TV shows the
   Midweek dashboard: This week (Services plans for this campus, next 7 days; PCO Calendar
   too if the PCO login is allowed to read it), clock/date, announcements (Live page), messages.
-- **Event nights**: if a plan for REV 380989, All-In 1367267, VALOR 1718542 or AGAPE
-  1207771 (Settings list) is dated today, screens run that plan, unstreamed, **no preshow**
+- **Event nights**: if a plan for REV 380989, All-In 1367267, VALOR 1718542, AGAPE
+  1207771 or Special Events 1492353 (Settings list; added Nov 18 for Heart & Soul Worship Night;
+  Special Events take the plan's title as the event name) is dated today, screens run that plan, unstreamed, **no preshow**
   (Pre-VALOR → Live), Live until PCO's end time, and "Encounter" labels become the event name.
   An event preshow is optional and fired by hand on the Live tab: "Start 10:00 countdown"
   (e.g. on the all-team call) sets the start 10 min out; the 3:00 preshow starts by itself at

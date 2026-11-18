@@ -23,8 +23,8 @@ const configDefaults = {
     appId: '', secret: '', serviceTypeId: '427029', refreshMinutes: 5,
     // Other service types that run like a service (not streamed): on a day one
     // of these has a plan, the screens run that plan instead of Sunday's.
-    // REV Rally, All-In Leadership Night, VALOR, AGAPE.
-    eventServiceTypes: ['380989', '1367267', '1718542', '1207771'],
+    // REV Rally, All-In Leadership Night, VALOR, AGAPE, Special Events.
+    eventServiceTypes: ['380989', '1367267', '1718542', '1207771', '1492353'],
   },
   slack: { botToken: '', refreshHours: 12 },
   propresenter: {
@@ -741,5 +741,5 @@ const LAYOUT_REVISIONS = {
   'broadcast.live': 4,
 };
 
-const DEFAULT_EVENT_TYPES = ['380989', '1367267', '1718542', '1207771'];
+const DEFAULT_EVENT_TYPES = ['380989', '1367267', '1718542', '1207771', '1492353'];
 module.exports = { DEFAULT_EVENT_TYPES, configDefaults, dbDefaults, LEADER_ROLES, LOCATIONS, LAYOUT_REVISIONS, preshowFrom };
