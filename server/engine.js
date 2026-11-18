@@ -650,11 +650,13 @@ function makeEngine({ config, db, clock, log }) {
           e.startMs = sc.startMs;
         }
         // Streamed tonight (Live tab checkbox): the stream starts with the
-        // preshow (3:30 before the start) and ends at Planning Center's end time.
-        if ((d().streamedEvents || {})[dateKey]) {
+        // preshow (3:30 before the start) and ends at Planning Center's end time,
+        // unless stream times were typed in next to the checkbox.
+        const se = (d().streamedEvents || {})[dateKey];
+        if (se) {
           e.noStream = false;
-          e.streamStartMs = e.startMs - evLen - evGap;
-          e.streamEndMs = e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3;
+          e.streamStartMs = se.from ? zoned(dateKey, se.from, tz) : e.startMs - evLen - evGap;
+          e.streamEndMs = se.to ? zoned(dateKey, se.to, tz) : e.end ? zoned(dateKey, e.end, tz) : e.startMs + 75 * 60e3;
         }
       });
     }
@@ -968,6 +970,9 @@ function makeEngine({ config, db, clock, log }) {
       preshow,
       preshowLenSec: Math.round((isEvent ? evLen : (d().schedule.preshowSeconds ?? 270) * 1000) / 1000),
       eventStreamed: isEvent && !!(d().streamedEvents || {})[dateKey],
+      eventStreamTimes: (isEvent && (d().streamedEvents || {})[dateKey]) || null,
+      eventStreamStartMs: isEvent && enc ? enc.streamStartMs : null,
+      eventStreamEndMs: isEvent && enc ? enc.streamEndMs : null,
       eventCountdown: isEvent && enc ? !!enc.countdown || !!enc.psFired : false,
       // Pre-Show Teleprompter talking points (edited on the Live page).
       preshowPoints: d().preshowPoints != null ? d().preshowPoints : DEFAULT_PRESHOW_POINTS,
@@ -1059,9 +1064,10 @@ function makeEngine({ config, db, clock, log }) {
     return lab;
   }
 
-  function setEventStreamed(on) {
+  function setEventStreamed(on, from, to) {
     const dateKey = parts(clock.now(), cfg().timezone).dateKey;
-    d().streamedEvents = on ? { [dateKey]: true } : {};
+    const hm = (v) => (/^\d{2}:\d{2}$/.test(String(v || '')) ? String(v) : '');
+    d().streamedEvents = on ? { [dateKey]: { from: hm(from), to: hm(to) } } : {};
     db.save();
   }
 

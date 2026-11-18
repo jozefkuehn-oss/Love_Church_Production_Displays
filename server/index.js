@@ -610,6 +610,9 @@ app.get('/api/live', auth.requireLeader, (req, res) => {
     event: s.event,
     eventCountdown: s.eventCountdown,
     eventStreamed: s.eventStreamed,
+    eventStreamTimes: s.eventStreamTimes,
+    eventStreamStartMs: s.eventStreamStartMs,
+    eventStreamEndMs: s.eventStreamEndMs,
     startMs: s.encounter ? s.encounter.startMs : null,
   });
 });
@@ -889,8 +892,9 @@ app.post('/api/event-start/:action', auth.requirePerm('live'), (req, res) => {
 });
 
 app.put('/api/event-streamed', auth.requirePerm('live'), (req, res) => {
-  engine.setEventStreamed(!!(req.body || {}).on);
-  log(`Event night streamed: ${!!(req.body || {}).on} (${req.account.name})`);
+  const b = req.body || {};
+  engine.setEventStreamed(!!b.on, b.from, b.to);
+  log(`Event night streamed: ${!!b.on}${b.on ? ` ${b.from || 'preshow'}–${b.to || 'PCO end'}` : ''} (${req.account.name})`);
   pushNow();
   ok(res);
 });
