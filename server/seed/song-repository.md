@@ -263,3 +263,35 @@ aliases: [song bank, worship song repository, song bank for broadcast notes]
 ## Marvelous
 - Progression (PCO: Bethel Music, Key Em, 68 tempo, 4/4): Needs progression
 - Feel: Needs feel
+
+## Came To My Rescue
+- Progression (PCO: Josh Baldwin, Key D, 72 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## King Of Kings
+- Progression (PCO: Default Arrangement, Key D, 68 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## [Flow] Doxology
+- Progression (PCO: Cody Carnes, Key D, 74 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## [Flow] With Everything
+- Progression (PCO: Hillsong Worship, Key D, 137 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## Firm Foundation (He Won't) / Great Are You Lord (Live From Europe)
+- Progression (PCO: Kari Jobe, Key C#, 75 tempo, 6/8): Needs progression
+- Feel: Needs feel
+
+## Freedom In This House (Gospel)
+- Progression (PCO: Jonathan Traylor, Key B, 140 tempo, 4/4): Needs progression
+- Feel: Needs feel
+
+## In Christ Alone
+- Progression (PCO: Passion, Key E, 68 tempo, 3/4): Needs progression
+- Feel: Needs feel
+
+## Holy Forever (Live)
+- Progression (PCO: Bethel Music, Key F, 72 tempo, 4/4): Needs progression
+- Feel: Needs feel
